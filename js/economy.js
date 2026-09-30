@@ -222,12 +222,33 @@
     if (!KM.human(S, owner) && labs + (queued.laborer || 0) < 4 + Math.floor(nHouses / 6)) school.queue.push('laborer');
   };
 
+  // Mercado: quando tem mercadoria suficiente para um pacote, troca (sem trabalhador; leva alguns segundos)
+  function updateMarket(S, h, dt) {
+    const t = h.trade;
+    if (!t || t.n <= 0 || h.paused) return;
+    const { sellN, buyN } = KM.tradeRate(t.sell, t.buy);
+    if (h.tradeT > 0) {
+      h.tradeT -= dt;
+      if (h.tradeT <= 0) {
+        KM.add(h.out, t.buy, buyN);
+        if (t.n < KM.INF) t.n--;
+        h.traded = (h.traded || 0) + 1;
+        if (h.owner === KM.me && KM.sfxAt) KM.sfxAt('coins', h.ex, h.ey);
+      }
+      return;
+    }
+    if ((h.inv[t.sell] || 0) < sellN || (h.out[t.buy] || 0) + buyN > KM.OUT_CAP + 3) return;
+    h.inv[t.sell] -= sellN;
+    h.tradeT = 4;
+  }
+
   // ---------- Atualização de casas ----------
   KM.updateHouse = function (S, h, dt) {
     if (h.state !== 'built') return;
     const d = KM.def(h);
     if (h.type === 'school') return updateSchool(S, h, dt);
     if (h.type === 'tower') return updateTower(S, h, dt);
+    if (d.market) return updateMarket(S, h, dt);
     if (!d.recipes || !KM.eco(S, h.owner) || h.paused) return;
     h.upT = (h.upT || 0) + dt;
     const w = h.worker && S.units[h.worker];

@@ -16,6 +16,7 @@
 
   KM.houseAccepts = function (h) {
     const d = KM.def(h);
+    if (d.market) return h.trade && h.trade.n > 0 ? [h.trade.sell] : [];
     if (d.accepts === 'all') return [];
     if (d.accepts) return d.accepts;
     if (!d.recipes) return [];

@@ -61,6 +61,14 @@
         h.queue.splice(c.i, 1); return;
       }
       case 'equip': { const h = myHouse(S, o, c.id); if (h && h.type === 'barracks' && h.state === 'built' && KM.soldierUnlocked(S, o, c.t)) for (let k = 0; k < (c.n || 1); k++) if (!KM.equip(S, h, c.t)) break; return; }
+      case 'trade': {
+        const h = myHouse(S, o, c.id);
+        if (!h || !KM.def(h).market || !KM.RES[c.sell] || !KM.RES[c.buy] || c.sell === c.buy) return;
+        // mudar a mercadoria devolve ao estoque o que ainda não foi trocado (vai para a saída)
+        if (h.trade && h.trade.sell !== c.sell && h.inv[h.trade.sell]) { KM.add(h.out, h.trade.sell, h.inv[h.trade.sell]); h.inv[h.trade.sell] = 0; }
+        h.trade = { sell: c.sell, buy: c.buy, n: KM.clamp(c.n | 0, 0, KM.INF) };
+        return;
+      }
       case 'auto': S.players[o].autoTrain = !!c.v; return;
       case 'dist': { const d = S.players[o].dist[c.r]; if (d && d[c.t] != null) d[c.t] = KM.clamp(c.v | 0, 0, 5); return; }
       case 'move': { const gs = myGroups(S, o, c.g); if (gs.length) KM.orderGroups(S, gs, KM.clamp(c.x, 0, m.W - 1), KM.clamp(c.y, 0, m.H - 1), c.am); return; }

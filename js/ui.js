@@ -316,6 +316,16 @@
           s += `<div class="ratio"><span>${ri(o)} ${KM.RES[o].n}</span><button data-act2="ord:${i}:-1" data-tip="Shift: −10">−</button><b>${v >= KM.INF ? '∞' : v}</b><button data-act2="ord:${i}:1" data-tip="Shift: +10">+</button><button data-act2="ord:${i}:inf" data-tip="Produção contínua">∞</button></div>`;
         });
       }
+      if (d.market) {
+        const t = h.trade || { sell: 'stone', buy: 'gold', n: 0 }, rate = KM.tradeRate(t.sell, t.buy);
+        const TRADE = ['trunk', 'stone', 'wood', 'coal', 'ironore', 'goldore', 'iron', 'gold', 'corn', 'flour', 'bread', 'pig', 'skin', 'sausages', 'leather', 'wine', 'fish', 'horse', 'axe', 'bow', 'lance', 'shield', 'armor'];
+        const grid = (sel, key) => `<div class="io sgridres">${TRADE.map((r) => `<button class="chip ${r === sel ? 'sel' : ''}" data-act2="${key}:${r}" data-tip="${KM.RES[r].n}">${ri(r)}</button>`).join('')}</div>`;
+        s += `<div class="trade"><div class="rate">${rate.sellN} ${ri(t.sell)} → ${rate.buyN} ${ri(t.buy)}</div><small class="muted">${KM.RES[t.sell].n} por ${KM.RES[t.buy].n} (taxa do mercador incluída)</small></div>`;
+        s += `<div class="lbl">Vender</div>${grid(t.sell, 'tsell')}<div class="lbl">Comprar</div>${grid(t.buy, 'tbuy')}`;
+        s += `<div class="ratio"><span>Trocas encomendadas</span><button data-act2="tn:-1" data-tip="Shift: −10">−</button><b>${t.n >= KM.INF ? '∞' : t.n}</b><button data-act2="tn:1" data-tip="Shift: +10">+</button><button data-act2="tn:inf" data-tip="Trocar sem parar">∞</button></div>`;
+        s += `<div class="row">📦 Aguardando: ${h.inv[t.sell] || 0}/${rate.sellN} ${ri(t.sell)}${h.tradeT > 0 ? ' · <span class="good">negociando…</span>' : ''} · Trocas feitas: <b>${h.traded || 0}</b></div>`;
+        if (!t.n) s += '<div class="muted">Encomende trocas para os carregadores começarem a trazer a mercadoria.</div>';
+      }
       if (h.type === 'storehouse') {
         s += `<div class="lbl">Clique para bloquear a entrada de um recurso</div><div class="io sgridres">${KM.RES_ORDER.map((r) => `<button class="chip ${h.block && h.block[r] ? 'blocked' : ''} ${h.inv[r] ? '' : 'zero'}" data-act2="block:${r}" data-tip="${KM.RES[r].n}${h.block && h.block[r] ? ' (bloqueado)' : ''}">${ri(r)} ${h.inv[r] || 0}</button>`).join('')}</div>`;
       }
@@ -410,6 +420,15 @@
         KM.issue({ c: 'order', id: h.id, i: +a, v });
       }
       if (k === 'block' && h) KM.issue({ c: 'block', id: h.id, r: a });
+      if ((k === 'tsell' || k === 'tbuy' || k === 'tn') && h) {
+        const t = h.trade || { sell: 'stone', buy: 'gold', n: 0 };
+        let { sell, buy, n } = t;
+        if (k === 'tsell') sell = a; if (k === 'tbuy') buy = a;
+        if (sell === buy) { this.toast('Escolha recursos diferentes para vender e comprar.', 'warn'); return; }
+        if (k === 'tn') n = a === 'inf' ? (n >= KM.INF ? 0 : KM.INF) : KM.clamp((n >= KM.INF ? 99 : n) + +a * (e.shiftKey ? 10 : 1), 0, 99);
+        KM.issue({ c: 'trade', id: h.id, sell, buy, n });
+        KM.sfx && KM.sfx('click');
+      }
       if (k === 'train' && h) { if (h.queue.length < 10) KM.issue({ c: 'train', id: h.id, p: a }); else this.toast('Fila cheia (máx. 10).', 'warn'); }
       if (k === 'lockedp') this.toast(`🔒 ${KM.PROF[a].n} ainda não está disponível. ${a === 'recruit' ? 'Construa um Quartel.' : 'Libere a construção onde ele trabalha.'}`, 'warn');
       if (k === 'lockeds') this.toast(`🔒 ${KM.SOLDIERS[a].n}: construa antes ${KM.reqNames(KM.SOLDIER_REQ[a])}.`, 'warn');

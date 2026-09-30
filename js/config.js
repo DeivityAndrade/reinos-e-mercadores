@@ -3,7 +3,7 @@
    Tudo que define economia, casas, profissões e soldados fica aqui. */
 window.KM = window.KM || {};
 (function (KM) {
-  KM.VERSION = '0.4.0';
+  KM.VERSION = '0.5.0';
   KM.TILE = 32;
   KM.MAP_W = 80;
   KM.MAP_H = 80;
@@ -95,6 +95,7 @@ window.KM = window.KM || {};
     woodcutter: { n: 'Lenhador', i: '🪓', g: 'Básico', w: 2, h: 2, cost: { wood: 3, stone: 2 }, hp: 300, worker: 'woodcutter', gather: 'tree', out: 'trunk', radius: 8, roof: '#5f4527', wall: '#b08a5a', desc: 'Corta árvores maduras e planta mudas ao redor.' },
     quarry: { n: 'Pedreira', i: '⛏️', g: 'Básico', w: 2, h: 2, cost: { wood: 3, stone: 1 }, hp: 300, worker: 'stonemason', gather: 'stone', out: 'stone', radius: 10, roof: '#6b6b6b', wall: '#bdb3a0', desc: 'Extrai pedra das rochas próximas.' },
     sawmill: { n: 'Serraria', i: '🪚', g: 'Básico', w: 2, h: 2, cost: { wood: 3, stone: 3 }, hp: 350, worker: 'carpenter', recipes: [{ in: { trunk: 1 }, out: { wood: 2 }, t: 9 }], roof: '#8b5a2b', wall: '#c9a66b', desc: 'Transforma troncos em madeira.' },
+    market: { n: 'Mercado', i: '⚖️', g: 'Básico', w: 3, h: 2, cost: { wood: 5, stone: 4 }, hp: 400, market: true, cap: 12, roof: '#8a3a2a', wall: '#d9c79a', desc: 'Troca recursos que sobram pelos que faltam. Os mercadores cobram uma taxa: produzir costuma sair mais barato.' },
 
     farm: { n: 'Fazenda', i: '🌾', g: 'Alimentos', w: 3, h: 2, cost: { wood: 4, stone: 3 }, hp: 350, worker: 'farmer', gather: 'corn', out: 'corn', radius: 6, roof: '#b8913e', wall: '#d9c79a', desc: 'Semeia e colhe trigo nos campos ao redor. Desenhe campos de trigo perto dela!' },
     vineyard: { n: 'Vinícola', i: '🍇', g: 'Alimentos', w: 2, h: 2, cost: { wood: 3, stone: 2 }, hp: 300, worker: 'farmer', gather: 'wine', out: 'wine', radius: 6, roof: '#6b2a4a', wall: '#d9c79a', desc: 'Colhe uvas dos vinhedos ao redor e produz vinho.' },
@@ -139,6 +140,7 @@ window.KM = window.KM || {};
   // Casas sem entrada estão disponíveis desde o início.
   KM.TECH = {
     sawmill: ['woodcutter'],
+    market: ['inn', 'quarry'],
     inn: ['sawmill'],
     farm: ['sawmill'],
     fisher: ['inn'],
@@ -166,6 +168,15 @@ window.KM = window.KM || {};
     militia: ['barracks'], axeman: ['barracks', 'armorworkshop'], bowman: ['barracks'], lancer: ['barracks'],
     swordsman: ['weaponsmithy', 'armorsmithy'], crossbowman: ['weaponsmithy'], pikeman: ['weaponsmithy'],
     scout: ['stables'], knight: ['stables', 'weaponsmithy', 'armorsmithy'],
+  };
+  // valor de mercado de cada recurso (base das trocas no Mercado)
+  KM.RES_VALUE = { trunk: 1, stone: 1.2, wood: 1.5, coal: 2, ironore: 2.5, goldore: 3, iron: 5, gold: 6, corn: 1, flour: 1.8, bread: 1.7, pig: 3, skin: 1.5, sausages: 1.8, leather: 2, wine: 2, fish: 1.8, horse: 8, axe: 4, sword: 9, bow: 4, crossbow: 9, lance: 4, pike: 9, shield: 3, ironshield: 8, armor: 4, ironarmor: 9 };
+  KM.MARKET_FEE = 1.5;
+  // quantas unidades vender para receber quantas (menor pacote inteiro)
+  KM.tradeRate = function (sell, buy) {
+    const vs = KM.RES_VALUE[sell] || 1, vb = (KM.RES_VALUE[buy] || 1) * KM.MARKET_FEE;
+    const sellN = Math.max(1, Math.ceil(vb / vs)), buyN = Math.max(1, Math.floor((sellN * vs) / vb));
+    return { sellN, buyN };
   };
   KM.HOUSE_GROUPS = ['Básico', 'Alimentos', 'Indústria', 'Militar'];
 

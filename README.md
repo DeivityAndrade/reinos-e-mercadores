@@ -54,6 +54,21 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 ```
 
 
+## ⚖️ Mercado e novas mecânicas (v0.5)
+- **Mercado** (liberado depois da Taverna e da Pedreira):
+  - Troque o que sobra pelo que falta: escolha o que vender e o que comprar e encomende trocas.
+  - Os carregadores levam a mercadoria até o Mercado, e o que foi comprado vai para o Armazém.
+  - Os preços seguem o valor de cada recurso, mais 50% de taxa do mercador. Não substitui a produção, mas salva quando falta ouro ou pedra.
+- **Estrada inteligente:** ao arrastar, a estrada contorna casas, árvores e água e aproveita as estradas que já existem.
+- **Prioridade de obra:** ☆ no painel da obra. Construtores e carregadores atendem essa obra primeiro, e uma ⭐ aparece sobre ela.
+- **Alertas no minimapa:** ataques e avisos piscam no minimapa.
+- **Tendência dos recursos:** a barra do topo mostra quanto cada recurso sobe ou desce por minuto (▲/▼).
+- **Produção de cada casa:** o painel mostra quanto a casa produziu e o aproveitamento (% do tempo trabalhando), com aviso quando ela passa muito tempo parada.
+- **Recuperação:** soldados bem alimentados recuperam vida devagar depois de 8 s sem lutar.
+- **IA tática:**
+  - Escolhe o alvo pesando distância, defesas (soldados e torres) e valor (Armazém, Escola e Quartel).
+  - Recua quando o ataque fracassa, com menos de 30% das tropas.
+
 ## 👑 Modo Conquista
 - A vitória é sempre a mesma: **eliminar todos os reinos rivais**. Um reino cai quando fica sem Armazém, Escola e Quartel prontos e sem nenhum soldado.
 - **Desafios opcionais** (construir algo, formar tropas, vencer rápido) valem **coroas**: 1 pela vitória e 1 por desafio, até 4 por fase. As melhores marcas ficam salvas.

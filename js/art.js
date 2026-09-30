@@ -770,6 +770,30 @@
       K.banner(b, o, w / 2 - 0.05, 0.85, d / 2 - 0.12, 0.8, true);
       return {};
     },
+    market(b, W, D, o, dx, T) {
+      // salão de feira aberto: pilares, telhado de telha e bancas com toldos listrados
+      const w = W * 0.86, d = D * 0.66;
+      K.box(b, 'stone', w + 0.06, 0.06, d + 0.06, 0, 0, -0.05);
+      for (const x of [-w / 2, -w / 6, w / 6, w / 2]) for (const z of [-d / 2, d / 2]) K.box(b, 'timber', 0.07, 0.62, 0.07, x, 0.06, z - 0.05);
+      K.box(b, 'timber', w + 0.05, 0.06, 0.07, 0, 0.66, d / 2 - 0.05); K.box(b, 'timber', w + 0.05, 0.06, 0.07, 0, 0.66, -d / 2 - 0.05);
+      K.roof(b, { w, d, rise: 0.5, y: 0.7, mat: 'tiles', gable: 'planks', z: -0.05, over: 0.14 });
+      // bancas
+      const goods = ['meat', 'hay', 'wine', 'ore3'];
+      for (let i = 0; i < 3; i++) {
+        const x = -w / 3 + i * (w / 3);
+        K.box(b, 'planks', 0.46, 0.18, 0.24, x, 0.06, 0.02);
+        b.put(i % 2 ? 'cloth' : T, boxG(0.52, 0.02, 0.3), x, 0.46, 0.2, 0, 0.35);
+        for (let k = 0; k < 4; k++) b.put(goods[(i + k) % goods.length], new THREE.SphereGeometry(0.035, 6, 5).translate(0, 0.035, 0), x - 0.15 + k * 0.1, 0.24, 0.02);
+      }
+      // mercadorias na frente e balança
+      K.crate(b, -w / 2 + 0.1, d / 2 + 0.2); K.barrel(b, -w / 2 + 0.32, d / 2 + 0.22); K.sack(b, w / 2 - 0.12, d / 2 + 0.2); K.sack(b, w / 2 - 0.25, d / 2 + 0.25, 0.9);
+      K.cyl(b, 'timber', 0.015, 0.015, 0.3, w / 2 - 0.45, 0, d / 2 + 0.22, 5);
+      K.box(b, 'iron', 0.22, 0.012, 0.012, w / 2 - 0.45, 0.3, d / 2 + 0.22);
+      for (const s of [-1, 1]) K.cyl(b, 'gold', 0.045, 0.03, 0.012, w / 2 - 0.45 + s * 0.1, 0.22, d / 2 + 0.22, 8);
+      K.sign(b, '⚖️', -w / 2 - 0.03, 0.55, d / 2 - 0.2, -PI / 2);
+      K.banner(b, o, w / 2 + 0.06, 0, -d / 2, 1.25, true);
+      return {};
+    },
     tower(b, W, D, o, dx, T) {
       // torre de vigia de pedra com plataforma e telhado
       K.cyl(b, 'stone', 0.34, 0.42, 1.35, 0, 0, 0, 10);
@@ -789,7 +813,7 @@
     vineyard: 'vineyard', fisher: 'fisher', mill: 'mill', bakery: 'bakery', swine: 'swine', butcher: 'butcher', tannery: 'tannery',
     coalmine: ['mine', 1], ironmine: ['mine', 2], goldmine: ['mine', 3], ironsmithy: ['smelter', false], goldsmelter: ['smelter', true],
     weaponworkshop: 'weaponworkshop', armorworkshop: 'armorworkshop', weaponsmithy: ['forge', false], armorsmithy: ['forge', true],
-    stables: 'stables', barracks: 'barracks', tower: 'tower',
+    stables: 'stables', barracks: 'barracks', tower: 'tower', market: 'market',
   };
   const cache = {};
   // modelo pronto (em cache por tipo/dono/porta); devolve um clone leve que compartilha geometria e materiais
