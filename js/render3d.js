@@ -352,7 +352,7 @@
       gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
       m.fillStyle = gr; m.fillRect(0, 0, 64, 64);
       this.smokeTex = new THREE.CanvasTexture(sm);
-      { const tm = KM.ART.mat('leaf').clone(); this.windify(tm, 1.6, 1.1); this.inst.tuft = { geo: KM.ART.nature.tuft, mat: tm }; this.inst.flower = { geo: KM.ART.nature.flower, mat: tm }; }
+      { const tm = KM.ART.mat('leaf').clone(); this.windify(tm, 1.6, 1.1); this.inst.tuft = { geo: KM.ART.nature.tuft, mat: tm }; this.inst.flower = { geo: KM.ART.nature.flower, mat: tm }; this.inst.bush = { geo: KM.ART.nature.bush, mat: this.inst.tree_single_A.mat }; this.inst.bush2 = { geo: KM.ART.nature.bush2, mat: this.inst.tree_single_A.mat }; }
     },
 
     // ================= construção do mundo =================
@@ -442,10 +442,10 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   // pinceladas: ruído esticado em diagonal, como tinta aplicada com pincel largo
   vec2 sq = vec2(q.x * 0.7 + q.y * 0.7, -q.x * 0.7 + q.y * 0.7);
   float stroke = vn(vec2(sq.x * 1.2, sq.y * 7.0)) * 0.6 + vn(vec2(sq.x * 2.6 + 4.0, sq.y * 13.0)) * 0.4;
-  diffuseColor.rgb *= 0.84 + big * 0.14 + mid * 0.08 + fine * 0.05 + stroke * 0.12 + grain * 0.04 * green;
+  diffuseColor.rgb *= 0.8 + big * 0.2 + mid * 0.09 + fine * 0.05 + stroke * 0.13 + grain * 0.04 * green;
   // manchas de tons: capim seco (quente), relva fresca (fria)
   float warm = smoothstep(0.45, 0.8, vn(q * 0.11 + 19.0)), cool = smoothstep(0.5, 0.85, vn(q * 0.17 + 41.0));
-  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.14, 1.03, 0.76), green * warm * 0.65);
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.2, 1.05, 0.72), green * warm * 0.8);
   diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.86, 1.0, 1.02), green * cool * (1.0 - warm) * 0.6);
   // rocha: estratos e fendas
   float sat = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b)) - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
@@ -655,6 +655,8 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         }
         // grama alta e flores em campo aberto
         if (this.gfx !== 'low' && m.terrain[i] === 0 && !m.house[i] && !m.road[i] && !m.field[i] && !m.stone[i]) {
+          const hb = KM.hash(tx, ty, 70);
+          if (hb < 0.035 && !m.tree[i]) add(hb < 0.017 ? 'bush' : 'bush2', tx + 0.3 + KM.hash(tx, ty, 71) * 0.4, this.groundY(tx + 0.5, ty + 0.5), ty + 0.3 + KM.hash(tx, ty, 72) * 0.4, 0.9 + KM.hash(tx, ty, 73) * 0.6, KM.hash(tx, ty, 74) * 6.28);
           const hk = KM.hash(tx, ty, 60);
           const nt = hk < 0.4 ? 0 : hk < 0.85 ? 1 : 2;
           for (let k = 0; k < nt; k++) {
@@ -779,13 +781,17 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       for (let y = h.y; y <= h.y + h.h; y++) for (let x = h.x; x <= h.x + h.w; x++) gy = Math.max(gy, KM.hAt(S.map, x, y) * HY);
       G.position.set(cx, gy, cy);
       // chão de terra batida sob a casa (esconde degraus do relevo)
-      const pad = new THREE.Mesh(this.padGeo || (this.padGeo = new THREE.BoxGeometry(1, 0.3, 1).translate(0, -0.13, 0)), KM.ART.mat('dirt'));
-      pad.scale.set(h.w * 0.86, 1, h.h * 0.8); pad.receiveShadow = true;
+      // fundação: laterais de pedra (aparecem em terreno inclinado) e terra batida por cima
+      let gmin = 1e9;
+      for (let y = h.y; y <= h.y + h.h; y++) for (let x = h.x; x <= h.x + h.w; x++) gmin = Math.min(gmin, KM.hAt(S.map, x, y) * HY);
+      const st = KM.ART.mat('stone'), di = KM.ART.mat('dirt');
+      const pad = new THREE.Mesh(this.padGeo || (this.padGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, -0.48, 0)), this.padMats || (this.padMats = [st, st, di, di, st, st]));
+      pad.scale.set(h.w * 0.9, gy - gmin + 0.12, h.h * 0.84); pad.receiveShadow = true; pad.castShadow = true;
       G.add(pad);
       const dx = (h.ex + 0.5) - cx;
       if (h.state === 'plan') {
         G.add(KM.ART.plan(h.w, h.h));
-        pad.material = this.planPadMat || (this.planPadMat = Object.assign(KM.ART.mat('dirt').clone(), { transparent: true, opacity: 0.55 }));
+        pad.material = this.planPadMats || (this.planPadMats = [KM.ART.mat('stone'), KM.ART.mat('stone'), KM.ART.mat('dirt'), KM.ART.mat('dirt'), KM.ART.mat('stone'), KM.ART.mat('stone')].map((m) => Object.assign(m.clone(), { transparent: true, opacity: 0.55 })));
       } else if (h.state === 'site') {
         const prog = h.total ? h.used / h.total : 0;
         const stage = prog <= 0 ? 0 : prog < 0.34 ? 1 : prog < 0.67 ? 2 : 3;
@@ -962,6 +968,9 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     // ================= quadro =================
     frame(S, dt, ui) {
       if (!this.renderer) return;
+      // janela aberta minimizada ou oculta: ajusta o tamanho quando ela aparecer
+      if (this.vw !== innerWidth || this.vh !== innerHeight) this.resize();
+      if (!innerWidth || !innerHeight) return;
       this.time += dt;
       if (!S) {
         // cenário vivo por trás do menu principal
@@ -1299,9 +1308,10 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           const ghostKey = tool.build + '|' + KM.me;
           if (this.ghostKey !== ghostKey) {
             this.ghostKey = ghostKey;
-            const fake = { id: 0, type: tool.build, owner: KM.me, x: 0, y: 0, w: d.w, h: d.h, ex: 0, ey: 0, state: 'built', total: 1, used: 1, mat: {} };
+            const fake = { id: 0, type: tool.build, owner: KM.me, x: 0, y: 0, w: d.w, h: d.h, ex: d.w >> 1, ey: d.h, state: 'built', total: 1, used: 1, mat: {} };
             this.ghost = this.buildHouse(S, fake);
-            this.ghost.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.6; o.castShadow = false; } });
+            const fade = (mt) => Object.assign(mt.clone(), { transparent: true, opacity: 0.6 });
+            this.ghost.traverse((o) => { if (o.isMesh) { o.material = Array.isArray(o.material) ? o.material.map(fade) : fade(o.material); o.castShadow = false; } });
           }
           let gy = -1e9;
           for (let yy = y; yy <= y + d.h; yy++) for (let xx = x; xx <= x + d.w; xx++) gy = Math.max(gy, KM.hAt(m, KM.clamp(xx, 0, m.W), KM.clamp(yy, 0, m.H)) * HY);

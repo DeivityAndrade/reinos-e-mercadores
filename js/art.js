@@ -668,7 +668,8 @@
       const p = rock.attributes.position;
       for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 0.85 + H(Math.round(x * 50), Math.round(y * 50), Math.round(z * 50)) * 0.3; p.setXYZ(i, x * k * 1.25, Math.max(-0.05, y * k * 0.9), z * k); }
       rock.computeVertexNormals();
-      b.put('stone', scaleUV(rock, (i, u, v) => [u * 3, v * 2]), 0, 0, -0.3);
+      const rc = lin('#8f8a80'), rd = lin('#6a655d'), rm = lin('#6d8a45');
+      b.put('rock', colorize(rock, (x, y, z, f) => (y > 0.35 && H(f, 7, 5) < 0.3 ? jit(rm, 0.3, f) : jit(H(f, 7, 6) < 0.5 ? rc : rd, 0.2, f))), 0, 0, -0.3);
       K.box(b, 'dark', 0.34, 0.4, 0.2, 0, 0, 0.2);
       K.box(b, 'timber', 0.06, 0.46, 0.06, -0.2, 0, 0.3); K.box(b, 'timber', 0.06, 0.46, 0.06, 0.2, 0, 0.3); K.box(b, 'timber', 0.5, 0.07, 0.08, 0, 0.44, 0.3);
       // trilhos e vagonete
@@ -971,6 +972,18 @@
       }
       return merge(parts);
     };
+    // arbusto baixo (decoração do campo)
+    const bush = (seed) => {
+      const parts = [];
+      for (let i = 0; i < 4; i++) {
+        const a = H(i, seed, 1) * 6.28, r = 0.08 + H(i, seed, 2) * 0.08, s = 0.12 + H(i, seed, 3) * 0.08;
+        const g = lumpy(new THREE.IcosahedronGeometry(s, 0), 0.3, seed + i).scale(1, 0.8, 1).translate(Math.cos(a) * r, s * 0.7, Math.sin(a) * r);
+        parts.push(colorize(g, (x, y, z, f) => jit(y > s ? leafC : H(f, seed, i) < 0.5 ? leafA : leafB, 0.25, f + seed * 3)));
+      }
+      if (H(seed, 1, 1) < 0.5) for (let i = 0; i < 4; i++) parts.push(colorize(new THREE.OctahedronGeometry(0.022, 0).translate((H(i, seed, 8) - 0.5) * 0.25, 0.2 + H(i, seed, 9) * 0.06, (H(i, seed, 10) - 0.5) * 0.25), () => lin(seed % 2 ? '#e0405a' : '#f4e9c8')));
+      return merge(parts);
+    };
+    N.bush = bush(61); N.bush2 = bush(62);
     N.tuft = tuft(51, false);
     N.flower = tuft(52, true);
     N.grain = wheat(lin('#c99a3a'), lin('#e8c160'));

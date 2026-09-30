@@ -76,16 +76,30 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 - **Torres com recruta e pedras. IA** que constrói a cidade, planta, minera, forja armas, treina e ataca.
 - **Até 4 jogadores por mapa, com times e aliados. Névoa de guerra.**
 
-## 🎨 Visual 3D (Three.js)
-- **Terreno com relevo**, água com reflexos animados, sombras suaves, sombras de nuvens passando sobre o mapa.
-- **Prédios da KayKit** nas 4 cores de jogador (azul, vermelho, verde, amarelo): armazém-mercado, igreja-escola, taverna, serraria, moinho de vento com pás girando, minas, ferrarias, quartel, torres e casas, com adereços (barris, caixotes, madeira, pedras, cercados com porcos e cavalos animados).
+## 🎨 Direção de arte própria: "vila medieval ilustrada"
+- **Construções feitas pelo próprio jogo** (`js/art.js`), sem modelos prontos: são 26 projetos com silhueta própria.
+  - Materiais: enxaimel com reboco caiado, tábuas, toras, pedra de cantaria; telhados de palha, telha ou ardósia.
+  - Exemplos: moinho de vento com pás girando, taverna com andar avançado, escola com torre do sino, quartel com ameias, mina escorada em madeira, fornalhas com brasa, chiqueiro e estábulo com animais vivos.
+  - A cor do reino aparece em portas, venezianas e estandartes que tremulam.
+- **Estilo pintado:**
+  - Sombreamento em faixas (toon) e contorno a tinta sépia.
+  - Gradação quente com sombras arroxeadas, hachuras de pena nas áreas escuras, grão de papel e vinheta.
+  - Tudo isso é um pós-processamento próprio.
+- **Natureza facetada:**
+  - Carvalhos, pinheiros, arbustos floridos, capim, rochas com musgo e minério aparente.
+  - Montanhas rochosas com estratos e fendas, e trigo balançando ao vento.
+  - Chão com pinceladas e manchas de capim seco e relva fresca.
+  - Água pintada: turquesa na margem, azul-profundo no meio, espuma batendo na costa.
+- **Obras próprias:** terreno marcado com estacas, fundação, estrutura de madeira, paredes e andaime. Construções destruídas viram ruínas.
+- **Fundação de pedra** que acompanha o relevo, com sombras longas de sol de fim de tarde e sombras de nuvens.
 - **Obras em etapas** com andaime e pilhas de material; prédios destruídos viram ruínas com fumaça.
 - **Personagens animados** (76 animações): andam, cortam árvores, quebram pedra, colhem, carregam madeira e sacos, lutam, atiram, bloqueiam e morrem. Capas na cor do time; cavaleiros e batedores montados em cavalos animados.
 - **Menu principal** com uma vila viva ao fundo e a câmera girando devagar.
 - **Sons e música procedurais** com volume pela distância da câmera e panorâmica estéreo.
 
-## 📦 Créditos dos modelos (todos CC0, domínio público)
-- **KayKit – Medieval Hexagon Pack** e **KayKit – Character Pack: Adventurers**, por Kay Lousberg (kaylousberg.com)
+## 📦 Créditos (todos CC0, domínio público)
+- Construções, natureza, texturas e efeitos: **arte própria** gerada por código (`js/art.js`)
+- Personagens: **KayKit – Character Pack: Adventurers**, por Kay Lousberg (kaylousberg.com), com sombreamento pintado aplicado pelo jogo. Nuvens (só a sombra) e itens carregados vêm do KayKit Medieval Hexagon Pack.
 - **Animated Animal Pack** e **Farm Animal Pack**, por Quaternius (quaternius.com), via poly.pizza
 - **Three.js** (licença MIT)
 
@@ -111,7 +125,8 @@ js/ai.js          IA (economia real / ondas / posto avançado), uma por jogador
 js/campaign.js    14 missões, objetivos, derrota/vitória, progresso
 js/cmd.js         comandos: toda ação do jogador (base do multijogador)
 js/tutorial.js    tutorial interativo da Missão I
-js/render3d.js    motor 3D: terreno, água, névoa, instâncias, prédios, personagens, câmera
+js/art.js         arte própria: texturas pintadas, materiais, construções, obras, natureza
+js/render3d.js    motor 3D: terreno, água, névoa, instâncias, personagens, câmera, pós-processamento ilustrado
 js/ui.js          painéis, abas, minimapa, briefing, menus
 js/input.js       mouse, teclado, seleção por raio no relevo
 js/editor.js      editor de mapas
@@ -125,7 +140,6 @@ sw.js, manifest.webmanifest, icon.svg   modo offline e instalação como aplicat
 **Determinismo:** a simulação usa um RNG próprio guardado no estado do jogo e roda em ticks fixos. Todas as ações dos jogadores passam por `js/cmd.js`. Com isso, dois computadores com a mesma semente e os mesmos comandos chegam exatamente ao mesmo estado.
 
 ## ⚖️ Diferenças em relação ao original
-- A arte vem de pacotes livres (estilo "low-poly" moderno), não dos sprites do KaM, que são protegidos por direitos autorais.
-- Algumas casas compartilham o mesmo modelo (ex.: ferrarias e fundições); por isso elas têm uma placa com o ícone no telhado.
+- A arte é própria (vila medieval ilustrada, gerada por código), não os sprites do KaM, que são protegidos por direitos autorais.
 - As missões e o roteiro são novos, não a campanha original.
 - O multijogador é para 2 humanos (mais IAs). O original suportava até 8 jogadores via LAN.
