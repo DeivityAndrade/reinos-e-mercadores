@@ -149,6 +149,8 @@
       const t = tileAt(e.clientX, e.clientY);
       if (e.button === 2) {
         if (ui().tool) { ui().setTool(null); return; }
+        const sh = ui().selHouse && S.houses[ui().selHouse];
+        if (sh && sh.owner === KM.me && sh.type === 'barracks' && !ui().myGroups().length && KM.inb(t.tx, t.ty)) { KM.issue({ c: 'rally', id: sh.id, x: t.tx, y: t.ty }); KM.sfx && KM.sfx('order'); S.fx.push({ k: 'order', x: t.tx, y: t.ty, t: 0, T: 0.6 }); ui().toast('🚩 Ponto de encontro definido: novos soldados vão se reunir ali.', 'ok'); return; }
         const am = ui().attackMove; ui().attackMove = false;
         if (!command(S, e.clientX, e.clientY, am)) mouse.pan = { x: e.clientX, y: e.clientY };
         return;
@@ -241,6 +243,16 @@
       if (k === '-') { const sp = [1, 2, 3, 5]; ui().setSpeed(sp[Math.max(0, sp.indexOf(S.speed) - 1)]); return; }
       if (k === 'g') { KM.R.showGrid = !KM.R.showGrid; return; }
       if (k === 'z') { const p = ui().lastPos; if (p) KM.R.centerOn(p.x, p.y); return; }
+      if (k === 'tab') {
+        e.preventDefault();
+        const gs = Object.values(S.army).filter((g) => g.owner === KM.me && g.m.length).sort((a, b) => a.id - b.id);
+        if (!gs.length) return;
+        this.tabI = ((this.tabI || 0) + (e.shiftKey ? gs.length - 1 : 1)) % gs.length;
+        const g = gs[this.tabI];
+        ui().selectGroups([g.id]);
+        const c = KM.groupCenter(S, g); KM.R.centerOn(Math.round(c.x), Math.round(c.y));
+        return;
+      }
       if (k === 'm') { ui().toggleMusic(); return; }
       if (k === 'r') { ui().setTab('build'); ui().setTool(ui().tool === 'road' ? null : 'road'); return; }
       if (k === 'f' && !e.ctrlKey) { ui().setTab('build'); ui().setTool(ui().tool === 'field' ? null : 'field'); return; }

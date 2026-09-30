@@ -1414,6 +1414,13 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           if (badge && Math.floor(this.time * 2) % 2 === 0) { g.font = '18px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText(badge, q.x, q.y - 14); }
         }
       }
+      // ponto de encontro do Quartel selecionado
+      const sb = ui.selHouse && S.houses[ui.selHouse];
+      if (sb && sb.type === 'barracks' && sb.owner === KM.me && sb.state === 'built') {
+        const rp = sb.rally || { x: sb.ex, y: sb.ey + 3 };
+        const q = this.toScreen(rp.x + 0.5, this.groundY(rp.x + 0.5, rp.y + 0.5) + 0.5, rp.y + 0.5);
+        if (!q.behind) { g.font = '22px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('🚩', q.x + 6, q.y); }
+      }
       // nome da casa sob o mouse
       if (!S.editor && ui.hover && !ui.tool && KM.inb(ui.hover.tx, ui.hover.ty)) {
         const m = S.map;

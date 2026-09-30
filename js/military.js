@@ -290,7 +290,9 @@
   KM.joinRally = function (S, u, bar) {
     const f = bar.ex < S.map.W / 2 ? 1 : -1;
     const tIdx = KM.SOLDIER_ORDER.indexOf(u.type);
-    const rx = bar.ex + f * (-4 + (tIdx % 3) * 4), ry = bar.ey + 3 + Math.floor(tIdx / 3) * 3;
+    // ponto de encontro: definido pelo jogador (botão direito com o Quartel selecionado) ou ao lado do Quartel
+    const bx = bar.rally ? bar.rally.x : bar.ex, by = bar.rally ? bar.rally.y - 3 : bar.ey;
+    const rx = bx + f * (-4 + (tIdx % 3) * 4), ry = by + 3 + Math.floor(tIdx / 3) * 3;
     let g = null;
     for (const id in S.army) {
       const o = S.army[id];

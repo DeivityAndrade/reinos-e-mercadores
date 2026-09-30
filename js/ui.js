@@ -35,7 +35,18 @@
         const r = mm.getBoundingClientRect();
         KM.R.centerOn(((e.clientX - r.left) / r.width) * KM.MAP_W, ((e.clientY - r.top) / r.height) * KM.MAP_H);
       };
-      mm.addEventListener('mousedown', (e) => { mmNav(e); this.mmDrag = true; });
+      mm.addEventListener('mousedown', (e) => { if (e.button !== 0) return; mmNav(e); this.mmDrag = true; });
+      // botão direito no minimapa: manda as tropas selecionadas para lá
+      mm.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const gs = this.myGroups();
+        if (!KM.S || !gs.length) return;
+        const r = mm.getBoundingClientRect();
+        const x = Math.floor(((e.clientX - r.left) / r.width) * KM.MAP_W), y = Math.floor(((e.clientY - r.top) / r.height) * KM.MAP_H);
+        KM.issue({ c: 'move', g: gs.map((g) => g.id), x, y, am: !!e.shiftKey });
+        this.pings = (this.pings || []).concat([{ x, y, t: performance.now() / 1000, c: '#7cff6a' }]);
+        KM.sfx && KM.sfx('order'); KM.voice && KM.voice('order');
+      });
       window.addEventListener('mousemove', (e) => { if (this.mmDrag) mmNav(e); });
       window.addEventListener('mouseup', () => { this.mmDrag = false; });
       this.initMenu();
@@ -342,7 +353,7 @@
         s += `<label class="chk"><input type="checkbox" data-act2="auto" ${P.autoTrain ? 'checked' : ''}> Treino automático</label>`;
       }
       if (h.type === 'barracks') {
-        s += `<div class="row">🪖 Recrutas: <b>${h.recruits}</b> <small class="muted">(treine "Recruta" na Escola)</small></div>`;
+        s += `<div class="row">🪖 Recrutas: <b>${h.recruits}</b> <small class="muted">(treine "Recruta" na Escola)</small></div><div class="muted">🚩 Botão direito no mapa define o ponto de encontro dos novos soldados.</div>`;
         s += `<div class="io">${KM.WEAPONS.map((r) => `<div class="chip ${h.inv[r] ? '' : 'zero'}" data-tip="${KM.RES[r].n}">${ri(r)} ${h.inv[r] || 0}</div>`).join('')}</div>`;
         s += `<div class="lbl">Equipar soldado <small class="muted">(Shift: 5 de uma vez)</small></div><div class="sgrid">${KM.SOLDIER_ORDER.map((t) => {
           const sd = KM.SOLDIERS[t];

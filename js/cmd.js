@@ -69,6 +69,7 @@
         h.trade = { sell: c.sell, buy: c.buy, n: KM.clamp(c.n | 0, 0, KM.INF) };
         return;
       }
+      case 'rally': { const h = myHouse(S, o, c.id); if (h && h.type === 'barracks') h.rally = { x: KM.clamp(c.x | 0, 0, m.W - 1), y: KM.clamp(c.y | 0, 0, m.H - 1) }; return; }
       case 'auto': S.players[o].autoTrain = !!c.v; return;
       case 'dist': { const d = S.players[o].dist[c.r]; if (d && d[c.t] != null) d[c.t] = KM.clamp(c.v | 0, 0, 5); return; }
       case 'move': { const gs = myGroups(S, o, c.g); if (gs.length) KM.orderGroups(S, gs, KM.clamp(c.x, 0, m.W - 1), KM.clamp(c.y, 0, m.H - 1), c.am); return; }
