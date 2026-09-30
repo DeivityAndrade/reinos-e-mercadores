@@ -344,3 +344,17 @@ body.editing #tabs { display: none; }
 .opts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .opts label { display: grid; grid-template-columns: 118px 1fr; align-items: center; gap: 8px; font-size: 13.5px; }
 .opts input[type=range] { width: 100%; accent-color: var(--gold); cursor: pointer; }
+
+/* ---------- estatísticas ---------- */
+#statsm { position: fixed; inset: 0; display: grid; place-items: center; z-index: 20; background: rgba(10,7,4,0.6); backdrop-filter: blur(3px); }
+#endscreen .card.endcard, #statsm .card { width: 620px; max-width: calc(100vw - 32px); text-align: center; position: relative; }
+.stats { margin: 10px 0 14px; }
+.stable { width: 100%; border-collapse: collapse; margin: 8px 0 10px; font-size: 14px; }
+.stable th { font-weight: 700; color: var(--gold2); padding: 4px 6px; border-bottom: 1px solid rgba(227,185,92,0.3); }
+.stable td { padding: 4px 6px; border-bottom: 1px solid rgba(227,185,92,0.1); }
+.stable td:first-child { text-align: left; }
+.stable .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.chartbar { display: flex; gap: 6px; justify-content: center; margin-bottom: 6px; }
+.chartbar button { background: rgba(58,43,31,0.9); color: var(--text); padding: 4px 10px; border-radius: 14px; font-size: 13px; box-shadow: 0 0 0 1px rgba(227,185,92,0.25); }
+.chartbar button.active { background: linear-gradient(180deg, #b8862d, #8a6420); color: #fff8e6; }
+canvas.chart { width: 100%; max-width: 560px; background: rgba(18,13,9,0.55); border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(227,185,92,0.2); }

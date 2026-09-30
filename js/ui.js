@@ -134,6 +134,7 @@
           const total = Object.keys(KM.HOUSES).length, open = Object.keys(KM.HOUSES).filter((t) => KM.houseUnlocked(S, ME(), t)).length;
           html += `<h4>Progresso do reino</h4><div class="meter"><span>🏗️ ${open}/${total} construções</span><div class="mbar"><i style="width:${(open / total) * 100}%"></i></div></div><button class="mbtn wide" data-act="tree">🌳 Árvore de progresso</button>`;
         }
+        html += `<button class="mbtn wide" data-act="stats">📊 Estatísticas da partida</button>`;
         html += `<h4>Jogadores</h4><div class="plist">${S.players.map((p, i) => `<div class="prow"><span class="dot" style="background:${p.color}"></span><span class="sn">${esc(p.name)}${i === ME() ? ' (você)' : ''}</span><em class="${p.out ? 'bad' : KM.hostile(S, ME(), i) ? 'bad' : 'good'}">${p.out ? 'derrotado' : i === ME() ? '' : KM.hostile(S, ME(), i) ? 'inimigo' : 'aliado'}</em></div>`).join('')}</div>`;
         const ais = S.players.filter((p, i) => p.ai && p.ai.mode !== 'none' && KM.hostile(S, ME(), i) && !p.out);
         const peace = Math.min(...ais.map((p) => p.ai.next - S.time).filter((x) => x > 0), Infinity);
@@ -214,6 +215,7 @@
       if (k === 'help') this.showHelp(true);
       if (k === 'brief') { if (!S.mp) S.paused = true; this.showBriefing(S); }
       if (k === 'tree') this.showTree(true);
+      if (k === 'stats') this.showStats();
       if (k === 'restart') { if (confirm('Reiniciar a missão do começo?')) KM.startGame({ mission: S.mission, diff: S.diff }); }
       if (k === 'save') { KM.save(+v); this.toast(`💾 Jogo salvo no espaço ${v}`, 'ok'); this.renderTab(true); }
       if (k === 'load') { if (KM.load(+v)) this.toast(`📂 Jogo carregado do espaço ${v}`, 'ok'); }
@@ -632,17 +634,77 @@
         <button class="mbtn primary" data-go="1">${S.time > 0 ? 'Voltar ao jogo' : 'Começar'}</button></div>`;
       $('#brief').classList.remove('hidden');
     },
+    showStats() {
+      let el = $('#statsm');
+      if (!el) {
+        el = document.createElement('div'); el.id = 'statsm';
+        document.body.appendChild(el);
+        el.addEventListener('click', (e) => { if (e.target.id === 'statsm' || e.target.closest('[data-close]')) el.classList.add('hidden'); });
+      }
+      const S = KM.S;
+      KM.recordHist(S);
+      el.innerHTML = `<div class="card endcard"><button class="close" data-close="1">✕</button><h2>📊 Estatísticas</h2>${this.statsHtml(S)}</div>`;
+      el.classList.remove('hidden');
+      this.bindStats(el, S);
+      // a amostra extra não entra no histórico definitivo
+      S.hist.t.pop(); S.hist.d.forEach((r) => r.pop());
+    },
     showEnd(res) {
       const S = KM.S, el = $('#endscreen');
+      if (!S.hist || !S.hist.t.length || S.hist.t[S.hist.t.length - 1] < S.time - 5) KM.recordHist(S);
       const idx = S.mission ? KM.MISSIONS.findIndex((m) => m.id === S.mission) : -1;
       const next = idx >= 0 && KM.MISSIONS[idx + 1];
       const txt = res === 'win' ? (S.mission ? (next ? 'Missão cumprida! O Rei aguarda suas próximas ordens.' : 'Todos os traidores caíram. O Reino de Aldor está reunido sob sua bandeira!') : 'Todos os inimigos foram derrotados. Seu reino prospera!') : 'Seu reino caiu. Os mercadores fugiram e os cavaleiros depuseram as armas.';
-      const st = S.stats[ME()];
-      el.innerHTML = `<div class="card"><h1>${res === 'win' ? '🏆 Vitória!' : '💀 Derrota'}</h1><p>${txt}</p>
-        <div class="muted">Tempo: ${KM.fmtTime(S.time)} · Casas: ${st.built} · Treinados: ${st.trained} · Abates: ${st.killed} · Perdas: ${st.lost}</div>
+      el.innerHTML = `<div class="card endcard"><h1>${res === 'win' ? '🏆 Vitória!' : '💀 Derrota'}</h1><p>${txt}</p>
+        ${this.statsHtml(S)}
         <div class="mgrid">${res === 'win' && next ? `<button class="mbtn primary" data-next="${next.id}">➡️ Próxima missão</button>` : ''}${res === 'win' ? '<button class="mbtn" data-cont="1">Continuar jogando</button>' : ''}${res === 'lose' && S.mission ? '<button class="mbtn" data-retry="1">🔄 Tentar de novo</button>' : ''}<button class="mbtn" data-menu="1">Menu principal</button></div></div>`;
       el.classList.remove('hidden');
+      this.bindStats(el, S);
       KM.sfx && KM.sfx(res === 'win' ? 'win' : 'horn');
+    },
+    // estatísticas da partida (tela final e aba Objetivos): tabela por jogador + gráfico ao longo do tempo
+    statsHtml(S) {
+      const rows = S.players.map((p, o) => {
+        const st = S.stats[o] || {};
+        return `<tr><td><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${o === ME() ? ' <small>(você)</small>' : ''}</td><td>${st.built || 0}</td><td>${st.trained || 0}</td><td>${st.killed || 0}</td><td>${st.lost || 0}</td><td>${st.razed || 0}</td></tr>`;
+      }).join('');
+      return `<div class="stats"><div class="muted">Duração: <b>${KM.fmtTime(S.time)}</b></div>
+        <table class="stable"><tr><th>Jogador</th><th title="Casas construídas">🏠</th><th title="Cidadãos treinados">🎓</th><th title="Inimigos abatidos">⚔️</th><th title="Perdas">💀</th><th title="Casas inimigas destruídas">🔥</th></tr>${rows}</table>
+        <div class="chartbar">${[['0', '👥 Cidadãos'], ['1', '⚔️ Soldados'], ['2', '🏠 Casas'], ['3', '📦 Recursos']].map(([k, n]) => `<button class="${k === '1' ? 'active' : ''}" data-chart="${k}">${n}</button>`).join('')}</div>
+        <canvas class="chart" width="560" height="190"></canvas></div>`;
+    },
+    bindStats(el, S) {
+      const cv = el.querySelector('canvas.chart');
+      if (!cv) return;
+      const draw = (k) => this.drawChart(cv, S, +k);
+      el.querySelectorAll('[data-chart]').forEach((b) => b.addEventListener('click', () => {
+        el.querySelectorAll('[data-chart]').forEach((x) => x.classList.toggle('active', x === b));
+        draw(b.dataset.chart);
+      }));
+      draw(1);
+    },
+    drawChart(cv, S, k) {
+      const g = cv.getContext('2d'), W = cv.width, H = cv.height, P = { l: 36, r: 10, t: 10, b: 22 };
+      g.clearRect(0, 0, W, H);
+      const hs = S.hist || { t: [], d: [] };
+      const T = hs.t;
+      g.font = '11px "Alegreya Sans", sans-serif'; g.fillStyle = '#b3a283';
+      if (T.length < 2) { g.textAlign = 'center'; g.fillText('Partida curta demais para o gráfico.', W / 2, H / 2); return; }
+      let max = 1;
+      hs.d.forEach((rows) => rows.forEach((r) => { max = Math.max(max, r[k]); }));
+      max = Math.ceil(max * 1.1);
+      const X = (i) => P.l + (T[i] / T[T.length - 1]) * (W - P.l - P.r), Y = (v) => H - P.b - (v / max) * (H - P.t - P.b);
+      g.strokeStyle = 'rgba(227,185,92,0.15)'; g.lineWidth = 1;
+      for (let q = 0; q <= 4; q++) { const y = Y((max * q) / 4); g.beginPath(); g.moveTo(P.l, y); g.lineTo(W - P.r, y); g.stroke(); g.textAlign = 'right'; g.fillText(Math.round((max * q) / 4), P.l - 5, y + 4); }
+      g.textAlign = 'center';
+      for (let q = 0; q <= 4; q++) { const tt = (T[T.length - 1] * q) / 4; g.fillText(KM.fmtTime(tt), P.l + (q / 4) * (W - P.l - P.r), H - 6); }
+      hs.d.forEach((rows, o) => {
+        if (!rows.length) return;
+        g.strokeStyle = S.players[o].color; g.lineWidth = o === ME() ? 3 : 2;
+        g.beginPath();
+        rows.forEach((r, i) => (i ? g.lineTo(X(i), Y(r[k])) : g.moveTo(X(i), Y(r[k]))));
+        g.stroke();
+      });
     },
   };
 })(window.KM);

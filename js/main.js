@@ -23,6 +23,22 @@
     if (t % 10 === 3) KM.updateFog(S);
     if (t % 20 === 13) { KM.updateAI(S, 20 * dt); KM.cleanGroups(S); }
     if (t % 40 === 17) KM.checkGoals(S);
+    if (t % 600 === 19) KM.recordHist(S);
+  };
+
+  // histórico a cada 30 s de jogo (gráficos da tela final): cidadãos, soldados, casas prontas, recursos guardados
+  KM.recordHist = function (S) {
+    const H = S.hist || (S.hist = { t: [], d: S.players.map(() => []) });
+    const row = S.players.map(() => [0, 0, 0, 0]);
+    for (const id in S.units) { const u = S.units[id]; const r = row[u.owner]; if (r) r[KM.isSoldier(u.type) ? 1 : 0]++; }
+    for (const id in S.houses) {
+      const h = S.houses[id], r = row[h.owner];
+      if (!r || h.state !== 'built') continue;
+      r[2]++;
+      if (h.type === 'storehouse') for (const k in h.inv) r[3] += h.inv[k];
+    }
+    H.t.push(Math.round(S.time));
+    row.forEach((r, o) => H.d[o].push(r));
   };
 
   // soma de verificação para detectar dessincronização no multijogador
