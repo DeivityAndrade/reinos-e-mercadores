@@ -1151,6 +1151,12 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (g.userData.mixers) for (const mx of g.userData.mixers) mx.update(dt);
         const sm = g.userData.smoke;
         if (h.state === 'built' && sm && h.work && Math.random() < dt * 3) this.puff(g.position.x + sm[0], g.position.y + sm[1], g.position.z + sm[2], 0.6);
+        // casa muito danificada: fogo e fumaça escura
+        if (h.state === 'built' && h.hp < h.maxHp * 0.5) {
+          const dmg = 1 - h.hp / h.maxHp, top = g.userData.top || 1;
+          if (Math.random() < dt * 10 * dmg) this.puff(g.position.x + (Math.random() - 0.5) * h.w * 0.5, g.position.y + top * (0.82 + Math.random() * 0.25), g.position.z + (Math.random() - 0.5) * h.h * 0.2, 1.2 + dmg * 1.2, Math.random() < 0.5 ? '#ff5a10' : '#ffd040', 0.6 + Math.random() * 0.4, false, 1);
+          if (Math.random() < dt * 4 * dmg) this.puff(g.position.x + (Math.random() - 0.5) * h.w * 0.4, g.position.y + top, g.position.z, 1.1 + dmg, '#3a322c', 2.5 + Math.random(), false, 0.8);
+        }
       }
       for (const id in this.houseVis) if (!seen[id]) { this.world.remove(this.houseVis[id]); delete this.houseVis[id]; }
     },
@@ -1240,11 +1246,11 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (!isStone && p.kind === 'arrow') { /* flecha */ }
       });
     },
-    puff(x, y, z, s) {
-      if (this.smoke.length > 160) return;
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, color: '#dcdcdc', transparent: true, opacity: 0.7, depthWrite: false }));
+    puff(x, y, z, s, color, T, blend, op) {
+      if (this.smoke.length > 220) return;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, color: color || '#dcdcdc', transparent: true, opacity: 0.7, depthWrite: false, blending: blend ? THREE.AdditiveBlending : THREE.NormalBlending }));
       sp.position.set(x, y, z); sp.scale.setScalar(s * 0.4);
-      sp.userData = { t: 0, T: 2.2 + Math.random(), vx: (Math.random() - 0.5) * 0.15, s };
+      sp.userData = { t: 0, T: T || 2.2 + Math.random(), vx: (Math.random() - 0.5) * 0.15, s, o: op || 0.65 };
       this.world.add(sp);
       this.smoke.push(sp);
     },
@@ -1269,7 +1275,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         const f = u.t / u.T;
         sp.position.y += dt * 0.35; sp.position.x += u.vx * dt;
         sp.scale.setScalar(u.s * (0.4 + f * 0.9));
-        sp.material.opacity = 0.65 * (1 - f);
+        sp.material.opacity = u.o * (1 - f);
         if (f >= 1) { this.world.remove(sp); sp.material.dispose(); this.smoke.splice(i, 1); }
       }
     },
