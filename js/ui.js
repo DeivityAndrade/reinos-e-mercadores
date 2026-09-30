@@ -513,6 +513,7 @@
       }
       this.mmt = (this.mmt || 0) + dt;
       if (this.mmt > 0.5) { this.mmt = 0; this.renderMini(); }
+      KM.tutorial.update(KM.S, dt);
     },
 
     // ---------- menus ----------

@@ -97,6 +97,7 @@
     const S = KM.newState(opts);
     KM.afterLoad(S);
     KM.music && KM.music.start();
+    if (S.mission === 'm1' && !opts.noTutorial) KM.tutorial.start(S);
     if (S.mission) { S.paused = true; KM.ui.showBriefing(S); return; }
     if (S.mp) { KM.ui.toast(`🌐 Partida multijogador iniciada. Você é ${S.players[KM.me].name}. Enter abre o chat.`, 'ok'); return; }
     KM.ui.toast('👑 Bem-vindo, senhor! Construa sua economia e prepare-se para a guerra.', 'info');
@@ -106,6 +107,7 @@
   KM.quitToMenu = function () {
     if (KM.net && KM.net.active) KM.net.close();
     KM.S = null; KM.simS = null; KM.me = 0;
+    KM.tutorial.hide();
     document.body.classList.remove('editing');
     $('#hud').classList.add('hidden');
     $('#endscreen').classList.add('hidden');

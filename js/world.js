@@ -296,6 +296,30 @@
     if (KM.ui && KM.ui.toast && KM.S === S && !S.editor) KM.ui.toast(msg, kind || 'info', pos);
   };
 
+  // a entrada da casa está ligada a um Armazém do mesmo dono por estradas (prontas ou planejadas)?
+  KM.roadLinked = function (S, h) {
+    if (h.type === 'storehouse') return true;
+    const m = S.map, W = m.W, o = h.owner;
+    const goal = new Set();
+    for (const id in S.houses) { const s = S.houses[id]; if (s.owner === o && s.type === 'storehouse') goal.add(s.ey * W + s.ex); }
+    const start = h.ey * W + h.ex;
+    if (!m.road[start]) return false;
+    const seen = new Uint8Array(W * m.H), q = [start];
+    seen[start] = 1;
+    while (q.length) {
+      const k = q.pop();
+      if (goal.has(k)) return true;
+      const x = k % W, y = (k / W) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (!KM.inb(nx, ny)) continue;
+        const ni = ny * W + nx;
+        if (!seen[ni] && m.road[ni] && m.rown[ni] === o) { seen[ni] = 1; q.push(ni); }
+      }
+    }
+    return false;
+  };
+
   // ---------- cidades ----------
   const SPOT_SCORE = {
     woodcutter: (S, x, y) => { let n = 0; const m = S.map; for (let yy = y - 5; yy <= y + 7; yy++) for (let xx = x - 5; xx <= x + 7; xx++) if (KM.inb(xx, yy) && m.tree[yy * m.W + xx]) n++; return n < 4 ? null : -n * 0.8; },

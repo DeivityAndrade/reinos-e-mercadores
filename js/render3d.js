@@ -182,11 +182,32 @@
         if (!g) continue;
         const geos = [], mats = [];
         g.scene.traverse((o) => { if (o.isMesh) { const gg = o.geometry.clone(); gg.applyMatrix4(o.matrixWorld); geos.push(gg); mats.push(o.material); } });
-        this.inst[k] = { geo: geos[0], mat: mats[0], box: this.proto[k].box };
+        let mat = mats[0];
+        // árvores balançam ao vento (material próprio para não afetar os outros modelos)
+        if (k.startsWith('tree')) { mat = mat.clone(); this.windify(mat, 0.035, 0.6); }
+        this.inst[k] = { geo: geos[0], mat, box: this.proto[k].box };
       }
       // altura de referência dos personagens
       this.charH = this.proto.Knight ? this.proto.Knight.size.y : 2.4;
       this.makeTextures();
+    },
+    // vento: desloca os vértices proporcionalmente à altura (só em malhas instanciadas)
+    windify(mat, amp, freq) {
+      const U = this.windU || (this.windU = { value: 0 });
+      mat.onBeforeCompile = (sh) => {
+        sh.uniforms.uWind = U;
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <common>', '#include <common>\nuniform float uWind;')
+          .replace('#include <begin_vertex>', `#include <begin_vertex>
+#ifdef USE_INSTANCING
+  vec2 ip = vec2(instanceMatrix[3].x, instanceMatrix[3].z);
+  float hh = max(0.0, position.y);
+  float ph = uWind * ${freq.toFixed(2)} * 2.2 + ip.x * 0.37 + ip.y * 0.29;
+  transformed.x += (sin(ph) + 0.35 * sin(ph * 2.3 + 1.7)) * ${amp.toFixed(3)} * hh * hh;
+  transformed.z += cos(ph * 0.8 + 0.6) * ${(amp * 0.6).toFixed(3)} * hh * hh;
+#endif`);
+      };
+      mat.customProgramCacheKey = () => 'wind' + amp + freq;
     },
     // modelo pronto para uso (clone), com a base apoiada em y=0 e centro em x,z=0
     model(k) {
@@ -259,6 +280,45 @@
       gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
       m.fillStyle = gr; m.fillRect(0, 0, 64, 64);
       this.smokeTex = new THREE.CanvasTexture(sm);
+      // tufos de grama e flores (cartões cruzados com transparência, balançam ao vento)
+      const tuft = (flowers) => {
+        const c = mk(64, 64), t = c.getContext('2d');
+        for (let k = 0; k < 22; k++) {
+          const x = 6 + H(k, flowers, 40) * 52, hgt = 26 + H(k, flowers, 41) * 34, lean = (H(k, flowers, 42) - 0.5) * 18;
+          const tone = H(k, flowers, 43);
+          t.strokeStyle = `rgb(${Math.round(70 + tone * 60)},${Math.round(120 + tone * 60)},${Math.round(35 + tone * 25)})`;
+          t.lineWidth = 2.2 + H(k, flowers, 44) * 1.6;
+          t.beginPath(); t.moveTo(x, 64); t.quadraticCurveTo(x + lean * 0.3, 64 - hgt * 0.5, x + lean, 64 - hgt); t.stroke();
+        }
+        if (flowers) {
+          const pal = ['#f4f1e6', '#f2c94c', '#e76f8a', '#9b8cf2', '#f08a3e'];
+          for (let k = 0; k < 7; k++) {
+            const x = 8 + H(k, 9, 50) * 48, y = 10 + H(k, 9, 51) * 26;
+            t.fillStyle = pal[Math.floor(H(k, 9, 52) * pal.length)];
+            for (let p = 0; p < 5; p++) { t.beginPath(); t.arc(x + Math.cos(p * 1.26) * 2.6, y + Math.sin(p * 1.26) * 2.6, 2.1, 0, 7); t.fill(); }
+            t.fillStyle = '#f7d55a'; t.beginPath(); t.arc(x, y, 1.5, 0, 7); t.fill();
+          }
+        }
+        const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+        return tx;
+      };
+      const cardGeo = (w, h) => {
+        const g1 = new THREE.PlaneGeometry(w, h).translate(0, h / 2, 0), g2 = g1.clone().rotateY(Math.PI / 2);
+        const geo = (() => {
+          const out = new THREE.BufferGeometry(), p = [], uv = [], id = [];
+          for (const gg of [g1, g2]) { const base = p.length / 3; p.push(...gg.attributes.position.array); uv.push(...gg.attributes.uv.array); const ix = gg.index.array; for (const i of ix) id.push(i + base); for (let j = 0; j < ix.length; j += 3) id.push(ix[j] + base, ix[j + 2] + base, ix[j + 1] + base); }
+          out.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); out.setIndex(id);
+          return out;
+        })();
+        // normais para cima: os tufos recebem a mesma luz do chão
+        const n = new Float32Array(geo.attributes.position.count * 3);
+        for (let i = 0; i < n.length; i += 3) n[i + 1] = 1;
+        geo.setAttribute('normal', new THREE.BufferAttribute(n, 3));
+        return geo;
+      };
+      const tuftMat = (tex) => { const m = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.45, roughness: 1 }); this.windify(m, 0.9, 1.1); return m; };
+      this.inst.tuft = { geo: cardGeo(0.55, 0.32), mat: tuftMat(tuft(0)), box: null };
+      this.inst.flower = { geo: cardGeo(0.5, 0.3), mat: tuftMat(tuft(1)), box: null };
     },
 
     // ================= construção do mundo =================
@@ -316,6 +376,27 @@
       this.tGeo = geo;
       this.updateTerrain(S, 0, 0, m.W - 1, m.H - 1);
       const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+      // detalhe procedural no chão (manchas e grão em várias escalas), evita o aspecto "liso"
+      mat.onBeforeCompile = (sh) => {
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <common>', '#include <common>\nvarying vec3 vWP;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <common>', `#include <common>
+varying vec3 vWP;
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  vec2 q = vWP.xz;
+  float big = vn(q * 0.23), mid = vn(q * 1.3 + 7.1), fine = vn(q * 6.5 + 3.3), grain = h21(floor(q * 22.0));
+  float green = clamp((diffuseColor.g - diffuseColor.r) * 12.0, 0.0, 1.0);
+  diffuseColor.rgb *= 0.86 + big * 0.16 + mid * 0.1 + fine * 0.08 + grain * 0.05 * green;
+  // tons quentes/frios alternados na grama
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.12, 1.02, 0.78), green * smoothstep(0.45, 0.8, vn(q * 0.11 + 19.0)) * 0.6);
+  `);
+      };
+      mat.customProgramCacheKey = () => 'terrain-detail';
       const mesh = this.terrain = new THREE.Mesh(geo, mat);
       mesh.receiveShadow = true; mesh.userData.own = true;
       this.world.add(mesh);
@@ -358,6 +439,16 @@
         if (house) { const k = 0.55 * house / n; r += (C.dirt[0] - r) * k; g += (C.dirt[1] - g) * k; b += (C.dirt[2] - b) * k; }
         const jitter = (KM.hash(vx, vy, 77) - 0.5) * 0.05;
         const ww = water / n;
+        // oclusão ambiente "assada": vales e pés de encosta ficam mais escuros, cristas mais claras
+        if (ww < 1) {
+          const h0 = KM.hAt(m, fx, fy);
+          let s = 0;
+          for (const [ox, oy] of [[1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5], [1, 1], [-1, -1], [1, -1], [-1, 1]]) s += KM.hAt(m, KM.clamp(fx + ox, 0, m.W), KM.clamp(fy + oy, 0, m.H)) - h0;
+          const ao = KM.clamp(1 - s * 0.045, 0.62, 1.1);
+          r *= ao; g *= ao; b *= ao * (ao < 1 ? 1.04 : 1);
+          // costa: faixa de areia úmida perto da água
+          if (water) { const k = 0.35; r += (0.62 - r) * k; g += (0.55 - g) * k; b += (0.38 - b) * k; }
+        }
         let h = KM.hAt(m, fx, fy) * HY * (1 - ww) + BED * ww;
         h += (KM.hash(vx, vy, 91) - 0.5) * 0.04 * (1 - ww);
         const o = (vy * VW + vx) * 3;
@@ -456,6 +547,15 @@
             if (inner) add('mountain_' + 'ABC'[Math.floor(KM.hash(tx, ty, 31) * 3)], tx + 0.5, this.groundY(tx + 0.5, ty + 0.5) - 0.15, ty + 0.5, 0.75 + KM.hash(tx, ty, 32) * 0.35, KM.hash(tx, ty, 33) * 6.28, 0.55);
           }
         }
+        // grama alta e flores em campo aberto
+        if (m.terrain[i] === 0 && !m.house[i] && !m.road[i] && !m.field[i] && !m.stone[i]) {
+          const hk = KM.hash(tx, ty, 60);
+          const nt = hk < 0.35 ? 0 : hk < 0.8 ? 1 : 2;
+          for (let k = 0; k < nt; k++) {
+            const rx = tx + 0.15 + KM.hash(tx, ty, 61 + k) * 0.7, ry = ty + 0.15 + KM.hash(tx, ty, 63 + k) * 0.7;
+            add(KM.hash(tx, ty, 65 + k) < 0.1 ? 'flower' : 'tuft', rx, this.groundY(rx, ry) - 0.02, ry, 0.8 + KM.hash(tx, ty, 67 + k) * 0.6, KM.hash(tx, ty, 69 + k) * 3.14);
+          }
+        }
         const f = m.field[i];
         if ((f === 2 || f === 4) && m.fstage[i] > 0) {
           const gy = this.groundY(tx + 0.5, ty + 0.5), st = m.fstage[i];
@@ -496,7 +596,7 @@
           dummy.updateMatrix();
           im.setMatrixAt(j, dummy.matrix);
         });
-        im.castShadow = k !== 'sprout' && k !== 'grape';
+        im.castShadow = k !== 'sprout' && k !== 'grape' && k !== 'tuft' && k !== 'flower';
         im.receiveShadow = true;
         G.add(im);
       }
@@ -813,6 +913,7 @@
         this.syncUnits(MS, dt, {});
         this.syncFx(MS, dt);
         this.waterNormal.offset.set(this.time * 0.01, this.time * 0.006);
+        if (this.windU) this.windU.value = this.time;
         for (const c of this.world.children) if (c.userData.cloud) { c.position.x += c.userData.cloud * dt; if (c.position.x > MS.map.W + 20) c.position.x = -20; }
         this.renderer.render(this.scene, this.camera);
         return;
@@ -843,6 +944,7 @@
       this.syncTools(S, ui);
       // água e nuvens animadas
       this.waterNormal.offset.set(this.time * 0.01, this.time * 0.006);
+      if (this.windU) this.windU.value = this.time;
       for (const c of this.world.children) if (c.userData.cloud) { c.position.x += c.userData.cloud * dt; if (c.position.x > m.W + 20) c.position.x = -20; }
       this.renderer.render(this.scene, this.camera);
       this.drawOverlay(S, ui);
@@ -1215,6 +1317,17 @@
         if (q.behind || q.x < -80 || q.y < -80 || q.x > this.vw + 80 || q.y > this.vh + 80) continue;
         if (h.state === 'site') bar(q.x - 24, q.y, 48, h.total ? h.used / h.total : 0, '#f5b83a');
         else if (h.hp < h.maxHp || selected) bar(q.x - 24, q.y, 48, h.hp / h.maxHp, mine ? '#5fd35a' : KM.hostile(S, KM.me, h.owner) ? '#ef4b4b' : '#3fa6ff');
+        if (mine && !S.editor) {
+          // casas sem estrada até o Armazém: o erro mais comum de quem está começando
+          if (!this.linkT || this.time - this.linkT > 1) { this.linkT = this.time; this.unlinked = new Set(); for (const hid in S.houses) { const o = S.houses[hid]; if (o.owner === KM.me && !KM.roadLinked(S, o)) this.unlinked.add(o.id); } }
+          if (this.unlinked && this.unlinked.has(h.id)) {
+            g.font = '700 12px "Alegreya Sans", sans-serif';
+            const txt = '⚠ sem estrada', w = g.measureText(txt).width + 14;
+            g.fillStyle = 'rgba(120,30,20,0.9)'; g.beginPath(); g.roundRect(q.x - w / 2, q.y - 40, w, 20, 5); g.fill();
+            g.fillStyle = '#ffe9c9'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, q.x, q.y - 29.5);
+            continue;
+          }
+        }
         if (mine && h.state === 'built') {
           const needsWorker = d.worker && !h.worker, noOrders = h.orders && !h.orders.some((o) => o > 0);
           const badge = needsWorker ? '❗' : h.paused ? '⏸️' : noOrders ? '📋' : null;

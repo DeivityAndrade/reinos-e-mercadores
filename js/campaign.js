@@ -199,6 +199,6 @@
       S.over = 'win';
       if (S.mission) { const i = KM.MISSIONS.findIndex((m) => m.id === S.mission); unlock(i + 2); }
     }
-    if (S.over && KM.ui) KM.ui.showEnd(S.over);
+    if (S.over && KM.ui && KM.S === S) KM.ui.showEnd(S.over);
   };
 })(window.KM);
