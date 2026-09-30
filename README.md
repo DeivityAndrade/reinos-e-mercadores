@@ -68,6 +68,12 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 - **IA tática:**
   - Escolhe o alvo pesando distância, defesas (soldados e torres) e valor (Armazém, Escola e Quartel).
   - Recua quando o ataque fracassa, com menos de 30% das tropas.
+- **Ponto de encontro do Quartel:** com o Quartel selecionado, o botão direito no mapa define onde os novos soldados se reúnem (🚩).
+- **Comandos de exército:** `Tab` alterna entre seus grupos (`Shift+Tab` volta). O botão direito no minimapa manda as tropas selecionadas para lá (`Shift` = ataque-mover).
+- **Casas em chamas:** construções muito danificadas pegam fogo e soltam fumaça escura. Os construtores consertam quando o inimigo sai de perto.
+- **Vila viva:** cidadãos ociosos passeiam em volta do seu posto, e os carregadores circulam pelas estradas.
+- **Tutorial na Conquista:** aparece na fase I para quem ainda não concluiu nem fechou o tutorial.
+- **Desempenho:** as 6 partes do corpo de cada personagem viram uma malha só, e só o corpo projeta sombra. Numa batalha com 209 soldados, o tempo por quadro caiu de 24,6 ms para 14,2 ms.
 
 ## 👑 Modo Conquista
 - A vitória é sempre a mesma: **eliminar todos os reinos rivais**. Um reino cai quando fica sem Armazém, Escola e Quartel prontos e sem nenhum soldado.
