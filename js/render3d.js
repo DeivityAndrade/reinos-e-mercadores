@@ -259,6 +259,16 @@
         ore1: { geo: N.ore1, mat: rockM }, ore2: { geo: N.ore2, mat: rockM }, ore3: { geo: N.ore3, mat: rockM },
         grain: { geo: N.grain, mat: wheatWind }, grainG: { geo: N.grainG, mat: wheatWind },
       };
+      // corpo dos personagens: as 6 partes (mesmo esqueleto) fundidas numa malha só, 1 desenho em vez de 6
+      this.bodyGeo = {};
+      for (const k of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded']) {
+        const g = this.gltf[k];
+        if (!g) continue;
+        const parts = [];
+        g.scene.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
+        const merged = parts.length > 1 && THREE.BufferGeometryUtils.mergeGeometries(parts.map((p) => p.geometry), false);
+        if (merged) this.bodyGeo[k] = merged;
+      }
       // altura de referência dos personagens
       this.charH = this.proto.Knight ? this.proto.Knight.size.y : 2.4;
       this.makeTextures();
@@ -868,8 +878,20 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (OPTIONAL.includes(n)) { o.visible = cfg.show.includes(n); if (n === '1H_Axe' || n === '1H_Sword') hand = o.parent; }
         if (cfg.hide && cfg.hide.includes(n)) o.visible = false;
         if (/Cape/.test(n)) { o.material = o.material.clone(); o.material.color = team.clone().multiplyScalar(1.05); }
-        o.castShadow = true;
+        o.castShadow = false;
       });
+      // troca as 6 partes do corpo pela malha fundida (mesmo esqueleto e mesma ligação)
+      const parts = [];
+      inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
+      if (this.bodyGeo[cfg.m] && parts.length > 1) {
+        const p0 = parts[0];
+        const body1 = new THREE.SkinnedMesh(this.bodyGeo[cfg.m], p0.material);
+        body1.name = 'body';
+        body1.castShadow = true;
+        p0.parent.add(body1);
+        body1.bind(p0.skeleton, p0.bindMatrix);
+        for (const p of parts) p.parent.remove(p);
+      } else for (const p of parts) p.castShadow = true;
       if (cfg.spear && hand) {
         const sp = new THREE.Group();
         const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, cfg.spear / scale * 0.6, 6), KM.ART.toonify(new THREE.MeshStandardMaterial({ color: '#7a5230' })));
