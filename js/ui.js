@@ -572,7 +572,7 @@
       if (sitesNeed.stone > 0 && !(tot.stone > 0)) say('stone', `Acabou a pedra e há obras esperando. ${have.quarry ? 'Construa mais uma' : 'Construa uma'} ${name('quarry')} perto de rochas cinzentas.`);
       if (sitesNeed.wood > 0 && !(tot.wood > 0)) say('wood', (tot.trunk > 0 && !have.sawmill) ? `Há troncos, mas falta madeira: ${path('sawmill')}.` : `Acabou a madeira. Mais ${name('woodcutter')} e uma ${name('sawmill')} ajudam.`);
       if (starving >= 3 && starving >= cit * 0.2) {
-        if (!have.inn) say('food', `${starving} cidadãos com fome trabalham pela metade. ${path('inn')}.`);
+        if (!have.inn) say('food', `${starving} cidadãos com fome trabalham pela metade. ${path('inn').replace(/^./, (c) => c.toUpperCase())}.`);
         else say('food', `${starving} cidadãos com fome e sem comida na Taverna. Produza pão (Fazenda → Moinho → Padaria), peixe, vinho ou salsichas.`);
       }
     },
