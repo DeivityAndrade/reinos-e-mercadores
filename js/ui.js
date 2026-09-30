@@ -135,6 +135,8 @@
           html += `<h4>Progresso do reino</h4><div class="meter"><span>🏗️ ${open}/${total} construções</span><div class="mbar"><i style="width:${(open / total) * 100}%"></i></div></div><button class="mbtn wide" data-act="tree">🌳 Árvore de progresso</button>`;
         }
         html += `<button class="mbtn wide" data-act="stats">📊 Estatísticas da partida</button>`;
+        const log = (this.msgLog || []).slice(0, 8);
+        if (log.length) html += `<h4>Mensagens recentes</h4><div class="msglog">${log.map((l) => `<button class="msg ${l.kind}" ${l.pos ? `data-act="goto:${l.pos.x}:${l.pos.y}"` : ''}><small>${KM.fmtTime(l.t)}</small> ${esc(l.msg)}${l.pos ? ' 📍' : ''}</button>`).join('')}</div><div class="muted"><kbd>Z</kbd> vai até o último aviso.</div>`;
         html += `<h4>Jogadores</h4><div class="plist">${S.players.map((p, i) => `<div class="prow"><span class="dot" style="background:${p.color}"></span><span class="sn">${esc(p.name)}${i === ME() ? ' (você)' : ''}</span><em class="${p.out ? 'bad' : KM.hostile(S, ME(), i) ? 'bad' : 'good'}">${p.out ? 'derrotado' : i === ME() ? '' : KM.hostile(S, ME(), i) ? 'inimigo' : 'aliado'}</em></div>`).join('')}</div>`;
         const ais = S.players.filter((p, i) => p.ai && p.ai.mode !== 'none' && KM.hostile(S, ME(), i) && !p.out);
         const peace = Math.min(...ais.map((p) => p.ai.next - S.time).filter((x) => x > 0), Infinity);
@@ -216,6 +218,7 @@
       if (k === 'brief') { if (!S.mp) S.paused = true; this.showBriefing(S); }
       if (k === 'tree') this.showTree(true);
       if (k === 'stats') this.showStats();
+      if (k === 'goto') KM.R.centerOn(+v, +w);
       if (k === 'restart') { if (confirm('Reiniciar a missão do começo?')) KM.startGame({ mission: S.mission, diff: S.diff }); }
       if (k === 'save') { KM.save(+v); this.toast(`💾 Jogo salvo no espaço ${v}`, 'ok'); this.renderTab(true); }
       if (k === 'load') { if (KM.load(+v)) this.toast(`📂 Jogo carregado do espaço ${v}`, 'ok'); }
@@ -441,7 +444,9 @@
       const el = document.createElement('div');
       el.className = 'toast ' + (kind || 'info');
       el.innerHTML = esc(msg) + (pos ? ' <span class="go">📍</span>' : '');
-      if (pos) { el.style.cursor = 'pointer'; el.onclick = () => KM.R.centerOn(pos.x, pos.y); }
+      if (pos) { el.style.cursor = 'pointer'; el.onclick = () => KM.R.centerOn(pos.x, pos.y); this.lastPos = pos; }
+      // registro de mensagens (aba Objetivos)
+      if (KM.S && kind !== 'info') { this.msgLog = this.msgLog || []; this.msgLog.unshift({ msg, kind, pos, t: KM.S.time }); if (this.msgLog.length > 25) this.msgLog.pop(); }
       box.prepend(el);
       while (box.children.length > 6) box.lastChild.remove();
       setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 500); }, kind === 'danger' ? 9000 : 5500);

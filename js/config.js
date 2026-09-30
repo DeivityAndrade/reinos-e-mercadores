@@ -3,7 +3,7 @@
    Tudo que define economia, casas, profissões e soldados fica aqui. */
 window.KM = window.KM || {};
 (function (KM) {
-  KM.VERSION = '0.3.0';
+  KM.VERSION = '0.4.0';
   KM.TILE = 32;
   KM.MAP_W = 80;
   KM.MAP_H = 80;

@@ -1,0 +1,15 @@
+{
+  "name": "Reinos & Mercadores",
+  "short_name": "Reinos",
+  "description": "Estratégia econômica medieval em tempo real, inspirada em Knights and Merchants.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1a1410",
+  "theme_color": "#2a1f17",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

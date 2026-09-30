@@ -94,7 +94,7 @@
     KM.computeRoadComps(S);
     KM.R.sprites = {};
     KM.R.buildBase(S);
-    KM.ui.clearSel(); KM.ui.setTool(null);
+    KM.ui.clearSel(); KM.ui.setTool(null); KM.ui.msgLog = []; KM.ui.lastPos = null;
     KM.ui.mmImg = null; KM.ui.lastTop = ''; KM.ui.lastTabHtml = ''; KM.ui.lastPanel = null;
     $('#menu').classList.add('hidden');
     $('#endscreen').classList.add('hidden');
@@ -189,6 +189,7 @@
       const lb = $('#loadbar');
       if (lb) { lb.dataset.t = 'Abra o jogo pelo arquivo Jogar.bat (os modelos 3D precisam do servidor local)'; lb.style.setProperty('--p', '0%'); lb.style.height = '40px'; }
     }
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { /* sem modo offline */ });
     KM.R.init($('#game'));
     KM.input.init($('#game'));
     KM.ui.init();

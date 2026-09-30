@@ -23,6 +23,32 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 | **Multijogador online** | P2P direto entre dois navegadores (WebRTC, sem servidor), 1 contra 1 ou cooperativo contra a IA, com chat |
 | **Editor de mapas** | Terreno, relevo, árvores, rochas, minérios, até 4 bases e casas prontas. Salva localmente e exporta/importa arquivos |
 
+## 🆕 Novidades da versão 0.4
+- **Tutorial interativo** (botão 🎓 no menu ou Missão I): 13 passos guiados, com destaque nos botões e uma seta no mapa. Os passos avançam sozinhos quando você faz a ação pedida.
+- **Aviso "⚠ sem estrada"** sobre qualquer casa que não esteja ligada ao Armazém, o erro mais comum de quem está começando.
+- **Visual:** chão com textura e variação de tons, sombra nos vales (oclusão), grama alta e flores balançando ao vento, árvores com vento.
+- **Áudio:**
+  - Música medieval com alaúde dedilhado, flauta doce, sanfona e tambor, com reverberação de salão.
+  - São 5 peças compostas na hora, mais uma trilha de batalha.
+  - Efeitos refeitos com som posicional estéreo e vento ambiente.
+  - Vozes dos soldados opcionais.
+- **Opções** (aba ⚙️): volume geral, de música e de efeitos; qualidade gráfica (alta, média ou baixa, para PCs fracos); rolar pela borda da tela.
+- **IA mais esperta:**
+  - Defende a própria cidade quando é atacada.
+  - Reúne o exército antes de atacar, em vez de mandar soldados aos poucos.
+  - Encomenda nas oficinas só o que falta.
+  - O tamanho dos ataques foi calibrado por dificuldade.
+- **Estatísticas da partida** com gráficos (cidadãos, soldados, casas e recursos ao longo do tempo) e uma tabela por jogador, na tela final e na aba Objetivos.
+- **Mensagens recentes** na aba Objetivos, e a tecla `Z` leva até o último aviso.
+- **Instalável e offline (PWA):** no Chrome ou Edge, use "Instalar aplicativo" na barra de endereço. Depois de aberto uma vez, funciona sem internet.
+
+## 🧪 Ferramenta de balanceamento
+`tools/sim.js` simula partidas inteiras sem desenhar nada: 40 minutos de jogo rodam em poucos segundos. Com o jogo aberto, cole no console do navegador:
+```js
+const s = document.createElement('script'); s.src = 'tools/sim.js'; document.body.appendChild(s);
+KM.sim.bots({ seed: 7, minutes: 40 })   // IA contra IA, registro a cada 5 minutos
+```
+
 ## 🌳 Progressão (como no original)
 O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e os profissionais correspondentes (carregador, construtor, lenhador, pedreiro). Cada construção erguida libera novas opções:
 
@@ -53,7 +79,7 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 - **Obras em etapas** com andaime e pilhas de material; prédios destruídos viram ruínas com fumaça.
 - **Personagens animados** (76 animações): andam, cortam árvores, quebram pedra, colhem, carregam madeira e sacos, lutam, atiram, bloqueiam e morrem. Capas na cor do time; cavaleiros e batedores montados em cavalos animados.
 - **Menu principal** com uma vila viva ao fundo e a câmera girando devagar.
-- **Sons e música procedurais** com volume pela distância da câmera.
+- **Sons e música procedurais** com volume pela distância da câmera e panorâmica estéreo.
 
 ## 📦 Créditos dos modelos (todos CC0, domínio público)
 - **KayKit – Medieval Hexagon Pack** e **KayKit – Character Pack: Adventurers**, por Kay Lousberg (kaylousberg.com)
@@ -81,12 +107,16 @@ js/military.js    grupos, formações, combate, fome dos soldados, projéteis
 js/ai.js          IA (economia real / ondas / posto avançado), uma por jogador
 js/campaign.js    14 missões, objetivos, derrota/vitória, progresso
 js/cmd.js         comandos: toda ação do jogador (base do multijogador)
+js/tutorial.js    tutorial interativo da Missão I
 js/render3d.js    motor 3D: terreno, água, névoa, instâncias, prédios, personagens, câmera
 js/ui.js          painéis, abas, minimapa, briefing, menus
 js/input.js       mouse, teclado, seleção por raio no relevo
 js/editor.js      editor de mapas
 js/net.js         multijogador WebRTC com lockstep
-js/main.js        laço de 20 ticks/s, lockstep, salvar/carregar, sons e música
+js/audio.js       sons, música e vozes procedurais (Web Audio)
+js/main.js        laço de 20 ticks/s, lockstep, salvar/carregar, histórico para os gráficos
+tools/sim.js      simulador de partidas para balanceamento
+sw.js, manifest.webmanifest, icon.svg   modo offline e instalação como aplicativo
 ```
 
 **Determinismo:** a simulação usa um RNG próprio guardado no estado do jogo e roda em ticks fixos. Todas as ações dos jogadores passam por `js/cmd.js`. Com isso, dois computadores com a mesma semente e os mesmos comandos chegam exatamente ao mesmo estado.

@@ -209,6 +209,7 @@
       if (k === '+' || k === '=') { const sp = [1, 2, 3, 5]; ui().setSpeed(sp[Math.min(3, sp.indexOf(S.speed) + 1)]); return; }
       if (k === '-') { const sp = [1, 2, 3, 5]; ui().setSpeed(sp[Math.max(0, sp.indexOf(S.speed) - 1)]); return; }
       if (k === 'g') { KM.R.showGrid = !KM.R.showGrid; return; }
+      if (k === 'z') { const p = ui().lastPos; if (p) KM.R.centerOn(p.x, p.y); return; }
       if (k === 'm') { ui().toggleMusic(); return; }
       if (k === 'r') { ui().setTab('build'); ui().setTool(ui().tool === 'road' ? null : 'road'); return; }
       if (k === 'f' && !e.ctrlKey) { ui().setTab('build'); ui().setTool(ui().tool === 'field' ? null : 'field'); return; }
