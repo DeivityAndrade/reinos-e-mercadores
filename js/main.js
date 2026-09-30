@@ -114,7 +114,8 @@
     const S = KM.newState(opts);
     KM.afterLoad(S);
     KM.music && KM.music.start();
-    if (S.mission === 'm1' && !opts.noTutorial) KM.tutorial.start(S);
+    let tutDone = false; try { tutDone = localStorage.getItem('rm_tut_done') === '1'; } catch (e) { /* ok */ }
+    if ((S.mission === 'm1' || (S.mission === 'c1' && !tutDone)) && !opts.noTutorial) KM.tutorial.start(S);
     if (S.mission) { S.paused = true; KM.ui.showBriefing(S); return; }
     if (S.mp) { KM.ui.toast(`🌐 Partida multijogador iniciada. Você é ${S.players[KM.me].name}. Enter abre o chat.`, 'ok'); return; }
     KM.ui.toast('👑 Bem-vindo, senhor! Construa sua economia e prepare-se para a guerra.', 'info');

@@ -56,7 +56,7 @@
         const S = KM.S;
         if (!S || !S.tut) return;
         if (e.target.closest('[data-tnext]')) this.advance(S);
-        if (e.target.closest('[data-tclose]')) this.stop(S);
+        if (e.target.closest('[data-tclose]')) { try { localStorage.setItem('rm_tut_done', '1'); } catch (err) { /* ok */ } this.stop(S); }
       });
       const mk = this.mark = document.createElement('div');
       mk.id = 'tutmark'; mk.textContent = '⬇';
@@ -65,7 +65,7 @@
     advance(S) {
       S.tut.i++;
       S.tut.moved = 0;
-      if (S.tut.i >= STEPS.length) { this.stop(S); return; }
+      if (S.tut.i >= STEPS.length) { try { localStorage.setItem('rm_tut_done', '1'); } catch (e) { /* ok */ } this.stop(S); return; }
       KM.sfx && KM.sfx('click');
       this.render(S);
     },
