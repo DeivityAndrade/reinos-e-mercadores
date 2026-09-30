@@ -122,6 +122,19 @@
         }
       }
     }
+    // passeio curto em volta do ponto onde ficou livre (a vila parece viva, sem fileiras paradas)
+    if (!u.anchor || Math.hypot(u.anchor.x - u.tx, u.anchor.y - u.ty) > 6) u.anchor = { x: u.tx, y: u.ty };
+    if (KM.rand() < 0.55) {
+      for (let k = 0; k < 6; k++) {
+        const x = u.anchor.x + Math.round((KM.rand() - 0.5) * 6), y = u.anchor.y + Math.round((KM.rand() - 0.5) * 6);
+        if (!KM.inb(x, y) || !KM.walkable(S, x, y) || (x === u.tx && y === u.ty)) continue;
+        if (u.type === 'serf' && m.road[y * m.W + x] !== 2) continue;
+        if (m.house[y * m.W + x]) continue;
+        const p = KM.findPath(S, u.tx, u.ty, x, y, { max: 200 });
+        if (p) { u.path = p; u.pi = 0; u.pk = null; }
+        break;
+      }
+    }
   }
 
   function recruitIdle(S, u, dt) {
