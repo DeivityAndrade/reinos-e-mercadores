@@ -182,7 +182,8 @@
     import * as T from "three";
     import { GLTFLoader } from "./js/vendor/three/examples/jsm/loaders/GLTFLoader.js";
     import * as SkeletonUtils from "./js/vendor/three/examples/jsm/utils/SkeletonUtils.js";
-    window.THREE = Object.assign({}, T, { GLTFLoader, SkeletonUtils });
+    import * as BufferGeometryUtils from "./js/vendor/three/examples/jsm/utils/BufferGeometryUtils.js";
+    window.THREE = Object.assign({}, T, { GLTFLoader, SkeletonUtils, BufferGeometryUtils });
     window.dispatchEvent(new Event("three-ready"));
   </script>
   <script src="js/config.js"></script>
@@ -196,6 +197,7 @@
   <script src="js/campaign.js"></script>
   <script src="js/cmd.js"></script>
   <script src="js/tutorial.js"></script>
+  <script src="js/art.js"></script>
   <script src="js/render3d.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/input.js"></script>
