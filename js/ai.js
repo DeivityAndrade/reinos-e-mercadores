@@ -37,6 +37,28 @@
     }
     return best;
   }
+  // alvo de ataque: pesa distância, defesa ao redor (soldados e torres) e valor (Armazém, Escola e Quartel derrubam o reino)
+  const CORE = { storehouse: 10, school: 8, barracks: 9, tower: -2 };
+  function bestTarget(S, o, x, y) {
+    const cand = [];
+    for (const id in S.houses) {
+      const h = S.houses[id];
+      if (!KM.hostile(S, o, h.owner) || h.state === 'plan' || S.players[h.owner].out) continue;
+      cand.push(h);
+    }
+    if (!cand.length) return null;
+    // só avalia os mais próximos (custo baixo)
+    cand.sort((a, b) => Math.hypot(a.ex - x, a.ey - y) - Math.hypot(b.ex - x, b.ey - y));
+    let best = null, bs = 1e9;
+    for (const h of cand.slice(0, 12)) {
+      let def = 0;
+      for (const id in S.units) { const u = S.units[id]; if (u.owner === h.owner && KM.isSoldier(u.type) && Math.abs(u.x - h.ex) < 7 && Math.abs(u.y - h.ey) < 7) def++; }
+      for (const id in S.houses) { const t = S.houses[id]; if (t.owner === h.owner && t.type === 'tower' && t.state === 'built' && Math.abs(t.ex - h.ex) < 7 && Math.abs(t.ey - h.ey) < 7) def += 3; }
+      const s = Math.hypot(h.ex - x, h.ey - y) + def * 1.2 - (CORE[h.type] || 0);
+      if (s < bs) { bs = s; best = h; }
+    }
+    return best;
+  }
   const warnMe = (S, o, msg, pos) => { if (KM.hostile(S, o, KM.me)) KM.notify(S, msg, 'danger', pos); };
 
   KM.updateAI = function (S, dt) {
@@ -84,7 +106,7 @@
     const dx = target.ex - from.x, dy = target.ey - from.y, dl = Math.hypot(dx, dy) || 1;
     const k = KM.clamp((dl - 11) / dl, 0, 0.7);
     const p = KM.nearestWalkable(S, Math.round(from.x + dx * k), Math.round(from.y + dy * k), 6) || [target.ex, target.ey + 1];
-    for (const g of groups) g.stage = 1;
+    for (const g of groups) { g.stage = 1; g.size0 = g.m.length; }
     KM.orderGroups(S, groups, p[0], p[1], true);
     ai.assault = { g: groups.map((g) => g.id), x: p[0], y: p[1], t: S.time, target: target.id };
   }
@@ -137,7 +159,7 @@
       (byType[t] = byType[t] || []).push(u);
     }
     const groups = Object.keys(byType).map((t) => KM.newGroup(S, o, t, byType[t]));
-    const target = nearestHostileHouse(S, o, bar.ex, bar.ey);
+    const target = bestTarget(S, o, bar.ex, bar.ey);
     if (target) launchAssault(S, o, ai, groups, { x: bar.ex, y: bar.ey }, target);
     ai.next = S.time + ai.interval * Math.max(0.55, 1 - 0.04 * w);
     if (target) {
@@ -224,7 +246,7 @@
         for (const g of def) { if (cnt >= ai.attackN * 1.15) break; send.push(g); cnt += g.m.length; }
         let sent = 0;
         for (const g of send) for (const u of KM.groupUnits(S, g)) { u.ai = 'atk'; sent++; }
-        const target = nearestHostileHouse(S, o, st.ex, st.ey);
+        const target = bestTarget(S, o, st.ex, st.ey);
         if (target && sent) {
           launchAssault(S, o, ai, send, { x: st.ex, y: st.ey }, target);
           ai.wave++;
@@ -277,6 +299,14 @@
       if (g.owner !== o) continue;
       const us = KM.groupUnits(S, g);
       if (!us.length || us[0].ai !== 'atk' || g.stage) continue;
+      // recuo: o ataque fracassou (sobrou menos de 30%), volta para casa e vira defesa
+      if (g.size0 && us.length <= Math.max(1, g.size0 * 0.3)) {
+        g.size0 = 0;
+        for (const u of us) { u.ai = 'def'; u.target = null; u.forced = false; }
+        const home = Object.values(S.houses).find((h) => h.owner === o && h.type === 'barracks' && h.state === 'built') || Object.values(S.houses).find((h) => h.owner === o && h.type === 'storehouse');
+        if (home) KM.orderGroups(S, [g], home.ex + 2, home.ey + 3, false);
+        continue;
+      }
       if (us.some((u) => u.order || u.target || u.path)) continue;
       const c = KM.groupCenter(S, g);
       const h = nearestHostileHouse(S, o, c.x, c.y);

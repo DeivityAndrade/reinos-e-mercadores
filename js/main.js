@@ -94,7 +94,7 @@
     KM.computeRoadComps(S);
     KM.R.sprites = {};
     KM.R.buildBase(S);
-    KM.ui.clearSel(); KM.ui.setTool(null); KM.ui.msgLog = []; KM.ui.lastPos = null;
+    KM.ui.clearSel(); KM.ui.setTool(null); KM.ui.msgLog = []; KM.ui.lastPos = null; KM.ui.pings = [];
     KM.ui.mmImg = null; KM.ui.lastTop = ''; KM.ui.lastTabHtml = ''; KM.ui.lastPanel = null;
     $('#menu').classList.add('hidden');
     $('#endscreen').classList.add('hidden');

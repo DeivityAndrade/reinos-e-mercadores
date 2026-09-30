@@ -33,7 +33,7 @@
         if (h.noDeliv) continue;
         for (const r in h.mat) {
           const mt = h.mat[r], q = mt.need - mt.got - mt.inc;
-          if (q > 0) demands.push({ k: 'h', h, r, q, p: 0, ec, x: h.ex, y: h.ey });
+          if (q > 0) demands.push({ k: 'h', h, r, q, p: h.prio ? -1 : 0, ec, x: h.ex, y: h.ey });
         }
       } else if (h.state === 'built') {
         const d = KM.def(h);
@@ -147,11 +147,11 @@
       const h = S.houses[id];
       if (h.owner !== owner) continue;
       if (h.state !== 'built') entr.add(h.ey * W + h.ex);
-      if (h.state === 'plan' && !h.leveler) jobs.push({ k: 'level', h, x: h.ex, y: h.ey, b: -4 });
+      if (h.state === 'plan' && !h.leveler) jobs.push({ k: 'level', h, x: h.ex, y: h.ey, b: h.prio ? -40 : -4 });
       else if (h.state === 'site' && !h.builder) {
         let have = 0;
         for (const r in h.mat) have += h.mat[r].have;
-        if (have > 0) jobs.push({ k: 'build', h, x: h.ex, y: h.ey, b: -6 });
+        if (have > 0) jobs.push({ k: 'build', h, x: h.ex, y: h.ey, b: h.prio ? -40 : -6 });
       } else if (h.state === 'built' && h.repair && !h.repairer && h.hp < h.maxHp * 0.95 && !enemyNear(S, owner, h.ex, h.ey, 9)) {
         jobs.push({ k: 'repair', h, x: h.ex, y: h.ey, b: -2 });
       }
@@ -229,9 +229,11 @@
     if (h.type === 'school') return updateSchool(S, h, dt);
     if (h.type === 'tower') return updateTower(S, h, dt);
     if (!d.recipes || !KM.eco(S, h.owner) || h.paused) return;
+    h.upT = (h.upT || 0) + dt;
     const w = h.worker && S.units[h.worker];
     if (!w || w.inside !== h.id) return;
     if (h.work) {
+      h.busyT = (h.busyT || 0) + dt;
       h.work.t -= dt * (w.hunger <= 0 ? 0.5 : 1);
       if (h.work.t <= 0) {
         const rc = d.recipes[h.work.r];

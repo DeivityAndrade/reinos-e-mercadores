@@ -1395,6 +1395,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         const q = this.toScreen(hv.position.x, hv.position.y + top, hv.position.z);
         if (q.behind || q.x < -80 || q.y < -80 || q.x > this.vw + 80 || q.y > this.vh + 80) continue;
         if (h.state === 'site') bar(q.x - 24, q.y, 48, h.total ? h.used / h.total : 0, '#f5b83a');
+        if (mine && h.prio && h.state !== 'built') { g.font = '16px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText('⭐', q.x + 34, q.y + 5); }
         else if (h.hp < h.maxHp || selected) bar(q.x - 24, q.y, 48, h.hp / h.maxHp, mine ? '#5fd35a' : KM.hostile(S, KM.me, h.owner) ? '#ef4b4b' : '#3fa6ff');
         if (mine && !S.editor) {
           // casas sem estrada até o Armazém: o erro mais comum de quem está começando

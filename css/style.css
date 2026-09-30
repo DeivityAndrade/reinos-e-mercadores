@@ -378,3 +378,6 @@ canvas.chart { width: 100%; max-width: 560px; background: rgba(18,13,9,0.55); bo
 .goals.opt .goal.done span { filter: drop-shadow(0 0 4px rgba(255,210,80,0.8)); }
 .mission .cr span { font-size: 13px; }
 #conquests { text-align: left; }
+.tb-group.res em { font-style: normal; font-size: 10.5px; margin-left: 3px; font-weight: 800; }
+.tb-group.res em.up { color: var(--ok); }
+.tb-group.res em.down { color: var(--bad); }

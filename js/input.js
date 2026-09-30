@@ -17,6 +17,37 @@
     while (y !== b.ty && out.length < 120) { y += sy; out.push([x, y]); }
     return out;
   }
+  // estrada inteligente: caminho mais curto que contorna obstáculos e aproveita estradas existentes (4 direções)
+  function roadPath(S, a, b) {
+    const m = S.map, W = m.W;
+    if (!KM.inb(a.tx, a.ty) || !KM.inb(b.tx, b.ty)) return lineTiles(a, b);
+    const ok = (x, y) => { const i = y * W + x; return KM.isExp(S, i) && KM.walkable(S, x, y) && !m.field[i]; };
+    if (!ok(b.tx, b.ty)) return lineTiles(a, b);
+    const start = a.ty * W + a.tx, goal = b.ty * W + b.tx;
+    const g = new Map([[start, 0]]), from = new Map(), open = [[Math.abs(a.tx - b.tx) + Math.abs(a.ty - b.ty), start]];
+    let n = 0;
+    while (open.length && n++ < 4000) {
+      let bi = 0;
+      for (let k = 1; k < open.length; k++) if (open[k][0] < open[bi][0]) bi = k;
+      const [, cur] = open.splice(bi, 1)[0];
+      if (cur === goal) break;
+      const x = cur % W, y = (cur / W) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (!KM.inb(nx, ny) || !ok(nx, ny)) continue;
+        const ni = ny * W + nx;
+        // estrada pronta ou planejada é quase de graça; curvas custam um pouco (estradas retas ficam mais bonitas)
+        const turn = from.has(cur) && ((cur - from.get(cur)) !== (ni - cur)) ? 0.35 : 0;
+        const c = g.get(cur) + (m.road[ni] ? 0.25 : 1) + turn;
+        if (c < (g.has(ni) ? g.get(ni) : 1e9)) { g.set(ni, c); from.set(ni, cur); open.push([c + Math.abs(nx - b.tx) + Math.abs(ny - b.ty), ni]); }
+      }
+    }
+    if (!g.has(goal) || !ok(a.tx, a.ty)) return lineTiles(a, b);
+    const out = [];
+    for (let c = goal; c !== undefined; c = from.get(c)) { out.push([c % W, (c / W) | 0]); if (c === start) break; if (out.length > 200) break; }
+    return out.reverse();
+  }
+  KM.roadPath = roadPath;
   function rectTiles(a, b) {
     const out = [];
     for (let y = Math.min(a.ty, b.ty); y <= Math.max(a.ty, b.ty); y++) for (let x = Math.min(a.tx, b.tx); x <= Math.max(a.tx, b.tx); x++) out.push([x, y]);
@@ -36,7 +67,7 @@
     const d = ui().drag;
     if (!d) return;
     const tool = ui().tool;
-    const list = tool === 'road' ? lineTiles(d.a, d.b) : rectTiles(d.a, d.b);
+    const list = tool === 'road' ? (d.b.tx === d.pb?.tx && d.b.ty === d.pb?.ty && d.path ? d.path : (d.pb = d.b, d.path = roadPath(S, d.a, d.b))) : rectTiles(d.a, d.b);
     d.tiles = list.map(([x, y]) => [x, y, tool === 'road' ? canRoad(S, x, y) : canField(S, x, y)]);
   }
   function commitDrag(S) {

@@ -50,7 +50,7 @@
         return;
       }
       case 'demolish': { const h = myHouse(S, o, c.id); if (h) KM.removeHouse(S, h, false); return; }
-      case 'hset': { const h = myHouse(S, o, c.id); if (h && ['paused', 'noDeliv', 'repair'].includes(c.k)) h[c.k] = !!c.v; return; }
+      case 'hset': { const h = myHouse(S, o, c.id); if (h && ['paused', 'noDeliv', 'repair', 'prio'].includes(c.k)) h[c.k] = !!c.v; return; }
       case 'block': { const h = myHouse(S, o, c.id); if (h && h.block) h.block[c.r] = !h.block[c.r]; return; }
       case 'order': { const h = myHouse(S, o, c.id); if (h && h.orders && h.orders[c.i] != null) h.orders[c.i] = KM.clamp(c.v | 0, 0, KM.INF); return; }
       case 'train': { const h = myHouse(S, o, c.id); if (h && h.type === 'school' && KM.PROF[c.p] && KM.profUnlocked(S, o, c.p) && h.queue.length < 10) h.queue.push(c.p); return; }

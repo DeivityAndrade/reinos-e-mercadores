@@ -164,6 +164,8 @@
         if (u.hp <= 0) { KM.killUnit(S, u, false); return; }
       }
     }
+    // recuperação: sem lutar há 8 s e bem alimentado, o soldado recupera vida devagar
+    if (u.hp < u.maxHp && S.time - (u.hitAt || -99) > 8 && (!KM.human(S, u.owner) || u.hunger > 40)) u.hp = Math.min(u.maxHp, u.hp + dt * 0.5);
     let tg = KM.resolveTarget(S, u.target);
     if (!tg && u.target) {
       u.target = null;
@@ -264,7 +266,7 @@
     if (t.k === 'u') {
       const v = S.units[t.id];
       if (!v) return;
-      v.hp -= dmg; v.hitT = 0.25;
+      v.hp -= dmg; v.hitT = 0.25; v.hitAt = S.time;
       if (src && KM.isSoldier(v.type) && !v.target) v.target = { k: 'u', id: src.id };
       if (v.owner === KM.me) warnAttack(S, v.tx, v.ty);
       if (v.hp <= 0) KM.killUnit(S, v, true, owner);

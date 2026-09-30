@@ -285,7 +285,7 @@
         const comp = KM.rt.comp && KM.rt.comp[h.ey * S.map.W + h.ex];
         if (!road) s += '<div class="warn">A estrada da entrada ainda não foi construída.</div>';
         else if (!this.connected(S, comp)) s += '<div class="warn">⚠️ Sem estrada até um armazém: os materiais não chegam!</div>';
-        s += `<div class="mgrid"><button class="mbtn ${h.noDeliv ? 'on' : ''}" data-act2="hset:noDeliv:${h.noDeliv ? 0 : 1}">${h.noDeliv ? '🚫 Entregas bloqueadas' : '📥 Entregas liberadas'}</button><button class="mbtn danger" data-act2="demolish">❌ Cancelar</button></div>`;
+        s += `<div class="mgrid"><button class="mbtn ${h.noDeliv ? 'on' : ''}" data-act2="hset:noDeliv:${h.noDeliv ? 0 : 1}">${h.noDeliv ? '🚫 Entregas bloqueadas' : '📥 Entregas liberadas'}</button><button class="mbtn ${h.prio ? 'on' : ''}" data-act2="hset:prio:${h.prio ? 0 : 1}" data-tip="Construtores e carregadores atendem esta obra antes das outras">${h.prio ? '⭐ Prioridade: sim' : '☆ Dar prioridade'}</button><button class="mbtn danger" data-act2="demolish">❌ Cancelar</button></div>`;
         return s;
       }
       if (d.worker) {
@@ -299,6 +299,14 @@
       const outs = Object.keys(h.out);
       if (outs.length) s += `<div class="lbl">Saída</div><div class="io">${outs.map((r) => `<div class="chip" data-tip="${KM.RES[r].n}">${ri(r)} ${h.out[r]}</div>`).join('')}</div>`;
       if (h.work) s += `<div class="pbar"><i style="width:${(1 - h.work.t / h.work.T) * 100}%"></i></div>`;
+      // produção acumulada e aproveitamento (tempo trabalhando / tempo pronta)
+      if (d.recipes && h.upT > 30) {
+        let made = 0;
+        d.recipes.forEach((rc, i) => { const q = Object.values(rc.out).reduce((a, b) => a + b, 0); made += (h.cnt[i] || 0) * q; });
+        const eff = Math.round((100 * (h.busyT || 0)) / h.upT);
+        s += `<div class="row" data-tip="Aproveitamento: parte do tempo em que a casa estava produzindo">📈 Produziu <b>${made}</b> · aproveitamento <b class="${eff < 40 ? 'bad' : eff < 70 ? 'warnc' : 'good'}">${eff}%</b></div>`;
+        if (eff < 40 && !h.paused && h.upT > 120 && !(h.orders && !h.orders.some((q) => q > 0))) s += `<div class="warn">Parada boa parte do tempo: ${h.worker ? 'falta matéria-prima (confira estradas, carregadores e distribuição)' : 'sem trabalhador'}.</div>`;
+      }
       if (d.mine && h.depleted) s += '<div class="warn">O minério próximo acabou.</div>';
       if (h.orders) {
         const any = h.orders.some((o) => o > 0);
@@ -445,6 +453,10 @@
       el.className = 'toast ' + (kind || 'info');
       el.innerHTML = esc(msg) + (pos ? ' <span class="go">📍</span>' : '');
       if (pos) { el.style.cursor = 'pointer'; el.onclick = () => KM.R.centerOn(pos.x, pos.y); this.lastPos = pos; }
+      if (pos && (kind === 'danger' || kind === 'warn')) {
+        this.pings = (this.pings || []).filter((p) => Math.hypot(p.x - pos.x, p.y - pos.y) > 4);
+        this.pings.push({ x: pos.x, y: pos.y, t: performance.now() / 1000, c: kind === 'danger' ? '#ff4a3a' : '#ffc23a' });
+      }
       // registro de mensagens (aba Objetivos)
       if (KM.S && kind !== 'info') { this.msgLog = this.msgLog || []; this.msgLog.unshift({ msg, kind, pos, t: KM.S.time }); if (this.msgLog.length > 25) this.msgLog.pop(); }
       box.prepend(el);
@@ -466,10 +478,22 @@
       const waves = ais.reduce((a, p) => a + p.ai.wave, 0);
       let threat = '';
       if (ais.length) threat = isFinite(peace) && peace > 0 ? `<span class="peace" data-tip="Tempo de paz antes do primeiro ataque">🕊️ Paz ${KM.fmtTime(peace)}</span>` : `<span class="muted">Ataques: ${waves}</span>`;
-      const done = S.goals.filter((g) => KM.goalStatus(S, g).done).length;
+      // tendência: variação por minuto (janela de ~1 min de jogo)
+      const vals = { wood: tot.wood || 0, stone: tot.stone || 0, gold: tot.gold || 0, food };
+      if (this.trendS !== S) { this.trendS = S; this.trendBuf = []; }
+      const TB = this.trendBuf;
+      if (!TB.length || S.time - TB[TB.length - 1].t >= 5) { TB.push({ t: S.time, v: vals }); while (TB.length > 2 && S.time - TB[0].t > 65) TB.shift(); }
+      const span = S.time - TB[0].t;
+      const tr = (k) => {
+        const r = span > 20 ? Math.round(((vals[k] - TB[0].v[k]) * 60) / span) : 0;
+        return r ? `<em class="${r > 0 ? 'up' : 'down'}">${r > 0 ? '▲' : '▼'}${Math.abs(r)}</em>` : '';
+      };
+      const req = S.goals.filter((g) => !g.opt), opt = S.goals.filter((g) => g.opt);
+      const done = req.filter((g) => KM.goalStatus(S, g).done).length;
+      const crowns = opt.length ? ` · 👑 ${opt.filter((g) => KM.goalStatus(S, g).done).length}/${opt.length}` : '';
       const net = S.mp && KM.net ? `<span class="${KM.net.lag > 0.5 ? 'threat' : 'muted'}" data-tip="Conexão multijogador">📶 ${KM.net.ping}ms</span>` : '';
-      const html = `<div class="tb-group">⏱️ ${KM.fmtTime(S.time)} ${threat} ${net} <button class="goalsbtn" data-goals="1" data-tip="Objetivos">🎯 ${done}/${S.goals.length}</button></div>
-        <div class="tb-group res"><span data-tip="Madeira">🪜 ${tot.wood || 0}</span><span data-tip="Pedra">🪨 ${tot.stone || 0}</span><span data-tip="Ouro">🪙 ${tot.gold || 0}</span><span data-tip="Comida (pão, salsicha, vinho, peixe)">🍞 ${food}</span><span data-tip="Cidadãos">👥 ${cit}</span><span data-tip="Soldados">⚔️ ${sol}</span></div>
+      const html = `<div class="tb-group">⏱️ ${KM.fmtTime(S.time)} ${threat} ${net} <button class="goalsbtn" data-goals="1" data-tip="Objetivos e desafios">🎯 ${done}/${req.length}${crowns}</button></div>
+        <div class="tb-group res"><span data-tip="Madeira (variação por minuto)">🪜 ${tot.wood || 0}${tr('wood')}</span><span data-tip="Pedra (variação por minuto)">🪨 ${tot.stone || 0}${tr('stone')}</span><span data-tip="Ouro (variação por minuto)">🪙 ${tot.gold || 0}${tr('gold')}</span><span data-tip="Comida: pão, salsicha, vinho, peixe (variação por minuto)">🍞 ${food}${tr('food')}</span><span data-tip="Cidadãos">👥 ${cit}</span><span data-tip="Soldados">⚔️ ${sol}</span></div>
         <div class="tb-group speed">${(S.mp ? [1, 2, 3] : [0, 1, 2, 3, 5]).map((v) => `<button data-speed="${v}" class="${(v === 0 ? S.paused : !S.paused && S.speed === v) ? 'active' : ''}">${v === 0 ? '⏸' : v + '×'}</button>`).join('')}</div>`;
       if (html !== this.lastTop) { $('#topbar').innerHTML = html; this.lastTop = html; }
     },
@@ -528,6 +552,17 @@
         poly.forEach(([x, y], i) => (i ? g.lineTo(x * sx, y * sy) : g.moveTo(x * sx, y * sy)));
         g.closePath(); g.stroke();
       }
+      // alertas piscando no minimapa (ataques, avisos)
+      const now = performance.now() / 1000;
+      this.pings = (this.pings || []).filter((p) => now - p.t < 7);
+      for (const p of this.pings) {
+        const a = now - p.t;
+        g.globalAlpha = Math.max(0, 1 - a / 7);
+        g.strokeStyle = p.c; g.lineWidth = 2.5;
+        for (const k of [0, 0.5]) { const r = 3 + ((a * 1.4 + k) % 1) * 14; g.beginPath(); g.arc((p.x + 0.5) * sx, (p.y + 0.5) * sy, r, 0, 7); g.stroke(); }
+        g.fillStyle = p.c; g.beginPath(); g.arc((p.x + 0.5) * sx, (p.y + 0.5) * sy, 3, 0, 7); g.fill();
+      }
+      g.globalAlpha = 1;
     },
 
     update(dt) {
@@ -541,7 +576,7 @@
         this.renderTab(false);
       }
       this.mmt = (this.mmt || 0) + dt;
-      if (this.mmt > 0.5) { this.mmt = 0; this.renderMini(); }
+      if (this.mmt > (this.pings && this.pings.length ? 0.08 : 0.5)) { this.mmt = 0; this.renderMini(); }
       KM.tutorial.update(KM.S, dt);
       this.advT = (this.advT || 0) + dt;
       if (this.advT > 3) { this.advT = 0; this.advise(KM.S); }
