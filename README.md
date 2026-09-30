@@ -40,13 +40,16 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
   - O tamanho dos ataques foi calibrado por dificuldade.
 - **Estatísticas da partida** com gráficos (cidadãos, soldados, casas e recursos ao longo do tempo) e uma tabela por jogador, na tela final e na aba Objetivos.
 - **Mensagens recentes** na aba Objetivos, e a tecla `Z` leva até o último aviso.
+- **Conselheiro 🧙:** avisa quando acaba o ouro (e a Escola para), a pedra ou a madeira com obras esperando, ou quando o povo passa fome. Ele também diz o que construir para resolver.
+- **Balanceamento testado:** um "jogador justo" automático (mesma cidade inicial que você, sem bônus, seguindo a árvore de progressão) vence a IA do Normal em cerca de 2 de 3 partidas. Ele chega ao Quartel aos 3 a 4 minutos. O ouro inicial passou para 40, e soldados parados reagem a inimigos a até 9 casas de distância.
 - **Instalável e offline (PWA):** no Chrome ou Edge, use "Instalar aplicativo" na barra de endereço. Depois de aberto uma vez, funciona sem internet.
 
 ## 🧪 Ferramenta de balanceamento
 `tools/sim.js` simula partidas inteiras sem desenhar nada: 40 minutos de jogo rodam em poucos segundos. Com o jogo aberto, cole no console do navegador:
 ```js
 const s = document.createElement('script'); s.src = 'tools/sim.js'; document.body.appendChild(s);
-KM.sim.bots({ seed: 7, minutes: 40 })   // IA contra IA, registro a cada 5 minutos
+KM.sim.bots({ seed: 7, minutes: 40 })               // IA contra IA, registro a cada 5 minutos
+KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um humano) contra a IA
 ```
 
 ## 🌳 Progressão (como no original)
