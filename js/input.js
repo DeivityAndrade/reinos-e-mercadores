@@ -126,6 +126,7 @@
     init(cv) {
       cv.addEventListener('contextmenu', (e) => e.preventDefault());
       cv.addEventListener('mousedown', (e) => this.down(e));
+      this.initTouch(cv);
       window.addEventListener('mousemove', (e) => this.move(e));
       window.addEventListener('mouseup', (e) => this.up(e));
       cv.addEventListener('wheel', (e) => this.wheel(e), { passive: false });
@@ -135,6 +136,78 @@
       cv.addEventListener('mouseleave', () => { mouse.inside = false; });
       cv.addEventListener('mouseenter', () => { mouse.inside = true; });
       cv.addEventListener('mousemove', () => { mouse.inside = true; });
+    },
+    // ---------- toque (celular e tablet) ----------
+    // 1 dedo: toque = selecionar / construir / ordenar (se há tropas selecionadas); arrastar = mover a câmera
+    //         (com ferramenta de estrada/campo, arrastar desenha); toque longo = seleção por área.
+    // 2 dedos: pinça = zoom, girar = girar a câmera, arrastar = mover.
+    initTouch(cv) {
+      const T = this.tch = { pts: new Map(), mode: null };
+      const fake = (p, btn, extra) => Object.assign({ clientX: p.x, clientY: p.y, button: btn, shiftKey: false, preventDefault() {} }, extra || {});
+      const two = () => { const [a, b] = [...T.pts.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; };
+      cv.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        KM.touchUI = true; document.body.classList.add('touch');
+        for (const t of e.changedTouches) T.pts.set(t.identifier, { x: t.clientX, y: t.clientY, x0: t.clientX, y0: t.clientY, t0: performance.now() });
+        const S = KM.S;
+        if (!S) return;
+        clearTimeout(T.long);
+        if (T.pts.size === 1) {
+          const p = [...T.pts.values()][0], tool = ui().tool;
+          T.mode = 'tap';
+          mouse.x = p.x; mouse.y = p.y; ui().hover = tileAt(p.x, p.y);
+          if (S.editor || tool === 'road' || tool === 'field' || tool === 'vine') { T.mode = 'drag'; this.down(fake(p, 0)); return; }
+          if (tool && tool.build) { T.mode = 'place'; return; }
+          // toque longo: começa uma seleção por área
+          T.long = setTimeout(() => { if (T.mode === 'tap') { T.mode = 'box'; ui().box = { x0: p.x0, y0: p.y0, x1: p.x, y1: p.y }; KM.sfx && KM.sfx('select'); } }, 450);
+        } else if (T.pts.size === 2) {
+          if (T.mode === 'drag') this.up(fake([...T.pts.values()][0], 0));
+          T.mode = 'multi'; T.g = two(); ui().box = null;
+        }
+      }, { passive: false });
+      cv.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (const t of e.changedTouches) { const p = T.pts.get(t.identifier); if (p) { p.px = p.x; p.py = p.y; p.x = t.clientX; p.y = t.clientY; } }
+        if (!KM.S) return;
+        if (T.pts.size >= 2 && T.mode === 'multi') {
+          const g = two();
+          if (T.g.d > 0) KM.R.zoom(T.g.d / Math.max(20, g.d));
+          KM.R.rotate(-(g.ang - T.g.ang));
+          KM.R.panScreen(g.mx - T.g.mx, g.my - T.g.my);
+          T.g = g;
+          return;
+        }
+        const p = [...T.pts.values()][0];
+        if (!p) return;
+        mouse.x = p.x; mouse.y = p.y; ui().hover = tileAt(p.x, p.y);
+        if (T.mode === 'drag') { this.move(fake(p, 0)); return; }
+        if (T.mode === 'place') return;
+        if (T.mode === 'box') { ui().box.x1 = p.x; ui().box.y1 = p.y; return; }
+        if (T.mode === 'tap' && Math.hypot(p.x - p.x0, p.y - p.y0) > 12) { T.mode = 'pan'; clearTimeout(T.long); }
+        if (T.mode === 'pan') KM.R.panScreen(p.x - (p.px == null ? p.x : p.px), p.y - (p.py == null ? p.y : p.py));
+      }, { passive: false });
+      const end = (e) => {
+        e.preventDefault();
+        clearTimeout(T.long);
+        const S = KM.S;
+        const ended = [...e.changedTouches].map((t) => T.pts.get(t.identifier)).filter(Boolean);
+        for (const t of e.changedTouches) T.pts.delete(t.identifier);
+        if (!S || !ended.length) { if (!T.pts.size) T.mode = null; return; }
+        const p = ended[0];
+        if (T.mode === 'drag') { this.up(fake(p, 0)); T.mode = null; return; }
+        if (T.mode === 'place') { this.down(fake(p, 0)); mouse.down = false; T.mode = null; document.body.classList.remove('sb-open'); return; }
+        if (T.mode === 'box') { mouse.down = true; ui().box.x1 = p.x; ui().box.y1 = p.y; this.up(fake(p, 0)); T.mode = null; return; }
+        if (T.mode === 'tap' && !T.pts.size) {
+          // com tropas selecionadas, tocar no chão ou num inimigo dá a ordem; tocar em algo seu seleciona
+          const pk = pick(S, p.x, p.y);
+          const mineHit = pk && ((pk.k === 'u' && pk.u.owner === KM.me) || (pk.k === 'h' && pk.h.owner === KM.me));
+          if (ui().myGroups().length && !ui().tool && !mineHit) { this.down(fake(p, 2)); mouse.down = false; mouse.pan = null; }
+          else { this.down(fake(p, 0)); this.up(fake(p, 0)); }
+        }
+        if (!T.pts.size) T.mode = null;
+      };
+      cv.addEventListener('touchend', end, { passive: false });
+      cv.addEventListener('touchcancel', end, { passive: false });
     },
     down(e) {
       const S = KM.S;

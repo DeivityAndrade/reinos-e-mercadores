@@ -16,6 +16,7 @@
       this.buildTabs();
       $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) this.setTab(b.dataset.tab); });
       $('#tabcontent').addEventListener('click', (e) => this.onTabClick(e));
+      $('#sbtoggle').addEventListener('click', () => document.body.classList.toggle('sb-open'));
       // sliders de volume: aplica ao arrastar e não redesenha a aba no meio do gesto
       $('#tabcontent').addEventListener('input', (e) => { const k = e.target.dataset && e.target.dataset.vol; if (k) { this.sliding = true; KM.setAudio(k, e.target.value / 100); } });
       $('#tabcontent').addEventListener('change', (e) => { if (e.target.dataset && e.target.dataset.vol) { this.sliding = false; if (e.target.dataset.vol !== 'music') KM.sfx('click'); } });
@@ -202,8 +203,8 @@
       if (KM.S && KM.S.editor) { KM.editor.onClick(e); return; }
       const b = e.target.closest('button,input');
       if (!b) return;
-      if (b.dataset.tool) { this.setTool(this.tool === b.dataset.tool ? null : b.dataset.tool); return; }
-      if (b.dataset.build) { this.setTool(this.tool && this.tool.build === b.dataset.build ? null : { build: b.dataset.build }); return; }
+      if (b.dataset.tool) { this.setTool(this.tool === b.dataset.tool ? null : b.dataset.tool); if (KM.touchUI) document.body.classList.remove('sb-open'); return; }
+      if (b.dataset.build) { this.setTool(this.tool && this.tool.build === b.dataset.build ? null : { build: b.dataset.build }); if (KM.touchUI && this.tool) { document.body.classList.remove('sb-open'); this.toast('Toque no mapa onde quer construir.', 'info'); } return; }
       if (b.dataset.locked) { const k = b.dataset.locked; this.toast(`🔒 ${KM.HOUSES[k].n}: construa antes ${KM.reqNames(KM.TECH[k])}.`, 'warn'); KM.sfx && KM.sfx('error'); return; }
       if (b.dataset.act) this.act(b.dataset.act, b, e);
     },

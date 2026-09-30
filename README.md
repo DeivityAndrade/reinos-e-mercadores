@@ -77,6 +77,12 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 - **Tutorial na Conquista:** aparece na fase I para quem ainda não concluiu nem fechou o tutorial.
 - **Desempenho:** as 6 partes do corpo de cada personagem viram uma malha só, e só o corpo projeta sombra. Numa batalha com 209 soldados, o tempo por quadro caiu de 24,6 ms para 14,2 ms.
 
+- **Celular e tablet:**
+  - Toque seleciona; com tropas selecionadas, tocar no chão ou num inimigo dá a ordem.
+  - Arrastar move a câmera, a pinça dá zoom e dois dedos girando giram a câmera.
+  - O toque longo faz seleção por área.
+  - Para construir, escolha a casa no menu ☰ e toque no mapa.
+  - A barra lateral vira um menu retrátil, e o jogo pede para girar o celular na horizontal.
 - **Áudio gravado:**
   - Trilhas medievais de verdade (RandomMind, CC0): músicas calmas na vila, trilha de batalha quando você é atacado e tema de vitória, com transições suaves.
   - Efeitos gravados (Kenney, CC0): machado, golpes de arma, moedas, passos das tropas marchando, panos e couro ao selecionar e dar ordens, metal da forja, rangido de demolição e porta ao concluir obras.
