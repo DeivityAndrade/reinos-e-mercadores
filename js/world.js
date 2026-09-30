@@ -120,7 +120,7 @@
           const ns = KM.SOLDIER_ORDER.filter((t) => KM.soldierUnlocked(S, h.owner, t) && !beforeS.includes(t));
           if (nh.length) KM.notify(S, `🔓 Novas construções liberadas: ${nh.map((t) => KM.HOUSES[t].i + ' ' + KM.HOUSES[t].n).join(', ')}`, 'unlock');
           if (ns.length) KM.notify(S, `🔓 Novos soldados no Quartel: ${ns.map((t) => KM.SOLDIERS[t].i + ' ' + KM.SOLDIERS[t].n).join(', ')}`, 'unlock');
-          if (nh.length || ns.length) { S.newUnlock = (S.newUnlock || 0) + 1; KM.sfx && KM.sfx('win', 0.5); }
+          if (nh.length || ns.length) { S.newUnlock = (S.newUnlock || 0) + 1; KM.sfx && KM.sfx('unlock'); }
         }
       }
     }

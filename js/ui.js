@@ -16,6 +16,10 @@
       this.buildTabs();
       $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) this.setTab(b.dataset.tab); });
       $('#tabcontent').addEventListener('click', (e) => this.onTabClick(e));
+      // sliders de volume: aplica ao arrastar e não redesenha a aba no meio do gesto
+      $('#tabcontent').addEventListener('input', (e) => { const k = e.target.dataset && e.target.dataset.vol; if (k) { this.sliding = true; KM.setAudio(k, e.target.value / 100); } });
+      $('#tabcontent').addEventListener('change', (e) => { if (e.target.dataset && e.target.dataset.vol) { this.sliding = false; if (e.target.dataset.vol !== 'music') KM.sfx('click'); } });
+      try { KM.edgeScroll = localStorage.getItem('rm_edge') !== '0'; } catch (e) { /* ok */ }
       $('#selpanel').addEventListener('click', (e) => this.onPanelClick(e));
       $('#topbar').addEventListener('click', (e) => {
         const b = e.target.closest('[data-speed]'); if (b) this.setSpeed(+b.dataset.speed);
@@ -139,9 +143,20 @@
           <div class="mgrid">
             <button class="mbtn" data-act="pause">${S.paused ? '▶️ Continuar' : '⏸️ Pausar'} <kbd>P</kbd></button>
             <button class="mbtn" data-act="grid">${KM.R.showGrid ? '▦ Ocultar grade' : '▦ Mostrar grade'} <kbd>G</kbd></button>
+            <button class="mbtn" data-act="help">❓ Como jogar <kbd>F1</kbd></button>
+          </div>
+          <h4>Opções</h4>
+          <div class="opts">
+            <label><span>🔊 Volume geral</span><input type="range" min="0" max="100" data-vol="master" value="${Math.round(KM.audioCfg.master * 100)}"></label>
+            <label><span>🎵 Música</span><input type="range" min="0" max="100" data-vol="music" value="${Math.round(KM.audioCfg.music * 100)}"></label>
+            <label><span>🔨 Efeitos</span><input type="range" min="0" max="100" data-vol="sfx" value="${Math.round(KM.audioCfg.sfx * 100)}"></label>
+          </div>
+          <div class="mgrid">
             <button class="mbtn" data-act="sound">${KM.audioOn ? '🔊 Efeitos ligados' : '🔈 Efeitos desligados'}</button>
             <button class="mbtn" data-act="music">${KM.musicOn ? '🎵 Música ligada' : '🎵 Música desligada'} <kbd>M</kbd></button>
-            <button class="mbtn" data-act="help">❓ Como jogar <kbd>F1</kbd></button>
+            <button class="mbtn" data-act="voices" data-tip="Os soldados respondem às ordens com voz sintetizada do navegador">${KM.audioCfg.voices ? '🗣️ Vozes ligadas' : '🗣️ Vozes desligadas'}</button>
+            <button class="mbtn" data-act="gfx" data-tip="Alta: sombras nítidas e grama · Média: sombras simples · Baixa: sem sombras nem grama (PCs fracos)">🖥️ Gráficos: ${{ high: 'alta', medium: 'média', low: 'baixa' }[KM.R.gfx]}</button>
+            <button class="mbtn" data-act="edge">${KM.edgeScroll !== false ? '🖱️ Rolar pela borda: sim' : '🖱️ Rolar pela borda: não'}</button>
           </div>
           ${S.mp ? '<div class="muted">Salvar não está disponível no multijogador.</div>' : `<h4>Salvar / Carregar</h4>
           ${[1, 2, 3].map((s) => { const meta = KM.saveMeta(s); return `<div class="slot"><div><b>Espaço ${s}</b><br><small>${meta ? `${esc(meta.name || '')} · ${KM.fmtTime(meta.time)} · ${new Date(meta.date).toLocaleString('pt-BR')}` : 'vazio'}</small></div><button data-act="save:${s}">💾</button><button data-act="load:${s}" ${meta ? '' : 'disabled'}>📂</button></div>`; }).join('')}
@@ -150,6 +165,7 @@
           ${S.mission ? '<button class="mbtn wide" data-act="restart">🔄 Reiniciar missão</button>' : ''}
           <button class="mbtn wide danger" data-act="quit">🏠 Voltar ao menu principal</button>`;
       }
+      if (this.sliding && !force) return;
       if (html !== this.lastTabHtml || force) { $('#tabcontent').innerHTML = html; this.lastTabHtml = html; }
       this.lastTab = this.tab;
     },
@@ -190,7 +206,10 @@
       if (k === 'dist') { KM.issue({ c: 'dist', r: v, t: w, v: S.players[ME()].dist[v][w] + +z }); setTimeout(() => this.renderTab(true), 120); return; }
       if (k === 'pause') this.setSpeed(0);
       if (k === 'grid') { KM.R.showGrid = !KM.R.showGrid; this.renderTab(true); }
-      if (k === 'sound') { KM.audioOn = !KM.audioOn; this.renderTab(true); }
+      if (k === 'sound') { KM.toggleSfx(); this.renderTab(true); }
+      if (k === 'voices') { KM.setAudio('voices', !KM.audioCfg.voices); this.renderTab(true); if (KM.audioCfg.voices) KM.voice('select'); }
+      if (k === 'gfx') { KM.R.setGfx({ high: 'medium', medium: 'low', low: 'high' }[KM.R.gfx]); this.renderTab(true); }
+      if (k === 'edge') { KM.edgeScroll = KM.edgeScroll === false; try { localStorage.setItem('rm_edge', KM.edgeScroll ? '1' : '0'); } catch (e) { /* ok */ } this.renderTab(true); }
       if (k === 'music') { this.toggleMusic(); this.renderTab(true); }
       if (k === 'help') this.showHelp(true);
       if (k === 'brief') { if (!S.mp) S.paused = true; this.showBriefing(S); }
@@ -210,7 +229,10 @@
     clearSel() { this.selHouse = 0; this.selUnits = []; this.selGroups = []; this.selSet = new Set(); this.lastPanel = null; },
     selectHouse(id) { this.clearSel(); this.selHouse = id; },
     selectUnits(list) { this.clearSel(); this.selUnits = list.map((u) => u.id); this.refreshSelSet(); },
-    selectGroups(gids) { this.clearSel(); this.selGroups = [...new Set(gids)]; this.refreshSelSet(); },
+    selectGroups(gids) {
+      this.clearSel(); this.selGroups = [...new Set(gids)]; this.refreshSelSet();
+      if (this.myGroups().length) { KM.sfx && KM.sfx('select'); KM.voice && KM.voice('select'); }
+    },
     refreshSelSet() {
       const S = KM.S, s = new Set(this.selUnits);
       for (const gid of this.selGroups) { const g = S && S.army[gid]; if (g) for (const id of g.m) s.add(id); }

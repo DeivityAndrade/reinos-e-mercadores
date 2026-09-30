@@ -100,7 +100,7 @@
       r.outputColorSpace = THREE.SRGBColorSpace;
       r.toneMapping = THREE.ACESFilmicToneMapping;
       r.toneMappingExposure = 1.0;
-      r.shadowMap.enabled = true;
+      r.shadowMap.enabled = this.gfx !== 'low';
       r.shadowMap.type = THREE.PCFSoftShadowMap;
       const sc = this.scene = new THREE.Scene();
       const sky = new THREE.Color('#86bfe3');
@@ -111,7 +111,7 @@
       sc.add(hemi);
       const sun = this.sun = new THREE.DirectionalLight('#fff0d2', 2.3);
       sun.castShadow = true;
-      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.mapSize.set(this.gfx === 'high' ? 2048 : 1024, this.gfx === 'high' ? 2048 : 1024);
       const sh = sun.shadow.camera;
       sh.left = -26; sh.right = 26; sh.top = 26; sh.bottom = -26; sh.near = 1; sh.far = 120;
       sun.shadow.bias = -0.0004;
@@ -121,9 +121,28 @@
       this.loader = new THREE.GLTFLoader();
       this.ray = new THREE.Raycaster();
     },
+    // qualidade gráfica: alta / média / baixa (sombras, resolução e grama)
+    gfx: (() => { try { return localStorage.getItem('rm_gfx') || 'high'; } catch (e) { return 'high'; } })(),
+    setGfx(q) {
+      this.gfx = q;
+      try { localStorage.setItem('rm_gfx', q); } catch (e) { /* ok */ }
+      this.applyGfx();
+      if (this.S && this.built) this.objDirty = true;
+    },
+    applyGfx() {
+      const r = this.renderer;
+      if (!r) return;
+      const q = this.gfx;
+      r.shadowMap.enabled = q !== 'low';
+      const ms = q === 'high' ? 2048 : 1024;
+      if (this.sun.shadow.mapSize.x !== ms) { this.sun.shadow.mapSize.set(ms, ms); if (this.sun.shadow.map) { this.sun.shadow.map.dispose(); this.sun.shadow.map = null; } }
+      this.scene.traverse((o) => { if (o.material) { const ms2 = Array.isArray(o.material) ? o.material : [o.material]; ms2.forEach((m) => { m.needsUpdate = true; }); } });
+      this.resize();
+    },
     resize() {
       this.vw = innerWidth; this.vh = innerHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (this.renderer) this.renderer.setPixelRatio(this.gfx === 'high' ? dpr : this.gfx === 'medium' ? Math.min(dpr, 1.25) : 1);
       this.ov.width = Math.floor(innerWidth * dpr); this.ov.height = Math.floor(innerHeight * dpr);
       this.ov.style.width = innerWidth + 'px'; this.ov.style.height = innerHeight + 'px';
       this.odpr = dpr;
@@ -548,7 +567,7 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           }
         }
         // grama alta e flores em campo aberto
-        if (m.terrain[i] === 0 && !m.house[i] && !m.road[i] && !m.field[i] && !m.stone[i]) {
+        if (this.gfx !== 'low' && m.terrain[i] === 0 && !m.house[i] && !m.road[i] && !m.field[i] && !m.stone[i]) {
           const hk = KM.hash(tx, ty, 60);
           const nt = hk < 0.35 ? 0 : hk < 0.8 ? 1 : 2;
           for (let k = 0; k < nt; k++) {

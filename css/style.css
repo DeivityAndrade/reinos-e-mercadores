@@ -339,3 +339,8 @@ body.editing #tabs { display: none; }
 @keyframes tutbob { 50% { margin-top: -10px; } }
 .tut-hl { position: relative; z-index: 2; outline: 3px solid #ffe066 !important; outline-offset: 1px; animation: tutglow 1s ease-in-out infinite; }
 @keyframes tutglow { 50% { outline-color: rgba(255,224,102,0.25); box-shadow: 0 0 18px rgba(255,210,80,0.8); } }
+
+/* ---------- opções ---------- */
+.opts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.opts label { display: grid; grid-template-columns: 118px 1fr; align-items: center; gap: 8px; font-size: 13.5px; }
+.opts input[type=range] { width: 100%; accent-color: var(--gold); cursor: pointer; }

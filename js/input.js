@@ -87,6 +87,7 @@
       S.fx.push({ k: 'order', x: t.tx, y: t.ty, t: 0, T: 0.6 });
     }
     KM.sfx && KM.sfx('order');
+    KM.voice && KM.voice(p && (p.k === 'u' || p.k === 'h') && KM.hostile(S, KM.me, p.k === 'u' ? p.u.owner : p.h.owner) ? 'attack' : 'order');
     return true;
   }
 
@@ -257,7 +258,7 @@
       if (keys.arrowright || keys.d) dx += sp;
       if (keys.arrowup || keys.w) dy -= sp;
       if (keys.arrowdown || (keys.s && !sel)) dy += sp;
-      if (mouse.inside && document.hasFocus() && !mouse.down) {
+      if (KM.edgeScroll !== false && mouse.inside && document.hasFocus() && !mouse.down) {
         const e = 4;
         if (mouse.x >= innerWidth - e) dx += sp; if (mouse.y <= e) dy -= sp; if (mouse.y >= innerHeight - e) dy += sp;
       }
