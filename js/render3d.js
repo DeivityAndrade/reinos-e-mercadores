@@ -259,15 +259,17 @@
         ore1: { geo: N.ore1, mat: rockM }, ore2: { geo: N.ore2, mat: rockM }, ore3: { geo: N.ore3, mat: rockM },
         grain: { geo: N.grain, mat: wheatWind }, grainG: { geo: N.grainG, mat: wheatWind },
       };
-      // corpo dos personagens: as 6 partes (mesmo esqueleto) fundidas numa malha só, 1 desenho em vez de 6
-      this.bodyGeo = {};
-      for (const k of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded']) {
+      // esqueleto de referência (posição de cada osso na pose de ligação) para os personagens próprios
+      this.rig = {};
+      for (const k of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded', 'horse', 'pig']) {
         const g = this.gltf[k];
         if (!g) continue;
-        const parts = [];
-        g.scene.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
-        const merged = parts.length > 1 && THREE.BufferGeometryUtils.mergeGeometries(parts.map((p) => p.geometry), false);
-        if (merged) this.bodyGeo[k] = merged;
+        let sk = null;
+        g.scene.traverse((o) => { if (o.isSkinnedMesh && !sk) sk = o.skeleton; });
+        if (!sk) continue;
+        const idx = {}, P = {};
+        sk.bones.forEach((b, i) => { idx[b.name] = i; P[b.name] = new THREE.Vector3().setFromMatrixPosition(sk.boneInverses[i].clone().invert()); });
+        this.rig[k] = { idx, P };
       }
       // altura de referência dos personagens
       this.charH = this.proto.Knight ? this.proto.Knight.size.y : 2.4;
@@ -833,6 +835,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           for (let i = 0; i < n; i++) {
             const o = this.model(kind), p = this.proto[kind];
             if (!p) break;
+            this.ownAnimal(o, kind, null);
             o.scale.setScalar(kind === 'pig' ? 0.3 / Math.max(0.01, p.size.x) : 0.85 / Math.max(0.01, p.size.z));
             o.position.set(pen[0] + (i - (n - 1) / 2) * 0.28, 0, pen[1] + (i % 2) * 0.12);
             o.rotation.y = KM.hash(h.id, i, 3) * 6.28;
@@ -862,12 +865,25 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     },
 
     // ---------- unidades ----------
+    // troca as malhas de um animal clonado (cavalo/porco) pela versão própria, mantendo esqueleto e animações
+    ownAnimal(obj, kind, owner) {
+      const inner = obj.userData.inner || obj;
+      const parts = [];
+      inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
+      if (!parts.length || !this.rig[kind]) return;
+      const p0 = parts[0];
+      const m = new THREE.SkinnedMesh(KM.ART.animal(kind, this.rig[kind], owner), KM.ART.charMat());
+      m.castShadow = true; m.name = 'body';
+      p0.parent.add(m);
+      m.bind(p0.skeleton, p0.bindMatrix);
+      for (const p of parts) p.parent.remove(p);
+    },
     buildUnit(S, u) {
       const cfg = CHAR[u.type] || CHAR.serf;
       const root = new THREE.Group();
       const body = this.model(cfg.m);
       const inner = body.userData.inner;
-      const scale = 0.52 / this.charH;
+      const scale = 0.52 / 2.0;
       body.scale.setScalar(scale);
       const vis = { root, body, cfg, mixer: new THREE.AnimationMixer(inner), actions: {}, cur: null, yaw: 0 };
       const team = new THREE.Color(KM.pcolor(S, u.owner));
@@ -880,19 +896,19 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (/Cape/.test(n)) { o.material = o.material.clone(); o.material.color = team.clone().multiplyScalar(1.05); }
         o.castShadow = false;
       });
-      // troca as 6 partes do corpo pela malha fundida (mesmo esqueleto e mesma ligação)
-      const parts = [];
-      inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
-      if (this.bodyGeo[cfg.m] && parts.length > 1) {
+      // personagem próprio: uma malha gerada (corpo, roupa, chapéu, armas) presa ao mesmo esqueleto das animações
+      const parts = [], extras = [];
+      inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); else if (o.isMesh) extras.push(o); });
+      if (this.rig[cfg.m] && parts.length) {
         const p0 = parts[0];
-        const body1 = new THREE.SkinnedMesh(this.bodyGeo[cfg.m], p0.material);
-        body1.name = 'body';
-        body1.castShadow = true;
-        p0.parent.add(body1);
-        body1.bind(p0.skeleton, p0.bindMatrix);
-        for (const p of parts) p.parent.remove(p);
+        const own = new THREE.SkinnedMesh(KM.ART.character(u.type, u.owner, this.rig[cfg.m]), KM.ART.charMat());
+        own.name = 'body'; own.castShadow = true;
+        p0.parent.add(own);
+        own.bind(p0.skeleton, p0.bindMatrix);
+        for (const p of parts.concat(extras)) p.parent.remove(p);
+        vis.own = true;
       } else for (const p of parts) p.castShadow = true;
-      if (cfg.spear && hand) {
+      if (cfg.spear && hand && !vis.own) {
         const sp = new THREE.Group();
         const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, cfg.spear / scale * 0.6, 6), KM.ART.toonify(new THREE.MeshStandardMaterial({ color: '#7a5230' })));
         const tip = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.35, 6), KM.ART.toonify(new THREE.MeshStandardMaterial({ color: '#cfd6de' })));
@@ -903,6 +919,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       }
       if (cfg.horse) {
         const horse = this.model('horse');
+        this.ownAnimal(horse, 'horse', u.type === 'knight' ? u.owner : null);
         const hp = this.proto.horse;
         const hs = 1.2 / Math.max(hp.size.x, hp.size.z);
         body.scale.multiplyScalar(0.9);
@@ -912,7 +929,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         vis.hmixer = new THREE.AnimationMixer(horse.userData.inner);
         vis.hactions = {};
         for (const a of hp.anims) vis.hactions[a.name.replace(/^.*\|/, '')] = vis.hmixer.clipAction(a);
-        body.position.y = hp.size.y * hs * 0.62;
+        body.position.y = hp.size.y * hs * 0.66;
         body.position.z = -0.05;
       }
       root.add(body);
@@ -979,10 +996,11 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       if (vis.carryObj) { vis.root.remove(vis.carryObj); vis.carryObj = null; }
       vis.carryRes = res;
       if (!res) return;
-      const k = CARRY[res] || (KM.FOOD[res] ? 'sack' : 'crate_A_small');
-      const o = this.model(k);
-      o.scale.setScalar(k === 'resource_lumber' ? 0.32 : k === 'resource_stone' ? 0.42 : 0.3);
-      o.position.set(0, 0.6, -0.02);
+      // itens próprios: troncos, tábuas, pedra, saco ou caixote, levados no ombro
+      const k = res === 'trunk' ? 'logs' : res === 'wood' ? 'planks' : res === 'stone' ? 'stone' : (KM.FOOD[res] || ['corn', 'flour', 'skin', 'leather', 'coal', 'ironore', 'goldore'].includes(res)) ? 'sack' : 'crate';
+      const o = KM.ART.carry(k);
+      o.scale.setScalar(0.62);
+      o.position.set(0, 0.36, -0.06);
       vis.root.add(o);
       vis.carryObj = o;
     },

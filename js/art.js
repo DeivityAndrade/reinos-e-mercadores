@@ -889,6 +889,243 @@
     return ruinCache[key].clone(true);
   };
 
+  // ================= personagens próprios =================
+  // Corpo facetado gerado por peças rígidas presas aos ossos do esqueleto (reaproveita todas as animações).
+  // Tudo (corpo, roupa, chapéu, armas, escudo) vira UMA malha com cor por vértice: 1 desenho por unidade.
+  const SKIN = ['#e8b894', '#c98e66', '#a46a45', '#f0c8a8'];
+  const CH = {
+    serf: { tunic: '#8a6a44', pants: '#5a4632', hat: 'hood', hatC: '#b89a6a', belt: 1 },
+    laborer: { tunic: '#5f7289', pants: '#4a3c2c', hat: 'cap', hatC: '#7a5a3a', apron: '#8a5a34', beard: '#5a3a22' },
+    woodcutter: { tunic: '#4f7a3a', pants: '#4a3c2c', hat: 'hood', hatC: '#6a4a2a', weapon: 'axe2', beard: '#7a4a22' },
+    stonemason: { tunic: '#8c8a84', pants: '#4a4640', hat: 'band', hatC: '#c0a878', weapon: 'hammer' },
+    farmer: { tunic: '#c9b27a', pants: '#6a5638', hat: 'straw', hatC: '#e0c060', weapon: 'sickle' },
+    carpenter: { tunic: '#a0703a', pants: '#4a3c2c', hat: 'cap', hatC: '#5a4028', apron: '#6a4a2a', weapon: 'hammer' },
+    miner: { tunic: '#4a4a5a', pants: '#3a3430', hat: 'minerhelm', hatC: '#6a6a6a', weapon: 'pick', beard: '#3a2a1a' },
+    breeder: { tunic: '#b87a5a', pants: '#5a4632', hat: 'straw', hatC: '#c8a860' },
+    fisher: { tunic: '#3f7aa0', pants: '#4a4a3a', hat: 'cap', hatC: '#2f4f6a', beard: '#8a8a80' },
+    metallurgist: { tunic: '#9a4a2a', pants: '#3a3028', hat: 'none', hair: '#3a2a1a', apron: '#4a3020', weapon: 'hammer' },
+    smith: { tunic: '#4a4a4a', pants: '#2e2a26', hat: 'none', hair: '#1a1410', apron: '#2a2220', weapon: 'hammer', beard: '#2a1a10' },
+    baker: { tunic: '#efe6d2', pants: '#8a7a60', hat: 'chef', hatC: '#fbf8f0', apron: '#fbf8f0' },
+    butcher: { tunic: '#b04a3a', pants: '#4a3c2c', hat: 'none', hair: '#6a3a1a', apron: '#e8e0d0', weapon: 'cleaver' },
+    recruit: { tunic: 'team', pants: '#4a4032', hat: 'none', hair: '#5a3a1a' },
+    militia: { tunic: 'team', pants: '#4a4032', hat: 'cap', hatC: '#6a4a2a', weapon: 'axe1' },
+    axeman: { tunic: '#7a5a3a', tabard: 1, pants: '#4a4032', hat: 'nasal', weapon: 'axe1', shield: 'round' },
+    swordsman: { tunic: '#9aa0a8', mail: 1, tabard: 1, pants: '#5a5a60', hat: 'greathelm', weapon: 'sword', shield: 'kite' },
+    bowman: { tunic: '#5a6a3a', pants: '#4a4032', hat: 'hood', hatC: 'team', weapon: 'bow', belt: 1 },
+    crossbowman: { tunic: '#9aa0a8', mail: 1, tabard: 1, pants: '#5a5a60', hat: 'kettle', weapon: 'crossbow' },
+    lancer: { tunic: '#7a5a3a', tabard: 1, pants: '#4a4032', hat: 'nasal', weapon: 'spear', shield: 'round' },
+    pikeman: { tunic: '#9aa0a8', mail: 1, tabard: 1, pants: '#5a5a60', hat: 'kettle', weapon: 'pike' },
+    scout: { tunic: '#6a5a3a', pants: '#4a4032', hat: 'hood', hatC: 'team', weapon: 'axe1', cape: 1 },
+    knight: { tunic: '#b8bec6', mail: 1, tabard: 1, pants: '#8a9098', hat: 'greathelm', plume: 1, weapon: 'sword', shield: 'kite', cape: 1 },
+  };
+  A.CHAR_TYPES = Object.keys(CH);
+  const charCache = {};
+  A.character = function (type, owner, rig) {
+    const key = type + ':' + owner;
+    if (charCache[key]) return charCache[key];
+    const sp = CH[type] || CH.serf;
+    const team = lin(KM.COLORS[owner] || '#888888');
+    const C = (hex) => (hex === 'team' ? team : lin(hex));
+    const skin = lin(SKIN[(KM.hash(type.length, owner, 3) * SKIN.length) | 0] || SKIN[0]);
+    const P = rig.P, parts = [];
+    // peça rígida: geometria em espaço de ligação, presa a um osso, com cor facetada
+    const put = (g, col, bone, jitter) => {
+      g = g.index ? g.toNonIndexed() : g;
+      if (g.attributes.uv) g.deleteAttribute('uv');
+      const n = g.attributes.position.count, c = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+      const bi = rig.idx[bone] != null ? rig.idx[bone] : 0;
+      for (let i = 0; i < n; i += 3) {
+        const k = 1 + (H(i, bi, 71) - 0.5) * (jitter == null ? 0.14 : jitter);
+        for (let j = 0; j < 3; j++) { c[(i + j) * 3] = col[0] * k; c[(i + j) * 3 + 1] = col[1] * k; c[(i + j) * 3 + 2] = col[2] * k; }
+      }
+      for (let i = 0; i < n; i++) { si[i * 4] = bi; sw[i * 4] = 1; }
+      g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+      g.computeVertexNormals();
+      parts.push(g);
+    };
+    const at = (g, p) => g.translate(p.x, p.y, p.z);
+    // segmento (cilindro) entre dois pontos
+    const seg = (a, b, r0, r1, sides) => {
+      const d = new THREE.Vector3().subVectors(b, a), L = d.length();
+      const g = new THREE.CylinderGeometry(r1, r0, L, sides || 6).translate(0, L / 2, 0);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()));
+      return at(g, a);
+    };
+    const v = (x, y, z) => new THREE.Vector3(x, y, z);
+    const tunic = C(sp.tunic), pants = C(sp.pants), boot = lin('#3a2a1e'), dark = lin('#1a1410');
+    // pernas e botas
+    for (const s of ['l', 'r']) {
+      put(seg(P['upperleg' + s], P['lowerleg' + s], 0.085, 0.07), pants, 'upperleg' + s);
+      put(seg(P['lowerleg' + s], P['foot' + s], 0.07, 0.06), pants, 'lowerleg' + s);
+      put(at(new THREE.BoxGeometry(0.13, 0.12, 0.24), v(P['foot' + s].x, 0.06, P['foot' + s].z + 0.04)), boot, 'foot' + s);
+      put(seg(v(P['lowerleg' + s].x, P['lowerleg' + s].y - 0.02, 0), v(P['foot' + s].x, 0.12, 0), 0.075, 0.075), boot, 'lowerleg' + s);
+    }
+    // quadril e tronco (túnica ou cota de malha)
+    const body = sp.mail ? lin('#8a9098') : tunic;
+    put(at(new THREE.BoxGeometry(0.36, 0.16, 0.22), v(0, 0.46, 0)), pants, 'hips');
+    put(seg(v(0, 0.44, 0), v(0, 0.82, 0), 0.2, 0.2, 8), body, 'spine');
+    put(seg(v(0, 0.8, 0), v(0, 1.2, 0), 0.21, 0.19, 8), body, 'chest');
+    // saia da túnica
+    if (!sp.mail) put(seg(v(0, 0.3, 0), v(0, 0.56, 0), 0.25, 0.2, 8), tunic, 'hips');
+    else put(seg(v(0, 0.3, 0), v(0, 0.56, 0), 0.24, 0.2, 8), lin('#7a8088'), 'hips');
+    if (sp.tabard) { put(at(new THREE.BoxGeometry(0.3, 0.7, 0.03), v(0, 0.72, 0.205)), team, 'chest'); put(at(new THREE.BoxGeometry(0.3, 0.7, 0.03), v(0, 0.72, -0.205)), team, 'chest'); put(at(new THREE.BoxGeometry(0.12, 0.12, 0.035), v(0, 0.95, 0.21)), lin('#f0d060'), 'chest', 0); }
+    if (sp.apron) put(at(new THREE.BoxGeometry(0.3, 0.5, 0.03), v(0, 0.6, 0.215)), C(sp.apron), 'spine');
+    if (sp.belt || sp.tabard || sp.apron) put(seg(v(0, 0.55, 0), v(0, 0.6, 0), 0.215, 0.215, 8), lin('#4a3020'), 'spine', 0.05);
+    if (sp.cape) put(at(new THREE.BoxGeometry(0.4, 0.75, 0.03), v(0, 0.8, -0.23)), team, 'chest');
+    // braços e mãos
+    for (const s of ['l', 'r']) {
+      const sl = sp.mail ? lin('#8a9098') : tunic;
+      put(at(new THREE.IcosahedronGeometry(0.09, 0), P['upperarm' + s]), sl, 'upperarm' + s);
+      put(seg(P['upperarm' + s], P['lowerarm' + s], 0.07, 0.06), sl, 'upperarm' + s);
+      put(seg(P['lowerarm' + s], P['wrist' + s], 0.058, 0.05), sp.mail ? lin('#6a6a70') : skin, 'lowerarm' + s);
+      put(at(new THREE.BoxGeometry(0.1, 0.1, 0.09), P['hand' + s]), skin, 'hand' + s);
+    }
+    // pescoço e cabeça
+    put(seg(v(0, 1.18, 0), v(0, 1.28, 0), 0.07, 0.07), skin, 'head');
+    const hc = v(0, 1.43, 0.01);
+    put(at(lumpy(new THREE.IcosahedronGeometry(0.17, 1), 0.06, 5).scale(1, 1.08, 1), hc), skin, 'head', 0.08);
+    put(at(new THREE.ConeGeometry(0.03, 0.07, 4).rotateX(PI / 2), v(0, 1.42, 0.19)), skin, 'head', 0);
+    for (const s of [-1, 1]) put(at(new THREE.BoxGeometry(0.035, 0.035, 0.02), v(s * 0.06, 1.47, 0.16)), dark, 'head', 0);
+    if (sp.beard) put(at(new THREE.ConeGeometry(0.1, 0.16, 6).rotateX(PI), v(0, 1.3, 0.1)), lin(sp.beard), 'head');
+    // cabelo e chapéus
+    const hat = sp.hat || 'none', hcol = sp.hatC ? C(sp.hatC) : lin('#5a3a1a');
+    if (hat === 'none') put(at(new THREE.SphereGeometry(0.175, 8, 4, 0, PI * 2, 0, PI / 2), v(0, 1.46, -0.01)), lin(sp.hair || '#5a3a1a'), 'head');
+    if (hat === 'hood') { put(at(new THREE.SphereGeometry(0.2, 8, 5, 0, PI * 2, 0, PI * 0.62), v(0, 1.44, -0.03)), hcol, 'head'); put(at(new THREE.ConeGeometry(0.1, 0.18, 6).rotateX(-0.9), v(0, 1.55, -0.16)), hcol, 'head'); put(seg(v(0, 1.2, 0), v(0, 1.3, 0), 0.23, 0.17, 8), hcol, 'chest'); }
+    if (hat === 'cap') { put(at(new THREE.SphereGeometry(0.185, 8, 4, 0, PI * 2, 0, PI / 2), v(0, 1.48, 0)), hcol, 'head'); put(at(new THREE.BoxGeometry(0.2, 0.02, 0.1), v(0, 1.5, 0.17)), hcol, 'head'); }
+    if (hat === 'band') { put(at(new THREE.SphereGeometry(0.175, 8, 4, 0, PI * 2, 0, PI / 2), v(0, 1.46, -0.01)), lin('#6a4a2a'), 'head'); put(seg(v(0, 1.47, 0.01), v(0, 1.52, 0.01), 0.18, 0.18, 8), hcol, 'head'); }
+    if (hat === 'straw') { put(seg(v(0, 1.53, 0), v(0, 1.56, 0), 0.34, 0.3, 10), hcol, 'head'); put(at(new THREE.ConeGeometry(0.17, 0.16, 10).translate(0, 0.08, 0), v(0, 1.55, 0)), hcol, 'head'); }
+    if (hat === 'chef') { put(seg(v(0, 1.52, 0), v(0, 1.78, 0), 0.16, 0.19, 8), hcol, 'head'); }
+    if (hat === 'minerhelm') { put(at(new THREE.SphereGeometry(0.19, 8, 4, 0, PI * 2, 0, PI / 2), v(0, 1.47, 0)), hcol, 'head'); put(at(new THREE.BoxGeometry(0.06, 0.05, 0.03), v(0, 1.56, 0.17)), lin('#ffd24a'), 'head', 0); }
+    if (hat === 'nasal') { put(at(new THREE.ConeGeometry(0.19, 0.22, 8).translate(0, 0.11, 0), v(0, 1.46, 0)), lin('#8a9098'), 'head'); put(at(new THREE.BoxGeometry(0.025, 0.12, 0.03), v(0, 1.44, 0.18)), lin('#8a9098'), 'head', 0); }
+    if (hat === 'kettle') { put(at(new THREE.SphereGeometry(0.19, 8, 4, 0, PI * 2, 0, PI / 2), v(0, 1.47, 0)), lin('#8a9098'), 'head'); put(seg(v(0, 1.47, 0), v(0, 1.49, 0), 0.3, 0.27, 10), lin('#7a8088'), 'head'); }
+    if (hat === 'greathelm') {
+      put(seg(v(0, 1.26, 0.01), v(0, 1.62, 0.01), 0.2, 0.2, 8), lin('#9aa0a8'), 'head');
+      put(at(new THREE.BoxGeometry(0.22, 0.025, 0.02), v(0, 1.45, 0.205)), dark, 'head', 0);
+      put(at(new THREE.BoxGeometry(0.03, 0.2, 0.02), v(0, 1.4, 0.205)), dark, 'head', 0);
+      if (sp.plume) put(at(new THREE.ConeGeometry(0.06, 0.28, 5).rotateX(-0.5), v(0, 1.72, -0.05)), team, 'head');
+    }
+    // armas (encaixe da mão direita aponta para +z na pose de ligação)
+    const R = P.handslotr, Lh = P.handslotl, wood = lin('#6a4a2e'), steel = lin('#c8ced6'), iron = lin('#5a5e66');
+    const w = sp.weapon;
+    const along = (z0, z1, r, col, dx, dy) => put(seg(v(R.x + (dx || 0), R.y + (dy || 0), R.z + z0), v(R.x + (dx || 0), R.y + (dy || 0), R.z + z1), r, r, 5), col, 'handslotr', 0.05);
+    const boxR = (sx, sy, sz, x, y, z, col) => put(at(new THREE.BoxGeometry(sx, sy, sz), v(R.x + x, R.y + y, R.z + z)), col, 'handslotr', 0.05);
+    if (w === 'axe1' || w === 'axe2') { const L = w === 'axe2' ? 1.1 : 0.75; along(-0.12, L, 0.025, wood); boxR(0.22, 0.04, 0.2, -0.1, 0, L - 0.1, steel); }
+    if (w === 'hammer') { along(-0.1, 0.55, 0.022, wood); boxR(0.1, 0.1, 0.16, 0, 0, 0.55, iron); }
+    if (w === 'pick') { along(-0.1, 0.65, 0.022, wood); boxR(0.4, 0.04, 0.05, 0, 0, 0.62, iron); }
+    if (w === 'sickle') { along(-0.08, 0.2, 0.02, wood); put(at(new THREE.TorusGeometry(0.14, 0.015, 3, 8, PI), v(R.x - 0.14, R.y, R.z + 0.2)).rotateX(0), steel, 'handslotr', 0); }
+    if (w === 'cleaver') { along(-0.08, 0.15, 0.022, wood); boxR(0.14, 0.02, 0.22, -0.05, 0, 0.26, steel); }
+    if (w === 'sword') { along(-0.2, 0.05, 0.025, lin('#4a3020')); boxR(0.26, 0.04, 0.04, 0, 0, 0.06, iron); boxR(0.08, 0.02, 0.85, 0, 0, 0.5, steel); }
+    if (w === 'spear' || w === 'pike') { const L = w === 'pike' ? 2.2 : 1.5; along(-0.5, L, 0.022, wood); put(at(new THREE.ConeGeometry(0.05, 0.22, 4).rotateX(PI / 2), v(R.x, R.y, R.z + L + 0.1)), steel, 'handslotr', 0); }
+    if (w === 'bow') { put(at(new THREE.TorusGeometry(0.5, 0.02, 3, 10, PI * 0.8).rotateZ(PI * 0.1 + PI / 2), v(R.x + 0.3, R.y, R.z)), wood, 'handslotr', 0); put(seg(v(R.x - 0.02, R.y - 0.47, R.z), v(R.x - 0.02, R.y + 0.47, R.z), 0.006, 0.006, 3), lin('#e8e0c8'), 'handslotr', 0); }
+    if (w === 'crossbow') { put(at(new THREE.BoxGeometry(0.75, 0.07, 0.07), v(R.x - 0.3, R.y, R.z)), wood, 'handslotr'); put(seg(v(R.x - 0.6, R.y - 0.4, R.z), v(R.x - 0.6, R.y + 0.4, R.z), 0.025, 0.025, 4), iron, 'handslotr', 0); }
+    // escudo na mão esquerda (deitado na pose de ligação: normal para +y)
+    if (sp.shield) {
+      const kite = sp.shield === 'kite';
+      const g = kite ? new THREE.CylinderGeometry(0.34, 0.2, 0.04, 6).scale(1, 1, 1.35) : new THREE.CylinderGeometry(0.36, 0.36, 0.04, 10);
+      put(at(g, v(Lh.x, Lh.y + 0.14, Lh.z)), team, 'handslotl', 0.05);
+      put(at(new THREE.CylinderGeometry(kite ? 0.1 : 0.09, kite ? 0.1 : 0.09, 0.05, 8), v(Lh.x, Lh.y + 0.16, Lh.z)), kite ? lin('#f0d060') : iron, 'handslotl', 0);
+    }
+    const geo = merge(parts);
+    geo.computeBoundingSphere();
+    return (charCache[key] = geo);
+  };
+  // animais (cavalo e porco): peças geradas a partir das posições dos ossos, então as proporções vêm do esqueleto
+  const animalCache = {};
+  A.animal = function (kind, rig, owner) {
+    const key = kind + ':' + (owner == null ? '-' : owner);
+    if (animalCache[key]) return animalCache[key];
+    const P = rig.P, parts = [];
+    const put = (g, col, bone, jitter) => {
+      g = g.index ? g.toNonIndexed() : g;
+      if (g.attributes.uv) g.deleteAttribute('uv');
+      const n = g.attributes.position.count, c = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+      const bi = rig.idx[bone] != null ? rig.idx[bone] : 0;
+      for (let i = 0; i < n; i += 3) { const k = 1 + (H(i, bi, 73) - 0.5) * (jitter == null ? 0.12 : jitter); for (let j = 0; j < 3; j++) { c[(i + j) * 3] = col[0] * k; c[(i + j) * 3 + 1] = col[1] * k; c[(i + j) * 3 + 2] = col[2] * k; } }
+      for (let i = 0; i < n; i++) { si[i * 4] = bi; sw[i * 4] = 1; }
+      g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+      g.computeVertexNormals();
+      parts.push(g);
+    };
+    const seg = (a, b, r0, r1, sides) => {
+      const d = new THREE.Vector3().subVectors(b, a), L = Math.max(1e-6, d.length());
+      const g = new THREE.CylinderGeometry(r1, r0, L, sides || 6).translate(0, L / 2, 0);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()));
+      return g.translate(a.x, a.y, a.z);
+    };
+    const ball = (p, r, sx, sy, sz) => new THREE.IcosahedronGeometry(r, 1).scale(sx || 1, sy || 1, sz || 1).translate(p.x, p.y, p.z);
+    const mid = (a, b, t) => new THREE.Vector3().lerpVectors(a, b, t == null ? 0.5 : t);
+    const add = (a, b, s) => new THREE.Vector3().copy(a).addScaledVector(b, s);
+    if (kind === 'horse') {
+      const coat = lin(['#7a4a2a', '#5a3a22', '#d8d0c0', '#3a2a1e'][(owner == null ? 0 : owner) % 4]), dark = lin('#2a1c14'), hoof = lin('#1e1812');
+      const fwd = new THREE.Vector3().subVectors(P.Head, P.Back).setZ(0).normalize(), up = new THREE.Vector3(0, 0, 1);
+      const L = P.Head.distanceTo(P.Back);
+      const rear = add(P.Back, fwd, -0.12 * L), front = mid(P.Torso3, P.Neck1, 0.3);
+      put(ball(mid(rear, P.Torso, 0.5), 0.16 * L, 1, 1.25, 1), coat, 'Back');
+      put(seg(rear, P.Torso2, 0.16 * L, 0.17 * L, 8), coat, 'Back');
+      put(seg(P.Torso2, front, 0.17 * L, 0.16 * L, 8), coat, 'Torso2');
+      put(ball(front, 0.16 * L, 1, 1, 1.05), coat, 'Torso3');
+      put(seg(P.Neck1, P.Head, 0.12 * L, 0.08 * L, 7), coat, 'Neck2');
+      const nose = add(add(P.Head, fwd, 0.22 * L), up, -0.1 * L);
+      put(seg(add(P.Head, up, 0.02 * L), nose, 0.085 * L, 0.06 * L, 7), coat, 'Head');
+      put(seg(add(nose, fwd, -0.02 * L), add(nose, fwd, 0.02 * L), 0.065 * L, 0.06 * L, 7), dark, 'Head', 0.05);
+      for (const s of ['L', 'R']) if (P['Ear4' + s]) put(seg(P['Ear1' + s], P['Ear4' + s], 0.025 * L, 0.004 * L, 4), coat, 'Head');
+      // crina e cauda
+      put(seg(add(P.Neck1, up, 0.1 * L), add(P.Head, up, 0.08 * L), 0.035 * L, 0.03 * L, 4), dark, 'Neck2');
+      if (P.Tail1 && P.Tail7) put(seg(P.Tail1, P.Tail7, 0.05 * L, 0.02 * L, 5), dark, 'Tail3');
+      // pernas
+      for (const [up1, lo, foot] of [['FrontUpperLegL', 'FrontLowerLegL', 'IKFrontLegL'], ['FrontUpperLegR', 'FrontLowerLegR', 'IKFrontLegR'], ['BackUpperLegL', 'BackLowerLegL', 'IKBackLegL'], ['BackUpperLegR', 'BackLowerLegR', 'IKBackLegR']]) {
+        if (!P[up1] || !P[lo]) continue;
+        const f = P[foot] || new THREE.Vector3(P[lo].x, P[lo].y, 0);
+        put(seg(add(P[up1], up, 0.06 * L), P[lo], 0.075 * L, 0.05 * L), coat, up1);
+        put(seg(P[lo], add(f, up, 0.04 * L), 0.04 * L, 0.035 * L), coat, lo);
+        put(seg(f, add(f, up, 0.045 * L), 0.045 * L, 0.04 * L, 6), hoof, lo, 0.05);
+      }
+      // manta (cavalo de guerra) na cor do reino e sela
+      if (owner != null) {
+        const team = lin(KM.COLORS[owner] || '#888888');
+        put(seg(add(rear, up, -0.03 * L), add(front, up, -0.03 * L), 0.19 * L, 0.19 * L, 8), team, 'Torso2');
+        put(ball(add(mid(P.Back, P.Torso2), up, 0.2 * L), 0.09 * L, 1.6, 1.3, 0.6), lin('#5a3a22'), 'Torso2');
+      }
+    } else {
+      // porco
+      const pink = lin('#e8a0a0'), dark = lin('#b86a70');
+      const body = P.Torso || P.Body, hd = P.Head, back = P.Hips || P.Back;
+      const L = hd.distanceTo(back);
+      const fwd = new THREE.Vector3().subVectors(hd, back).setZ(0).normalize(), up = new THREE.Vector3(0, 0, 1);
+      put(seg(add(back, fwd, -0.15 * L), add(P.Shoulders || body, fwd, 0.05 * L), 0.36 * L, 0.34 * L, 8), pink, 'Torso');
+      put(ball(hd, 0.26 * L, 1, 1, 0.95), pink, 'Head');
+      put(seg(add(hd, fwd, 0.2 * L), add(hd, fwd, 0.34 * L), 0.12 * L, 0.11 * L, 7), dark, 'Head', 0.05);
+      for (const s of ['L', 'R']) put(new THREE.ConeGeometry(0.08 * L, 0.16 * L, 4).rotateX(PI / 2).translate(hd.x + (s === 'L' ? 0.12 : -0.12) * L, hd.y - 0.02 * L, hd.z + 0.22 * L), dark, 'Head');
+      for (const [a, b] of [['FrontUpLegL', 'FrontFootL'], ['FrontUpLegR', 'FrontFootR'], ['BackUpLegL', 'BackFootL'], ['BackUpLegR', 'BackFootR']]) if (P[a] && P[b]) put(seg(P[a], P[b], 0.08 * L, 0.07 * L), pink, a.replace('Up', 'Low'));
+    }
+    const geo = merge(parts);
+    geo.computeBoundingSphere();
+    return (animalCache[key] = geo);
+  };
+  A.charMat = function () {
+    if (!A._charMat) A._charMat = toon({ vertexColors: true, flatShading: true });
+    return A._charMat;
+  };
+  // itens carregados nas costas/mãos (troncos, pedra, sacos, caixotes)
+  const carryCache = {};
+  A.carry = function (k) {
+    if (!carryCache[k]) {
+      const b = new Bag();
+      if (k === 'logs') { for (let i = 0; i < 3; i++) b.put('logs', cylG(0.05, 0.05, 0.42, 7).rotateZ(PI / 2).translate(0, 0.05 + (i === 2 ? 0.08 : 0), (i === 2 ? 0 : i - 0.5) * 0.1), 0, 0, 0); }
+      else if (k === 'planks') { for (let i = 0; i < 3; i++) K.box(b, 'planks', 0.45, 0.03, 0.12, 0, i * 0.035, 0); }
+      else if (k === 'stone') K.box(b, 'stone', 0.2, 0.15, 0.16, 0, 0, 0);
+      else if (k === 'sack') K.sack(b, 0, 0, 1.2);
+      else K.crate(b, 0, 0, 1);
+      carryCache[k] = b.build();
+      carryCache[k].traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    }
+    return carryCache[k].clone(true);
+  };
+
   // ================= natureza (geometrias com cor por vértice, para instanciar) =================
   function colorize(g, fn) {
     g = g.index ? g.toNonIndexed() : g;

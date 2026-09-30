@@ -111,6 +111,7 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 - **Até 4 jogadores por mapa, com times e aliados. Névoa de guerra.**
 
 ## 🎨 Direção de arte própria: "vila medieval ilustrada"
+- **Personagens próprios:** 23 tipos (carregador, construtor, lenhador, padeiro com chapéu de cozinheiro, ferreiro de avental, soldados de tabardo na cor do reino, espadachins de cota de malha, cavaleiros de elmo com pluma…), com as armas de cada ofício e escudos. Cada personagem é **uma única malha** facetada, com 1 desenho por unidade. Os cavalos também são próprios, e os dos cavaleiros levam manta na cor do reino.
 - **Construções feitas pelo próprio jogo** (`js/art.js`), sem modelos prontos: são 26 projetos com silhueta própria.
   - Materiais: enxaimel com reboco caiado, tábuas, toras, pedra de cantaria; telhados de palha, telha ou ardósia.
   - Exemplos: moinho de vento com pás girando, taverna com andar avançado, escola com torre do sino, quartel com ameias, mina escorada em madeira, fornalhas com brasa, chiqueiro e estábulo com animais vivos.
@@ -133,7 +134,8 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 
 ## 📦 Créditos (todos CC0, domínio público)
 - Construções, natureza, texturas e efeitos: **arte própria** gerada por código (`js/art.js`)
-- Personagens: **KayKit – Character Pack: Adventurers**, por Kay Lousberg (kaylousberg.com), com sombreamento pintado aplicado pelo jogo. Nuvens (só a sombra) e itens carregados vêm do KayKit Medieval Hexagon Pack.
+- Personagens, cavalos, porcos, roupas, chapéus, armas, escudos e itens carregados: **arte própria** gerada por código (`js/art.js`), presa aos esqueletos de animação.
+- Esqueletos e animações (76 dos personagens, mais as do cavalo e do porco): **KayKit – Character Pack: Adventurers**, por Kay Lousberg (kaylousberg.com), e Quaternius. Só a sombra das nuvens usa o KayKit Medieval Hexagon Pack.
 - **Animated Animal Pack** e **Farm Animal Pack**, por Quaternius (quaternius.com), via poly.pizza
 - **Three.js** (licença MIT)
 
