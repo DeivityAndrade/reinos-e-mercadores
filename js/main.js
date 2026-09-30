@@ -69,6 +69,7 @@
   }
 
   function frame(ts) {
+    KM.lastFrameMs = performance.now();
     const now = ts / 1000;
     const el = Math.min(0.25, now - (last || now));
     last = now;
@@ -172,7 +173,9 @@
   let bgLast = 0;
   function backgroundTick() {
     const S = KM.S;
-    if (!document.hidden || !S || !S.mp || !KM.net || !KM.net.active) { bgLast = 0; return; }
+    // roda quando a aba está oculta OU quando os quadros pararam (janela minimizada, atrás de outra, aba em segundo plano)
+    const stalled = performance.now() - (KM.lastFrameMs || 0) > 400;
+    if ((!document.hidden && !stalled) || !S || !S.mp || !KM.net || !KM.net.active) { bgLast = 0; return; }
     const now = performance.now() / 1000;
     const el = Math.min(0.25, bgLast ? now - bgLast : 0.05);
     bgLast = now;

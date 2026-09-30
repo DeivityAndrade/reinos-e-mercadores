@@ -21,7 +21,7 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 | **👑 Conquista** (estilo KaM) | 10 fases em que o objetivo é sempre **eliminar todos os reinos rivais**: 1 rival nas fases I a III, 2 nas IV a VI e 3 nas VII a X, mais fortes a cada fase. Rivais com personalidade (equilibrado, agressivo, construtor, fortificado), fases com rivais aliados entre si ou "todos contra todos". Desafios opcionais valem coroas (até 4 por fase) |
 | **Campanha "A Reunificação de Aldor"** | 14 missões com briefing, objetivos, aliados e até 3 inimigos simultâneos |
 | **Escaramuça** | Mapa procedural ou feito no editor, 1 a 3 oponentes, aliado opcional, IA com economia real ou em ondas |
-| **Multijogador online** | P2P direto entre dois navegadores (WebRTC, sem servidor), 1 contra 1 ou cooperativo contra a IA, com chat |
+| **Multijogador online** | **Salas por código de 5 letras**: um cria a sala e o outro digita o código. A partida roda direto entre os navegadores (WebRTC), em 1 contra 1 ou cooperativo contra a IA, com chat. Também há o modo manual, trocando códigos longos |
 | **Editor de mapas** | Terreno, relevo, árvores, rochas, minérios, até 4 bases e casas prontas. Salva localmente e exporta/importa arquivos |
 
 ## 🆕 Novidades da versão 0.4
@@ -75,6 +75,7 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 - **Tutorial na Conquista:** aparece na fase I para quem ainda não concluiu nem fechou o tutorial.
 - **Desempenho:** as 6 partes do corpo de cada personagem viram uma malha só, e só o corpo projeta sombra. Numa batalha com 209 soldados, o tempo por quadro caiu de 24,6 ms para 14,2 ms.
 
+- **Multijogador por sala:** "Criar sala" gera um código de 5 letras; o amigo toca em "Entrar com código" e digita. Os navegadores se apresentam pelo serviço público gratuito ntfy.sh, que só repassa o convite de conexão (sem conta e sem dados da partida), e depois jogam direto entre si. A partida continua andando mesmo com a janela minimizada ou atrás de outra, e o outro jogador não fica travado. O modo manual continua disponível.
 - **Tipos de mapa:** continente, rio (com vaus), lagos, cordilheiras, floresta densa e planalto central (montanha rica em minério disputada por todos). Escolha na Escaramuça ou use "Surpresa". Cada fase da Conquista tem um tipo próprio, e todas as bases continuam ligadas por terra.
 - **Estratégias da IA:** cada reino ataca de um jeito.
   - **Assalto:** exército concentrado.

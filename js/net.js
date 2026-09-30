@@ -11,9 +11,74 @@
     active: false, pc: null, dc: null, role: null, humans: 2, DELAY: 3,
     inbox: {}, pending: [], hashes: {}, ping: 0, lag: 0, waitT: 0,
 
+    // ---------- salas por código (apresentação pelo ntfy.sh; depois a partida é direta entre os navegadores) ----------
+    RELAY: 'https://ntfy.sh/',
+    roomTopic(code) { return 'reinos-mercadores-sala-' + code.toLowerCase(); },
+    post(msg) { return fetch(this.RELAY + this.roomTopic(this.code), { method: 'POST', body: JSON.stringify(msg) }).catch(() => this.status('<div class="warn">Sem conexão com o servidor de salas. Tente o modo manual.</div>')); },
+    listen(onMsg) {
+      if (this.es) this.es.close();
+      const es = this.es = new EventSource(this.RELAY + this.roomTopic(this.code) + '/sse');
+      es.onmessage = (e) => { try { const m = JSON.parse(e.data); if (m.event === 'message') { const d = JSON.parse(m.message); if (d.from !== this.myId) onMsg(d); } } catch (err) { /* ignora */ } };
+      return new Promise((res) => { es.onopen = res; setTimeout(res, 5000); });
+    },
+    stopListen() { if (this.es) { this.es.close(); this.es = null; } },
+    async roomHost() {
+      this.role = 'host'; this.myId = 'h' + Math.random().toString(36).slice(2, 9);
+      const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      this.code = Array.from({ length: 5 }, () => A[Math.floor(Math.random() * A.length)]).join('');
+      this.status('<p class="muted">Abrindo sala...</p>');
+      await this.listen(async (d) => {
+        if (d.t === 'hello' && !this.guestId) {
+          this.guestId = d.from;
+          this.status('<p class="muted">Amigo encontrado! Conectando...</p>');
+          const pc = this.newPC();
+          this.bind(pc.createDataChannel('km', { ordered: true }));
+          await pc.setLocalDescription(await pc.createOffer());
+          await this.gather(pc);
+          this.post({ t: 'offer', from: this.myId, to: d.from, sdp: pc.localDescription });
+        } else if (d.t === 'hello' && this.guestId && d.from !== this.guestId) this.post({ t: 'full', from: this.myId, to: d.from });
+        if (d.t === 'answer' && d.to === this.myId && this.pc) { await this.pc.setRemoteDescription(d.sdp); this.stopListen(); }
+      });
+      this.guestId = null;
+      this.status(`<p class="muted">Passe este código para o seu amigo:</p><div class="roomcode">${this.code}</div>
+        <button class="mbtn" data-net="copycode">📋 Copiar código</button><p class="muted">⏳ Aguardando alguém entrar na sala...</p>`);
+    },
+    async roomJoin(code) {
+      code = (code || '').trim().toUpperCase();
+      if (!/^[A-Z0-9]{5}$/.test(code)) { KM.ui.toast('O código da sala tem 5 letras/números.', 'warn'); return; }
+      this.role = 'guest'; this.myId = 'g' + Math.random().toString(36).slice(2, 9); this.code = code;
+      this.status('<p class="muted">Procurando a sala...</p>');
+      await this.listen(async (d) => {
+        if (d.to !== this.myId) return;
+        if (d.t === 'full') { this.stopListen(); this.status('<div class="warn">Essa sala já está cheia.</div>'); return; }
+        if (d.t === 'offer') {
+          const pc = this.newPC();
+          pc.ondatachannel = (e) => this.bind(e.channel);
+          await pc.setRemoteDescription(d.sdp);
+          await pc.setLocalDescription(await pc.createAnswer());
+          await this.gather(pc);
+          this.post({ t: 'answer', from: this.myId, to: d.from, sdp: pc.localDescription });
+          this.stopListen();
+          this.status('<p class="muted">Conectando...</p>');
+        }
+      });
+      this.post({ t: 'hello', from: this.myId });
+      // se o anfitrião não responder, avisa
+      setTimeout(() => { if (!this.connected && this.role === 'guest' && this.es) this.status('<div class="warn">Sala não encontrada. Confira o código e se o anfitrião está com a sala aberta.</div><button class="mbtn" data-net="join">Tentar de novo</button>'); }, 15000);
+    },
+
     // ---------- tela de conexão ----------
     menu(action) {
       const box = $('#mpbox');
+      if (action === 'room') this.roomHost();
+      if (action === 'enter') {
+        box.innerHTML = `<p class="muted">Digite o <b>código da sala</b> que seu amigo passou:</p><input id="mpcode" maxlength="5" placeholder="EX: K7Q2M" class="codein">
+          <button class="mbtn primary" data-net="enterok">🤝 Entrar</button>`;
+        setTimeout(() => { const i = $('#mpcode'); if (i) i.focus(); }, 50);
+      }
+      if (action === 'enterok') this.roomJoin($('#mpcode').value);
+      if (action === 'copycode') { navigator.clipboard && navigator.clipboard.writeText(this.code); KM.ui.toast('Código copiado!', 'ok'); }
+      if (action === 'manual') box.innerHTML = `<p class="muted">Modo manual: troquem os códigos longos por mensagem (não usa servidor de salas).</p><div class="mgrid"><button class="mbtn" data-net="host">👑 Criar (manual)</button><button class="mbtn" data-net="join">🤝 Entrar (manual)</button></div>`;
       if (action === 'host') this.host();
       if (action === 'join') {
         box.innerHTML = `<p class="muted">Cole aqui o <b>código do anfitrião</b>:</p><textarea id="mpin" rows="4"></textarea>
@@ -162,6 +227,7 @@
       if (this.dc) { try { this.sendRaw({ t: 'bye' }); this.dc.close(); } catch (e) { /* ok */ } }
       if (this.pc) { try { this.pc.close(); } catch (e) { /* ok */ } }
       clearInterval(this.pingTimer);
+      if (!silent) this.stopListen();
       this.dc = null; this.pc = null; this.active = false; this.connected = false;
     },
   };
