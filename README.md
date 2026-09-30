@@ -7,7 +7,9 @@ Mundo em **3D estilizado com câmera 2.5D** (Three.js), com modelos feitos por a
 
 ## ▶️ Como jogar
 
-Dê dois cliques em **`Jogar.bat`**. Ele liga um pequeno servidor local e abre o jogo no navegador (Chrome, Edge ou Firefox).
+**Online:** abra **https://deivityandrade.github.io/reinos-e-mercadores/** no Chrome, Edge ou Firefox. Não precisa instalar nada. Para instalar como aplicativo, use o ícone "Instalar" na barra de endereço; depois ele funciona offline.
+
+**No computador (offline):** Dê dois cliques em **`Jogar.bat`**. Ele liga um pequeno servidor local e abre o jogo no navegador (Chrome, Edge ou Firefox).
 Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 
 > Abrir o `index.html` direto não funciona mais: o navegador bloqueia o carregamento dos modelos 3D a partir de arquivos locais.
