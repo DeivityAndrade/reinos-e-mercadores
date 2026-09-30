@@ -363,3 +363,18 @@ canvas.chart { width: 100%; max-width: 560px; background: rgba(18,13,9,0.55); bo
 .msglog .msg.danger { border-left-color: var(--bad); } .msglog .msg.warn { border-left-color: var(--warn); } .msglog .msg.ok, .msglog .msg.unlock { border-left-color: var(--ok); }
 .msglog .msg small { color: var(--muted); margin-right: 4px; }
 .msglog .msg[data-act]:hover { background: rgba(70,52,36,0.9); }
+
+/* ---------- Conquista ---------- */
+#conquests { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; margin: 8px 0; padding-right: 4px; }
+.mission.conq { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; }
+.mission.conq small { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.shield { display: inline-block; vertical-align: -1px; width: 11px; height: 13px; border-radius: 2px 2px 6px 6px; box-shadow: 0 0 0 1px rgba(0,0,0,0.5); }
+.mission .cr span, .crowns span { filter: grayscale(1) brightness(0.55); opacity: 0.5; }
+.mission .cr span.on, .crowns span.on { filter: none; opacity: 1; }
+.mission .cr { font-style: normal; font-size: 13px; letter-spacing: -2px; }
+.crowns { font-size: 34px; letter-spacing: 6px; margin: 4px 0 2px; }
+.crowns span.on { text-shadow: 0 0 14px rgba(255,210,80,0.8); }
+.goal.fail { opacity: 0.55; }
+.goals.opt .goal.done span { filter: drop-shadow(0 0 4px rgba(255,210,80,0.8)); }
+.mission .cr span { font-size: 13px; }
+#conquests { text-align: left; }

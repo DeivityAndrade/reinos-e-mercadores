@@ -140,7 +140,7 @@
     if (!S || S.mp || S.editor) return;
     try {
       localStorage.setItem('rm_save_' + slot, JSON.stringify(Object.assign({}, S, { fx: [] })));
-      localStorage.setItem('rm_meta_' + slot, JSON.stringify({ time: S.time, date: Date.now(), diff: S.diff, v: KM.VERSION, v3: true, name: S.mission ? KM.MISSIONS.find((x) => x.id === S.mission).n : 'Escaramuça ' + KM.DIFF[S.diff].n }));
+      localStorage.setItem('rm_meta_' + slot, JSON.stringify({ time: S.time, date: Date.now(), diff: S.diff, v: KM.VERSION, v3: true, name: S.mission ? (S.mission[0] === 'c' ? '👑 ' : '') + KM.findMission(S.mission, S.diff).n : 'Escaramuça ' + KM.DIFF[S.diff].n }));
     } catch (e) { KM.ui.toast('Não foi possível salvar: ' + e.message, 'danger'); }
   };
   KM.saveMeta = function (slot) {

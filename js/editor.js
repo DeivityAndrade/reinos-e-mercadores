@@ -166,7 +166,7 @@
           case 'tree': if (m.terrain[i] === T.GRASS && !m.stone[i] && !m.road[i] && KM.hash(x, y, (this.painted.size * 13) | 0) < 0.7) m.tree[i] = 4; break;
           case 'stone': if ((m.terrain[i] === T.GRASS || m.terrain[i] === T.SAND) && !m.road[i]) { m.stone[i] = 5; m.tree[i] = 0; } break;
           case 'coal': case 'iron': case 'gold':
-            if (m.terrain[i] === T.MOUNTAIN) { m.ore[i] = { coal: 1, iron: 2, gold: 3 }[this.tool]; m.oreAmt[i] = 12; }
+            if (m.terrain[i] === T.MOUNTAIN) { m.ore[i] = { coal: 1, iron: 2, gold: 3 }[this.tool]; m.oreAmt[i] = 30; }
             break;
           case 'erase': m.tree[i] = 0; m.stone[i] = 0; m.ore[i] = 0; m.oreAmt[i] = 0; break;
         }

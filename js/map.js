@@ -48,7 +48,7 @@
       m.terrain[i] = t;
       m.shade[i] = Math.floor(sN(x / 5, y / 5, 3) * 255);
       th[i] = t === T.WATER ? 0 : t === T.SAND ? 0.6 : t === T.MOUNTAIN ? 3.5 + (h - 0.72) * 22 + rN(x / 3, y / 3, 2) * 2 : 0.8 + (h - 0.33) * 5 + rN(x / 6, y / 6, 2) * 1.2;
-      if (t === T.MOUNTAIN && rnd() < 0.35) { m.ore[i] = 1 + Math.floor(rnd() * 3); m.oreAmt[i] = 5 + Math.floor(rnd() * 8); }
+      if (t === T.MOUNTAIN && rnd() < 0.35) { m.ore[i] = 1 + Math.floor(rnd() * 3); m.oreAmt[i] = 14 + Math.floor(rnd() * 12); }
       if (t === T.WATER) m.fish[i] = 4;
     }
 
@@ -63,7 +63,7 @@
         th[i] = Math.max(th[i], 3 + (r - d) * 1.3);
         const a = (Math.atan2(y - cy, x - cx) + Math.PI) / (2 * Math.PI);
         m.ore[i] = ores[Math.min(ores.length - 1, Math.floor(a * ores.length))];
-        m.oreAmt[i] = 8 + Math.floor(rnd() * 8);
+        m.oreAmt[i] = 22 + Math.floor(rnd() * 14);
       }
     };
     const stones = (cx, cy, r) => {

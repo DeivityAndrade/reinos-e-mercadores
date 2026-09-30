@@ -137,6 +137,94 @@
     },
   ];
 
+  // ================= Conquista (estilo KaM) =================
+  // A vitória é sempre eliminar todos os reinos rivais. Os objetivos viram desafios opcionais que valem coroas.
+  // Um reino cai quando fica sem Armazém, Escola e Quartel prontos e sem nenhum soldado.
+  const RIVALS = [
+    { name: 'Reino de Varga', title: 'o Barão de Varga' }, { name: 'Marca de Tessel', title: 'a Condessa de Tessel' },
+    { name: 'Ducado de Orm', title: 'o Duque de Orm' }, { name: 'Terras de Kael', title: 'o Senhor de Kael' },
+    { name: 'Principado de Ruvia', title: 'a Princesa de Ruvia' }, { name: 'Condado de Brann', title: 'o Conde de Brann' },
+  ];
+  // personalidades: agressivo (ataca cedo com grupos menores), construtor (demora, vem forte), fortificado (muitas torres e defensores)
+  const PERS = {
+    equilibrado: (m, p) => ({ mult: m, peace: p, def: Math.round(4 + 5 * m), attackN: Math.round(12 * m) }),
+    agressivo: (m, p) => ({ mult: m * 1.05, peace: Math.round(p * 0.75), def: Math.round(3 + 4 * m), attackN: Math.round(8 * m + 2) }),
+    construtor: (m, p) => ({ mult: m * 1.1, peace: Math.round(p * 1.25), def: Math.round(4 + 5 * m), attackN: Math.round(16 * m + 2) }),
+    fortificado: (m, p) => ({ mult: m, peace: Math.round(p * 1.1), def: Math.round(8 + 7 * m), attackN: Math.round(14 * m), towers: true }),
+  };
+  const PERS_N = { equilibrado: 'equilibrado', agressivo: 'agressivo: ataca cedo', construtor: 'construtor: demora, mas vem forte', fortificado: 'fortificado: muitas torres' };
+  // fases: inimigos [personalidade, força], paz base (s), tamanho do mapa, alianças e desafios opcionais
+  const LEVELS = [
+    { n: 'O Primeiro Rival', W: 72, peace: 1200, foes: [['equilibrado', 0.5]], text: 'Um único reino vizinho disputa estas terras. Ele é fraco e está distraído com a própria colheita: é o momento de crescer.',
+      opt: [{ k: 'build', t: 'bakery', n: 1 }, { k: 'army', n: 10 }, { k: 'fast', t: 45 * 60 }] },
+    { n: 'O Vale Dividido', W: 76, peace: 1080, foes: [['agressivo', 0.62]], text: 'Do outro lado do vale, um senhor impaciente já afia as espadas. Espere ataques cedo e prepare torres.',
+      opt: [{ k: 'build', t: 'tower', n: 2 }, { k: 'res', r: 'bread', n: 40 }, { k: 'fast', t: 45 * 60 }] },
+    { n: 'O Senhor da Colina', W: 80, peace: 1020, foes: [['fortificado', 0.75]], text: 'O rival se entrincheirou atrás de torres. Uma economia forte e armas melhores vão abrir caminho.',
+      opt: [{ k: 'units', t: 'axeman', n: 8 }, { k: 'build', t: 'ironsmithy', n: 1 }, { k: 'fast', t: 50 * 60 }] },
+    { n: 'Duas Coroas', W: 88, peace: 1080, foes: [['equilibrado', 0.6], ['construtor', 0.55]], allied: true, text: 'Dois reinos firmaram um pacto contra você. Um deles demora a se armar, mas quando vier, virá forte.',
+      opt: [{ k: 'build', t: 'goldsmelter', n: 1 }, { k: 'army', n: 20 }, { k: 'fast', t: 55 * 60 }] },
+    { n: 'Fronteira em Chamas', W: 92, peace: 960, foes: [['agressivo', 0.68], ['equilibrado', 0.68]], allied: true, text: 'Seus vizinhos querem suas terras antes que você cresça. Aguente a primeira onda e contra-ataque.',
+      opt: [{ k: 'units', t: 'bowman', n: 8 }, { k: 'build', t: 'tower', n: 4 }, { k: 'fast', t: 55 * 60 }] },
+    { n: 'O Pacto de Ferro', W: 96, peace: 960, foes: [['fortificado', 0.78], ['construtor', 0.72]], allied: true, text: 'Um reino de muralhas e outro de forjas. Separe-os e derrote um de cada vez.',
+      opt: [{ k: 'units', t: 'swordsman', n: 6 }, { k: 'res', r: 'gold', n: 40 }, { k: 'fast', t: 60 * 60 }] },
+    { n: 'Três Tronos', W: 100, peace: 1020, foes: [['equilibrado', 0.62], ['agressivo', 0.6], ['construtor', 0.6]], allied: false, text: 'Três reinos, nenhuma aliança: todos lutam contra todos. Deixe que se enfraqueçam e ataque na hora certa.',
+      opt: [{ k: 'build', t: 'stables', n: 1 }, { k: 'army', n: 30 }, { k: 'fast', t: 60 * 60 }] },
+    { n: 'O Cerco de Pedra', W: 104, peace: 960, foes: [['fortificado', 0.75], ['equilibrado', 0.75], ['agressivo', 0.7]], allied: false, text: 'Uma fortaleza no centro e dois reinos famintos nas bordas. Todos contra todos, mas você é o alvo mais cobiçado.',
+      opt: [{ k: 'units', t: 'crossbowman', n: 8 }, { k: 'build', t: 'armorsmithy', n: 1 }, { k: 'fast', t: 65 * 60 }] },
+    { n: 'A Grande Aliança', W: 108, peace: 900, foes: [['agressivo', 0.85], ['construtor', 0.85], ['equilibrado', 0.85]], allied: true, text: 'Os três reinos restantes se uniram contra você. Eles vão atacar juntos. Fortifique, abasteça e resista.',
+      opt: [{ k: 'units', t: 'knight', n: 6 }, { k: 'build', t: 'tower', n: 6 }, { k: 'fast', t: 70 * 60 }] },
+    { n: 'O Rei de Todos', W: 112, peace: 900, foes: [['construtor', 1.0], ['fortificado', 0.95], ['agressivo', 0.95]], allied: true, text: 'A última guerra. Os senhores mais poderosos do continente contra a sua coroa. Vença e todos os reinos serão um só.',
+      opt: [{ k: 'army', n: 50 }, { k: 'units', t: 'knight', n: 10 }, { k: 'fast', t: 80 * 60 }] },
+  ];
+  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  const DMOD = { easy: { m: 0.8, p: 1.3 }, normal: { m: 1, p: 1 }, hard: { m: 1.2, p: 0.8 } };
+  function conquestMission(i, diff) {
+    const L = LEVELS[i], D = DMOD[diff] || DMOD.normal, id = 'c' + (i + 1);
+    const players = [{ human: true, team: 0, name: KM.NAMES[0], town: KM.TOWNS.human() }];
+    L.foes.forEach(([pers, m], k) => {
+      const riv = RIVALS[(i + k * 2) % RIVALS.length];
+      const P = PERS[pers](m * D.m, Math.round(L.peace * D.p) + k * 60);
+      const ai = Object.assign(KM.TOWNS.economy({ peace: P.peace, mult: P.mult, def: P.def }), { attackN: P.attackN });
+      if (P.towers) ai.houses = ai.houses.concat(['tower', 'tower', 'tower']);
+      players.push({ team: L.allied ? 9 : 10 + k, name: riv.name, title: riv.title, pers, ai });
+    });
+    const foes = players.slice(1);
+    const brief = `${L.text}<br><br><b>Objetivo: eliminar ${foes.length > 1 ? 'todos os ' + foes.length + ' reinos rivais' : 'o reino rival'}.</b> Um reino cai quando perde o Armazém, a Escola e o Quartel e fica sem soldados.`
+      + `<br><br>${foes.map((p, k) => `<i class="shield" style="background:${KM.COLORS[k + 1]}"></i> <b>${p.name}</b>, governado por ${p.title} (${PERS_N[p.pers]})`).join('<br>')}`
+      + (foes.length > 1 ? `<br><br>${L.allied ? '🤝 Os rivais são <b>aliados entre si</b>.' : '⚔️ <b>Todos contra todos:</b> os rivais também lutam entre si.'}` : '')
+      + `<br><br>🕊️ Paz inicial de cerca de ${Math.round((L.peace * D.p) / 60)} minutos.`;
+    return {
+      id, conquest: true, idx: i, n: `${ROMAN[i]} · ${L.n}`, seed: 70000 + i * 1013, W: L.W, brief, players,
+      goals: [{ k: 'destroy' }].concat(L.opt.map((g) => Object.assign({ opt: true }, g))),
+    };
+  }
+  KM.CONQUEST_N = LEVELS.length;
+  KM.conquestList = (diff) => LEVELS.map((L, i) => conquestMission(i, diff));
+  // procura uma missão da campanha ou uma fase da Conquista
+  KM.findMission = function (id, diff) {
+    if (!id) return null;
+    if (id[0] === 'c') { const i = +id.slice(1) - 1; return LEVELS[i] ? conquestMission(i, diff || 'normal') : null; }
+    return KM.MISSIONS.find((m) => m.id === id) || null;
+  };
+  KM.nextMission = function (id) {
+    if (!id) return null;
+    if (id[0] === 'c') { const i = +id.slice(1); return i < LEVELS.length ? 'c' + (i + 1) : null; }
+    const k = KM.MISSIONS.findIndex((m) => m.id === id);
+    return k >= 0 && KM.MISSIONS[k + 1] ? KM.MISSIONS[k + 1].id : null;
+  };
+  // progresso: fases abertas e coroas (1 pela vitória + 1 por desafio cumprido)
+  KM.conquestProgress = function () {
+    try { return Object.assign({ open: 1, crowns: {} }, JSON.parse(localStorage.getItem('rm_conquest') || '{}')); } catch (e) { return { open: 1, crowns: {} }; }
+  };
+  function conquestWin(S) {
+    const P = KM.conquestProgress(), i = +S.mission.slice(1);
+    const crowns = 1 + S.goals.filter((g) => g.opt && KM.goalStatus(S, g).done).length;
+    P.open = Math.max(P.open, i + 1);
+    P.crowns[S.mission] = Math.max(P.crowns[S.mission] || 0, crowns);
+    S.crowns = crowns;
+    try { localStorage.setItem('rm_conquest', JSON.stringify(P)); } catch (e) { /* ok */ }
+  }
+
   KM.campaignProgress = function () {
     try { return +(localStorage.getItem('rm_campaign') || 1); } catch (e) { return 1; }
   };
@@ -152,6 +240,11 @@
 
   KM.goalStatus = function (S, g) {
     const me = KM.me;
+    if (g.k === 'fast') {
+      const left = Math.max(0, g.t - S.time);
+      return { done: !!g.done, fail: !g.done && S.time > g.t, text: `Vencer em menos de ${Math.round(g.t / 60)} minutos`, prog: g.done ? 'feito' : S.time > g.t ? 'tempo esgotado' : KM.fmtTime(left) };
+    }
+    if (g.opt && g.done) { const st = KM.goalStatus(S, Object.assign({}, g, { opt: false, done: false })); return Object.assign(st, { done: true, prog: 'feito' }); }
     if (g.k === 'build') {
       let n = 0;
       for (const id in S.houses) { const h = S.houses[id]; if (h.owner === me && h.type === g.t && h.state === 'built') n++; }
@@ -192,12 +285,18 @@
       if (o !== KM.me) KM.notify(S, `🏳️ ${p.name} foi derrotado!`, KM.hostile(S, KM.me, o) ? 'ok' : 'danger');
     });
     if (S.over) return;
-    // objetivos cumpridos uma vez ficam marcados (ex.: ter 8 cavaleiros)
-    for (const g of S.goals) if ((g.k === 'units' || g.k === 'army') && !g.done && KM.goalStatus(S, g).done) g.done = true;
+    // objetivos cumpridos uma vez ficam marcados (ex.: ter 8 cavaleiros); desafios opcionais também
+    for (const g of S.goals) if ((g.opt || g.k === 'units' || g.k === 'army') && g.k !== 'fast' && !g.done && KM.goalStatus(S, g).done) {
+      g.done = true;
+      if (g.opt && KM.S === S) KM.notify(S, `👑 Desafio cumprido: ${KM.goalStatus(S, g).text}`, 'unlock');
+    }
+    const req = S.goals.filter((g) => !g.opt);
     if (S.players[KM.me].out) S.over = 'lose';
-    else if (S.goals.length && S.goals.every((g) => KM.goalStatus(S, g).done)) {
+    else if (req.length && req.every((g) => KM.goalStatus(S, g).done)) {
       S.over = 'win';
-      if (S.mission) { const i = KM.MISSIONS.findIndex((m) => m.id === S.mission); unlock(i + 2); }
+      for (const g of S.goals) if (g.k === 'fast' && S.time <= g.t) g.done = true;
+      if (S.mission && S.mission[0] === 'c') { if (KM.S === S) conquestWin(S); }
+      else if (S.mission) { const i = KM.MISSIONS.findIndex((m) => m.id === S.mission); unlock(i + 2); }
     }
     if (S.over && KM.ui && KM.S === S) KM.ui.showEnd(S.over);
   };

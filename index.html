@@ -35,8 +35,11 @@
       <p class="sub">Um tributo moderno ao clássico de estratégia econômica medieval.<br>Construa, abasteça, treine e defenda seu reino.</p>
 
       <div class="screen" data-s="main">
-        <button class="mbtn primary" data-screen="campaign">📜 Campanha</button>
-        <button class="mbtn primary alt" data-screen="skirmish">⚔️ Escaramuça</button>
+        <button class="mbtn primary" data-screen="conquest">👑 Conquista</button>
+        <div class="mgrid">
+          <button class="mbtn primary alt" data-screen="campaign">📜 Campanha</button>
+          <button class="mbtn primary alt" data-screen="skirmish">⚔️ Escaramuça</button>
+        </div>
         <div class="mgrid">
           <button class="mbtn" data-screen="mp">🌐 Multijogador</button>
           <button class="mbtn" data-screen="editor">🗺️ Editor de mapas</button>
@@ -71,6 +74,16 @@
           <button class="mbtn" data-editor="load">📂 Abrir</button>
           <button class="mbtn" data-editor="import">📥 Importar arquivo</button>
         </div>
+        <button class="mbtn ghost" data-screen="main">← Voltar</button>
+      </div>
+
+      <div class="screen hidden" data-s="conquest">
+        <h3>👑 Conquista</h3>
+        <p class="muted">Como no Knights and Merchants: em toda fase o objetivo é <b>eliminar todos os reinos rivais</b>. A cada fase há mais reinos, e eles ficam mais fortes. Os desafios opcionais valem coroas.</p>
+        <label class="inline">Dificuldade
+          <select id="qdiff"><option value="easy">Fácil</option><option value="normal" selected>Normal</option><option value="hard">Difícil</option></select>
+        </label>
+        <div id="conquests"></div>
         <button class="mbtn ghost" data-screen="main">← Voltar</button>
       </div>
 

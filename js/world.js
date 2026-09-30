@@ -223,7 +223,7 @@
   };
 
   KM.findOre = function (S, cx, cy, type, consume) {
-    const m = S.map, R = 4;
+    const m = S.map, R = 5;
     let best = -1, bd = 1e9;
     for (let y = Math.floor(cy - R); y <= cy + R; y++) for (let x = Math.floor(cx - R); x <= cx + R; x++) {
       if (!KM.inb(x, y)) continue;
@@ -450,7 +450,7 @@
   };
 
   KM.newState = function (opts) {
-    const mis = opts.mission ? KM.MISSIONS.find((x) => x.id === opts.mission) : null;
+    const mis = opts.mission ? KM.findMission(opts.mission, opts.diff) : null;
     const cfg = mis || KM.skirmishConfig(opts);
     const seed = cfg.seed || opts.seed || Math.floor(Math.random() * 1e9);
     const pl = cfg.players || [
@@ -460,7 +460,7 @@
     const mapData = opts.map || cfg.map;
     let m, starts;
     if (mapData) { ({ m, starts } = KM.mapFromData(mapData, seed)); }
-    else ({ m, starts } = KM.genMap(seed, { players: Math.max(2, pl.length) }));
+    else ({ m, starts } = KM.genMap(seed, { players: Math.max(2, pl.length), W: cfg.W, H: cfg.W }));
     const diff = opts.diff || cfg.diff || 'normal';
     const S = {
       v: KM.SAVE_V, seed, rs: seed | 0, time: 0, tick: 0, speed: 1, paused: false, map: m, houses: {}, units: {}, army: {}, nid: 1, starts,

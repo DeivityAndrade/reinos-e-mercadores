@@ -127,8 +127,8 @@
           <h4>Estatísticas</h4>
           <div class="muted">Casas construídas: ${st.built} · Treinados: ${st.trained}<br>Inimigos abatidos: ${st.killed} · Perdas: ${st.lost}</div>`;
       } else if (this.tab === 'goals') {
-        const mis = S.mission && KM.MISSIONS.find((m) => m.id === S.mission);
-        html = `<h4>${mis ? esc(mis.n) : S.mp ? 'Multijogador' : 'Escaramuça'}</h4><div class="goals">${S.goals.map((g) => { const st = KM.goalStatus(S, g); return `<div class="goal ${st.done ? 'done' : ''}"><span>${st.done ? '✅' : '⬜'}</span><div>${st.text}<small>${st.prog || ''}</small></div></div>`; }).join('')}</div>`;
+        const mis = S.mission && KM.findMission(S.mission, S.diff);
+        html = `<h4>${mis ? esc(mis.n) : S.mp ? 'Multijogador' : 'Escaramuça'}</h4>${this.goalsHtml(S, false)}`;
         if (mis) html += `<button class="mbtn wide" data-act="brief">📜 Rever briefing</button>`;
         if (!P.all) {
           const total = Object.keys(KM.HOUSES).length, open = Object.keys(KM.HOUSES).filter((t) => KM.houseUnlocked(S, ME(), t)).length;
@@ -592,6 +592,7 @@
         if (b.dataset.help) this.showHelp(true);
         if (b.dataset.screen) this.menuScreen(b.dataset.screen);
         if (b.dataset.mission) KM.startGame({ mission: b.dataset.mission, diff: $('#cdiff').value });
+        if (b.dataset.conquest) KM.startGame({ mission: b.dataset.conquest, diff: $('#qdiff').value });
         if (b.dataset.editor) KM.editor.open(b.dataset.editor);
         if (b.dataset.net) KM.net.menu(b.dataset.net, b);
       });
@@ -612,7 +613,17 @@
     menuScreen(s) {
       document.querySelectorAll('#menu .screen').forEach((el) => el.classList.toggle('hidden', el.dataset.s !== s));
       if (s === 'campaign') this.renderCampaign();
+      if (s === 'conquest') this.renderConquest();
       if (s === 'skirmish' || s === 'editor') KM.editor.fillMapLists();
+    },
+    renderConquest() {
+      const P = KM.conquestProgress(), diff = $('#qdiff').value;
+      if (!this.qBound) { this.qBound = true; $('#qdiff').addEventListener('change', () => this.renderConquest()); }
+      $('#conquests').innerHTML = KM.conquestList(diff).map((m, i) => {
+        const open = i + 1 <= P.open, cr = P.crowns[m.id] || 0;
+        const foes = m.players.slice(1).map((p, k) => `<i class="shield" style="background:${KM.COLORS[k + 1]}" title="${esc(p.name)}"></i>`).join('');
+        return `<button class="mission conq ${open ? '' : 'locked'}" ${open ? `data-conquest="${m.id}"` : 'disabled'}><span>${cr ? '🏆' : open ? '⚔️' : '🔒'}</span><div><b>${esc(m.n)}</b><small>${open ? `${foes} ${m.players.length - 1} reino${m.players.length > 2 ? 's' : ''} rival${m.players.length > 2 ? 'is' : ''} · mapa ${m.W}×${m.W}` : 'Vença a fase anterior'}</small></div><em class="cr">${[1, 2, 3, 4].map((k) => `<span class="${k <= cr ? 'on' : ''}">👑</span>`).join('')}</em></button>`;
+      }).join('');
     },
     renderCampaign() {
       const prog = KM.campaignProgress();
@@ -662,11 +673,23 @@
       el.addEventListener('mousemove', (e) => this.onTip(e));
       el.addEventListener('mouseleave', () => this.hideTip());
     },
+    // objetivo principal + desafios opcionais (coroas)
+    goalsHtml(S, brief) {
+      const row = (g) => {
+        const st = KM.goalStatus(S, g);
+        const ic = brief ? (g.opt ? '👑' : '🎯') : st.done ? '✅' : st.fail ? '❌' : '⬜';
+        return `<div class="goal ${st.done && !brief ? 'done' : ''} ${st.fail ? 'fail' : ''}"><span>${ic}</span><div>${st.text}${brief ? '' : `<small>${st.prog || ''}</small>`}</div></div>`;
+      };
+      const req = S.goals.filter((g) => !g.opt), opt = S.goals.filter((g) => g.opt);
+      let s = `${brief ? '<h3>Objetivo</h3>' : ''}<div class="goals">${req.map(row).join('')}</div>`;
+      if (opt.length) s += `${brief ? '<h3>Desafios opcionais</h3>' : '<h4>Desafios opcionais 👑</h4>'}<div class="goals opt">${opt.map(row).join('')}</div>${brief ? '<div class="muted">Cada desafio cumprido vale uma coroa. Não são necessários para vencer.</div>' : ''}`;
+      return s;
+    },
     showBriefing(S) {
-      const mis = KM.MISSIONS.find((m) => m.id === S.mission);
+      const mis = KM.findMission(S.mission, S.diff);
       if (!mis) return;
       $('#brief').innerHTML = `<div class="card brief"><div class="seal">📜</div><h2>${esc(mis.n)}</h2><div class="btext">${mis.brief}</div>
-        <h3>Objetivos</h3><div class="goals">${S.goals.map((g) => `<div class="goal"><span>🎯</span><div>${KM.goalStatus(S, g).text}</div></div>`).join('')}</div>
+        ${this.goalsHtml(S, true)}
         ${S.players.length > 1 ? `<h3>Jogadores</h3><div class="plist">${S.players.map((p, i) => `<div class="prow"><span class="dot" style="background:${p.color}"></span><span class="sn">${esc(p.name)}</span><em class="${i === ME() ? '' : KM.hostile(S, ME(), i) ? 'bad' : 'good'}">${i === ME() ? 'você' : KM.hostile(S, ME(), i) ? 'inimigo' : 'aliado'}</em></div>`).join('')}</div>` : ''}
         <button class="mbtn primary" data-go="1">${S.time > 0 ? 'Voltar ao jogo' : 'Começar'}</button></div>`;
       $('#brief').classList.remove('hidden');
@@ -689,12 +712,13 @@
     showEnd(res) {
       const S = KM.S, el = $('#endscreen');
       if (!S.hist || !S.hist.t.length || S.hist.t[S.hist.t.length - 1] < S.time - 5) KM.recordHist(S);
-      const idx = S.mission ? KM.MISSIONS.findIndex((m) => m.id === S.mission) : -1;
-      const next = idx >= 0 && KM.MISSIONS[idx + 1];
-      const txt = res === 'win' ? (S.mission ? (next ? 'Missão cumprida! O Rei aguarda suas próximas ordens.' : 'Todos os traidores caíram. O Reino de Aldor está reunido sob sua bandeira!') : 'Todos os inimigos foram derrotados. Seu reino prospera!') : 'Seu reino caiu. Os mercadores fugiram e os cavaleiros depuseram as armas.';
+      const nextId = res === 'win' ? KM.nextMission(S.mission) : null, next = nextId && KM.findMission(nextId, S.diff);
+      const conq = S.mission && S.mission[0] === 'c';
+      const txt = res === 'win' ? (conq ? (next ? 'Todos os reinos rivais caíram. Novas terras aguardam a sua coroa.' : 'Não resta nenhum reino rival. Todo o continente se curva à sua coroa!') : S.mission ? (next ? 'Missão cumprida! O Rei aguarda suas próximas ordens.' : 'Todos os traidores caíram. O Reino de Aldor está reunido sob sua bandeira!') : 'Todos os inimigos foram derrotados. Seu reino prospera!') : 'Seu reino caiu. Os mercadores fugiram e os cavaleiros depuseram as armas.';
       el.innerHTML = `<div class="card endcard"><h1>${res === 'win' ? '🏆 Vitória!' : '💀 Derrota'}</h1><p>${txt}</p>
+        ${conq && res === 'win' ? `<div class="crowns">${[1, 2, 3, 4].map((k) => `<span class="${k <= (S.crowns || 1) ? 'on' : ''}">👑</span>`).join('')}</div><div class="muted">1 coroa pela vitória + 1 por desafio cumprido</div>` : ''}
         ${this.statsHtml(S)}
-        <div class="mgrid">${res === 'win' && next ? `<button class="mbtn primary" data-next="${next.id}">➡️ Próxima missão</button>` : ''}${res === 'win' ? '<button class="mbtn" data-cont="1">Continuar jogando</button>' : ''}${res === 'lose' && S.mission ? '<button class="mbtn" data-retry="1">🔄 Tentar de novo</button>' : ''}<button class="mbtn" data-menu="1">Menu principal</button></div></div>`;
+        <div class="mgrid">${next ? `<button class="mbtn primary" data-next="${next.id}">➡️ ${conq ? 'Próxima fase' : 'Próxima missão'}</button>` : ''}${res === 'win' ? '<button class="mbtn" data-cont="1">Continuar jogando</button>' : ''}${res === 'lose' && S.mission ? '<button class="mbtn" data-retry="1">🔄 Tentar de novo</button>' : ''}<button class="mbtn" data-menu="1">Menu principal</button></div></div>`;
       el.classList.remove('hidden');
       this.bindStats(el, S);
       KM.sfx && KM.sfx(res === 'win' ? 'win' : 'horn');

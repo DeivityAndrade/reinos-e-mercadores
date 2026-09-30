@@ -182,7 +182,7 @@
     ai.equipT -= dt;
     let army = 0;
     for (const id in S.units) { const u = S.units[id]; if (u.owner === o && KM.isSoldier(u.type)) army++; }
-    if (ai.equipT <= 0 && bar && army < 18 + 14 * ai.mult + ai.wave * 4) {
+    if (ai.equipT <= 0 && bar && army < 6 + 24 * ai.mult + ai.wave * 4 * ai.mult) {
       ai.equipT = 8 / ai.mult;
       const ORDER = ['knight', 'swordsman', 'crossbowman', 'pikeman', 'scout', 'axeman', 'bowman', 'lancer', 'militia'];
       for (const t of ORDER) { if (ai.fair && !KM.SOLDIER_REQ[t].every((r) => S.players[o].built[r])) continue; while (KM.equip(S, bar, t)); }
@@ -239,10 +239,10 @@
 
   // ordem de um jogador humano competente, respeitando a árvore de progressão
   const WANT_FAIR = [
-    ['woodcutter', 1], ['quarry', 1], ['sawmill', 1], ['woodcutter', 2], ['quarry', 2], ['inn', 1], ['farm', 1], ['weaponworkshop', 1], ['barracks', 1],
-    ['coalmine', 1], ['goldmine', 1], ['goldsmelter', 1], ['mill', 1], ['bakery', 1], ['farm', 2], ['tower', 2], ['swine', 1], ['tannery', 1], ['armorworkshop', 1], ['butcher', 1],
-    ['ironmine', 1], ['ironsmithy', 1], ['weaponsmithy', 1], ['armorsmithy', 1],
-    ['coalmine', 2], ['farm', 3], ['woodcutter', 3], ['quarry', 3], ['stables', 1], ['tower', 4], ['inn', 2], ['farm', 4],
+    ['woodcutter', 1], ['quarry', 1], ['sawmill', 1], ['woodcutter', 2], ['quarry', 2], ['inn', 1], ['farm', 1], ['farm', 2], ['mill', 1], ['bakery', 1],
+    ['weaponworkshop', 1], ['barracks', 1], ['coalmine', 1], ['goldmine', 1], ['goldsmelter', 1], ['quarry', 3], ['swine', 1], ['butcher', 1], ['tannery', 1], ['armorworkshop', 1],
+    ['farm', 3], ['woodcutter', 3], ['tower', 2], ['fisher', 1], ['ironmine', 1], ['ironsmithy', 1], ['weaponsmithy', 1], ['armorsmithy', 1], ['coalmine', 2],
+    ['farm', 4], ['inn', 2], ['stables', 1], ['tower', 4], ['swine', 2], ['farm', 5],
   ];
 
   function planBuild(S, o, ai, st) {

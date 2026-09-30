@@ -18,6 +18,7 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 
 | Modo | Descrição |
 |---|---|
+| **👑 Conquista** (estilo KaM) | 10 fases em que o objetivo é sempre **eliminar todos os reinos rivais**: 1 rival nas fases I a III, 2 nas IV a VI e 3 nas VII a X, mais fortes a cada fase. Rivais com personalidade (equilibrado, agressivo, construtor, fortificado), fases com rivais aliados entre si ou "todos contra todos". Desafios opcionais valem coroas (até 4 por fase) |
 | **Campanha "A Reunificação de Aldor"** | 14 missões com briefing, objetivos, aliados e até 3 inimigos simultâneos |
 | **Escaramuça** | Mapa procedural ou feito no editor, 1 a 3 oponentes, aliado opcional, IA com economia real ou em ondas |
 | **Multijogador online** | P2P direto entre dois navegadores (WebRTC, sem servidor), 1 contra 1 ou cooperativo contra a IA, com chat |
@@ -51,6 +52,18 @@ const s = document.createElement('script'); s.src = 'tools/sim.js'; document.bod
 KM.sim.bots({ seed: 7, minutes: 40 })               // IA contra IA, registro a cada 5 minutos
 KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um humano) contra a IA
 ```
+
+
+## 👑 Modo Conquista
+- A vitória é sempre a mesma: **eliminar todos os reinos rivais**. Um reino cai quando fica sem Armazém, Escola e Quartel prontos e sem nenhum soldado.
+- **Desafios opcionais** (construir algo, formar tropas, vencer rápido) valem **coroas**: 1 pela vitória e 1 por desafio, até 4 por fase. As melhores marcas ficam salvas.
+- Você sempre começa do básico, seguindo a árvore de progressão.
+- A dificuldade (Fácil, Normal ou Difícil) muda a força dos rivais e o tempo de paz.
+- **Testado com o "jogador justo" automático** (sem bônus, seguindo a progressão):
+  - No Normal, ele vence as fases I a III em cerca de 28 minutos.
+  - Nas fases intermediárias, ele derruba parte dos rivais e perde disputas apertadas.
+  - A fase X o derrota. A curva de dificuldade sobe como deve.
+- Os testes mostraram que as minas se esgotavam em minutos (só 10 minérios). Agora cada veio tem de 14 a 35 minérios por ladrilho, e a mina alcança 5 casas.
 
 ## 🌳 Progressão (como no original)
 O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e os profissionais correspondentes (carregador, construtor, lenhador, pedreiro). Cada construção erguida libera novas opções:
