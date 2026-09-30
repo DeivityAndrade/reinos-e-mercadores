@@ -168,6 +168,7 @@
           <div class="mgrid">
             <button class="mbtn" data-act="sound">${KM.audioOn ? '🔊 Efeitos ligados' : '🔈 Efeitos desligados'}</button>
             <button class="mbtn" data-act="music">${KM.musicOn ? '🎵 Música ligada' : '🎵 Música desligada'} <kbd>M</kbd></button>
+            <button class="mbtn" data-act="musicmode" data-tip="Gravada: trilhas medievais de RandomMind (CC0). Gerada: música composta pelo jogo na hora">🎼 Música: ${KM.audioCfg.musicMode === 'gerada' ? 'gerada' : 'gravada'}</button>
             <button class="mbtn" data-act="voices" data-tip="Os soldados respondem às ordens com voz sintetizada do navegador">${KM.audioCfg.voices ? '🗣️ Vozes ligadas' : '🗣️ Vozes desligadas'}</button>
             <button class="mbtn" data-act="gfx" data-tip="Alta: sombras nítidas e grama · Média: sombras simples · Baixa: sem sombras nem grama (PCs fracos)">🖥️ Gráficos: ${{ high: 'alta', medium: 'média', low: 'baixa' }[KM.R.gfx]}</button>
             <button class="mbtn" data-act="edge">${KM.edgeScroll !== false ? '🖱️ Rolar pela borda: sim' : '🖱️ Rolar pela borda: não'}</button>
@@ -221,6 +222,7 @@
       if (k === 'pause') this.setSpeed(0);
       if (k === 'grid') { KM.R.showGrid = !KM.R.showGrid; this.renderTab(true); }
       if (k === 'sound') { KM.toggleSfx(); this.renderTab(true); }
+      if (k === 'musicmode') { KM.music.setMode(KM.audioCfg.musicMode === 'gerada' ? 'gravada' : 'gerada'); this.renderTab(true); }
       if (k === 'voices') { KM.setAudio('voices', !KM.audioCfg.voices); this.renderTab(true); if (KM.audioCfg.voices) KM.voice('select'); }
       if (k === 'gfx') { KM.R.setGfx({ high: 'medium', medium: 'low', low: 'high' }[KM.R.gfx]); this.renderTab(true); }
       if (k === 'edge') { KM.edgeScroll = KM.edgeScroll === false; try { localStorage.setItem('rm_edge', KM.edgeScroll ? '1' : '0'); } catch (e) { /* ok */ } this.renderTab(true); }
@@ -788,6 +790,7 @@
       el.classList.remove('hidden');
       this.bindStats(el, S);
       KM.sfx && KM.sfx(res === 'win' ? 'win' : 'horn');
+      if (res === 'win' && KM.music.victory) KM.music.victory();
     },
     // estatísticas da partida (tela final e aba Objetivos): tabela por jogador + gráfico ao longo do tempo
     statsHtml(S) {

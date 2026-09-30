@@ -70,7 +70,7 @@
       r.toneMapping = THREE.ACESFilmicToneMapping;
       r.toneMappingExposure = 1.0;
       r.shadowMap.enabled = this.gfx !== 'low';
-      r.shadowMap.type = THREE.PCFSoftShadowMap;
+      r.shadowMap.type = THREE.PCFShadowMap;
       const sc = this.scene = new THREE.Scene();
       const sky = new THREE.Color('#86bfe3');
       sc.background = sky;

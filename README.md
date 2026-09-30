@@ -77,6 +77,10 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 - **Tutorial na Conquista:** aparece na fase I para quem ainda não concluiu nem fechou o tutorial.
 - **Desempenho:** as 6 partes do corpo de cada personagem viram uma malha só, e só o corpo projeta sombra. Numa batalha com 209 soldados, o tempo por quadro caiu de 24,6 ms para 14,2 ms.
 
+- **Áudio gravado:**
+  - Trilhas medievais de verdade (RandomMind, CC0): músicas calmas na vila, trilha de batalha quando você é atacado e tema de vitória, com transições suaves.
+  - Efeitos gravados (Kenney, CC0): machado, golpes de arma, moedas, passos das tropas marchando, panos e couro ao selecionar e dar ordens, metal da forja, rangido de demolição e porta ao concluir obras.
+  - O som gerado por código continua como reserva. Em Opções dá para trocar "Música: gravada/gerada".
 - **Multijogador por sala:** "Criar sala" gera um código de 5 letras; o amigo toca em "Entrar com código" e digita. Os navegadores se apresentam pelo serviço público gratuito ntfy.sh, que só repassa o convite de conexão (sem conta e sem dados da partida), e depois jogam direto entre si. A partida continua andando mesmo com a janela minimizada ou atrás de outra, e o outro jogador não fica travado. O modo manual continua disponível.
 - **Tipos de mapa:** continente, rio (com vaus), lagos, cordilheiras, floresta densa e planalto central (montanha rica em minério disputada por todos). Escolha na Escaramuça ou use "Surpresa". Cada fase da Conquista tem um tipo próprio, e todas as bases continuam ligadas por terra.
 - **Estratégias da IA:** cada reino ataca de um jeito.
@@ -145,6 +149,7 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 - **Sons e música procedurais** com volume pela distância da câmera e panorâmica estéreo.
 
 ## 📦 Créditos (todos CC0, domínio público)
+- Músicas: **RandomMind** (OpenGameArt): The Bard's Tale, Minstrel Dance, Market Day, Harvest Season, Battle e Victory Theme. Efeitos: **Kenney – RPG Audio** (kenney.nl). Detalhes em `assets/audio/CREDITS.txt`.
 - Construções, natureza, texturas e efeitos: **arte própria** gerada por código (`js/art.js`)
 - Personagens, cavalos, porcos, roupas, chapéus, armas, escudos e itens carregados: **arte própria** gerada por código (`js/art.js`), presa aos esqueletos de animação.
 - Esqueletos e animações (76 dos personagens, mais as do cavalo e do porco): **KayKit – Character Pack: Adventurers**, por Kay Lousberg (kaylousberg.com), e Quaternius. Só a sombra das nuvens usa o KayKit Medieval Hexagon Pack.

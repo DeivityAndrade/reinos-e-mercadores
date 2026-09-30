@@ -48,6 +48,7 @@
     cfg[k] = v;
     try { localStorage.setItem(VOL_KEY, JSON.stringify(cfg)); localStorage.setItem('rm_sfx', KM.audioOn ? '1' : '0'); } catch (e) { /* ok */ }
     applyVolumes();
+    if (KM.music && KM.music.applyVol) KM.music.applyVol();
   };
   KM.toggleSfx = function () { KM.audioOn = !KM.audioOn; KM.setAudio('sfx', cfg.sfx); };
   // navegadores só liberam o áudio depois de um gesto do usuário
@@ -195,9 +196,50 @@
     footstep(v, pan) { nz(T(), 0.05, 300, 1, 0.08 * v, { type: 'lowpass', pan, wet: 0 }); },
     coins(v) { const t = T(); for (let k = 0; k < 4; k++) osc('sine', 2800 + Math.random() * 1500, t + k * 0.05, 0.12, 0.02 * v, { wet: 0.3 }); },
   };
+  // ---------------- efeitos gravados (Kenney RPG Audio, CC0) ----------------
+  // cada efeito tem variações; tocamos uma ao acaso com leve variação de tom. Sem arquivo, cai no som gerado por código.
+  const SAMPLES = {
+    chop: ['chop'], hit: ['drawKnife1', 'drawKnife2', 'drawKnife3', 'knifeSlice', 'knifeSlice2', 'metalPot1'],
+    coins: ['handleCoins', 'handleCoins2'], place: ['bookPlace1', 'bookPlace2', 'bookPlace3', 'dropLeather'],
+    click: ['bookFlip1', 'bookFlip2', 'metalClick'], select: ['cloth1', 'cloth2', 'cloth3', 'cloth4', 'beltHandle1'],
+    order: ['clothBelt', 'clothBelt2', 'beltHandle2'], footstep: ['footstep00', 'footstep01', 'footstep02', 'footstep03', 'footstep04', 'footstep05', 'footstep06', 'footstep07', 'footstep08', 'footstep09'],
+    smith: ['metalPot1', 'metalPot2', 'metalPot3'], creak: ['creak1', 'creak2', 'creak3'], door: ['doorOpen_1', 'doorOpen_2', 'doorClose_1', 'doorClose_2'],
+  };
+  const SVOL = { chop: 0.8, hit: 0.55, coins: 0.7, place: 0.8, click: 0.5, select: 0.45, order: 0.5, footstep: 0.35, smith: 0.45, creak: 0.6, door: 0.6 };
+  const buf = {};
+  let sampleLoad = null;
+  function loadSamples() {
+    if (sampleLoad || !A) return;
+    const names = [...new Set(Object.values(SAMPLES).flat())];
+    sampleLoad = Promise.all(names.map((n) => fetch('assets/audio/sfx/' + n + '.ogg').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
+      .then((ab) => new Promise((res) => A.decodeAudioData(ab, (b) => { buf[n] = b; res(); }, () => res()))).catch(() => { /* sem arquivo: usa o sintetizado */ })));
+  }
+  function sample(kind, v, pan, rate) {
+    const list = SAMPLES[kind];
+    if (!list) return false;
+    const n = list[Math.floor(Math.random() * list.length)];
+    if (!buf[n]) return false;
+    const s = A.createBufferSource(); s.buffer = buf[n];
+    s.playbackRate.value = (rate || 1) * (0.92 + Math.random() * 0.16);
+    const g = A.createGain(); g.gain.value = (SVOL[kind] || 0.6) * v;
+    out(s.connect(g), sfxBus, 0.18, pan);
+    s.start();
+    return true;
+  }
+  // quais efeitos usam gravação (e com qual banco); os demais continuam sintetizados
+  const USE = { chop: 'chop', hit: 'hit', coins: 'coins', place: 'place', click: 'click', select: 'select', order: 'order', footstep: 'footstep' };
   KM.sfx = function (name, vol, pan) {
     if (!KM.audioOn) return;
-    try { ctx(); const f = SFX[name]; if (f) f(vol == null ? 1 : vol, pan); } catch (e) { if (KM.audioDebug) throw e; }
+    try {
+      ctx(); loadSamples();
+      const v = vol == null ? 1 : vol;
+      if (USE[name] && sample(USE[name], v, pan)) return;
+      // metal da forja e rangido da demolição somam gravação ao sintetizado
+      if (name === 'hammer' && Math.random() < 0.5 && sample('smith', v * 0.8, pan, 1.1)) return;
+      if (name === 'demolish') sample('creak', v, pan);
+      if (name === 'built') sample('door', v * 0.8, pan);
+      const f = SFX[name]; if (f) f(v, pan);
+    } catch (e) { if (KM.audioDebug) throw e; }
   };
   // som posicional: volume pela distância do foco da câmera e panorâmica pela posição na tela
   KM.sfxAt = function (name, x, y) {
@@ -268,6 +310,8 @@
       if (s) KM.sfxAt(s, h.ex, h.ey);
       break;
     }
+    // passos de tropas marchando na tela
+    for (const id in S.units) { const u = S.units[id]; if (u.path && KM.isSoldier(u.type) && u.tx >= v.x0 && u.tx <= v.x1 && u.ty >= v.y0 && u.ty <= v.y1 && Math.random() < 0.35) { KM.sfxAt('footstep', u.x, u.y); break; } }
     if (Math.random() < 0.05) KM.sfx('bird', KM.clamp(24 / KM.R.dist, 0.3, 1));
   };
 
@@ -371,5 +415,64 @@
         }
       }
     },
+  };
+
+  // ---------------- música gravada (RandomMind, CC0) com troca suave; a sintetizada fica de reserva ----------------
+  const synth = KM.music;
+  const TRACKS = { calm: ['The_Bards_Tale', 'Minstrel_Dance', 'Loop_Market_Day', 'harvestseason'], battle: ['battle'], victory: ['victory'] };
+  cfg.musicMode = cfg.musicMode || 'gravada';
+  KM.music = {
+    playing: false, el: null, kind: null, last: null,
+    vol() { return cfg.master * cfg.music * 0.6; },
+    applyVol() { if (this.el && !this.el._fading) this.el.volume = KM.clamp(this.vol(), 0, 1); },
+    start() {
+      if (this.playing || !KM.musicOn) return;
+      this.playing = true;
+      if (cfg.musicMode === 'gerada') { synth.start(); return; }
+      this.play('calm');
+      clearInterval(this.timer);
+      this.timer = setInterval(() => this.tick(), 1000);
+    },
+    stop() {
+      this.playing = false; clearInterval(this.timer); synth.stop();
+      if (this.el) { this.fade(this.el, 0, true); this.el = null; }
+      this.kind = null;
+    },
+    fade(a, to, kill) {
+      a._fading = true;
+      const from = a.volume, t0 = performance.now(), d = 1800;
+      const step = () => {
+        const f = Math.min(1, (performance.now() - t0) / d);
+        a.volume = KM.clamp(from + (to - from) * f, 0, 1);
+        if (f < 1) setTimeout(step, 50); else { a._fading = false; if (kill) { a.pause(); a.src = ''; } }
+      };
+      step();
+    },
+    play(kind) {
+      const pool = TRACKS[kind].filter((n) => n !== this.last);
+      const name = (pool.length ? pool : TRACKS[kind])[Math.floor(Math.random() * (pool.length || TRACKS[kind].length))];
+      const a = new Audio('assets/audio/music/' + name + '.mp3');
+      a.volume = 0; a.loop = kind === 'battle';
+      a.onended = () => { if (this.el === a && this.playing) this.play(kind === 'victory' ? 'calm' : 'calm'); };
+      a.onerror = () => { if (this.el === a) this.fail(); };
+      const p = a.play();
+      if (p && p.catch) p.catch(() => { this.pending = true; });
+      if (this.el) this.fade(this.el, 0, true);
+      this.el = a; this.kind = kind; this.last = name;
+      this.fade(a, KM.clamp(this.vol(), 0, 1));
+    },
+    // sem arquivos (ou bloqueado): volta para a música sintetizada
+    fail() { clearInterval(this.timer); this.el = null; if (this.playing) synth.start(); },
+    tick() {
+      if (!this.playing || !this.el) return;
+      if (this.pending) this.el.play().then(() => { this.pending = false; }).catch(() => { /* aguardando um clique */ });
+      this.applyVol();
+      const S = KM.S;
+      const battle = !!(S && S.lastWarn && S.time - S.lastWarn < 40);
+      if (battle && this.kind === 'calm') this.play('battle');
+      else if (!battle && this.kind === 'battle' && S && S.time - (S.lastWarn || 0) > 60) this.play('calm');
+    },
+    victory() { if (this.playing && cfg.musicMode !== 'gerada') this.play('victory'); },
+    setMode(m) { const on = this.playing; this.stop(); cfg.musicMode = m; KM.setAudio('musicMode', m); if (on) this.start(); },
   };
 })(window.KM);

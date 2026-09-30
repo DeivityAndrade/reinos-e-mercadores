@@ -186,7 +186,7 @@
       metal: toon({ color: '#7c838c' }), iron: toon({ color: '#44464c' }), gold: toon({ color: '#f0c040', emissive: new THREE.Color('#6a4a00'), emissiveIntensity: 0.6 }),
       glow: new THREE.MeshBasicMaterial({ color: '#ffb040' }), water: toon({ color: '#3f86ad' }), leather: toon({ color: '#8a5a34' }),
       meat: toon({ color: '#a8463c' }), wine: toon({ color: '#5a1f3a' }), coal: toon({ color: '#26242a' }), ore2: toon({ color: '#a2512c' }), ore3: toon({ color: '#e8b830', emissive: new THREE.Color('#5a3c00'), emissiveIntensity: 0.5 }),
-      leaf: toon({ vertexColors: true, flatShading: true }), rock: toon({ vertexColors: true, flatShading: true }),
+      leaf: toon({ vertexColors: true }), rock: toon({ vertexColors: true }),
       green: toon({ color: '#4f8a34' }),
     });
     // ruído detalhado na pedra/reboco à distância não é necessário: texturas repetem por metro
@@ -1107,7 +1107,7 @@
     return (animalCache[key] = geo);
   };
   A.charMat = function () {
-    if (!A._charMat) A._charMat = toon({ vertexColors: true, flatShading: true });
+    if (!A._charMat) A._charMat = toon({ vertexColors: true });
     return A._charMat;
   };
   // itens carregados nas costas/mãos (troncos, pedra, sacos, caixotes)
