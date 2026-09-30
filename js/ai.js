@@ -14,6 +14,7 @@
       wave: 0, defT: 30, warned: false,
       buildT: 3 + o, cheatT: 45, fieldT: 5 + o, equipT: 4,
       attackN: ai.attackN || Math.round(12 * D.mult), fail: {},
+      fair: !!ai.fair, // fair: sem recursos extras e seguindo a árvore de progressão (usado para testar o equilíbrio)
     };
   };
 
@@ -158,7 +159,7 @@
     const st = find(S, o, 'storehouse');
     if (!st) return;
     ai.cheatT -= dt;
-    if (ai.cheatT <= 0) {
+    if (ai.cheatT <= 0 && !ai.fair) {
       ai.cheatT = 60;
       const k = ai.mult;
       KM.add(st.inv, 'wood', Math.round(2 * k)); KM.add(st.inv, 'stone', Math.round(2 * k)); KM.add(st.inv, 'gold', Math.round(1.5 * k));
@@ -184,7 +185,7 @@
     if (ai.equipT <= 0 && bar && army < 18 + 14 * ai.mult + ai.wave * 4) {
       ai.equipT = 8 / ai.mult;
       const ORDER = ['knight', 'swordsman', 'crossbowman', 'pikeman', 'scout', 'axeman', 'bowman', 'lancer', 'militia'];
-      for (const t of ORDER) while (KM.equip(S, bar, t));
+      for (const t of ORDER) { if (ai.fair && !KM.SOLDIER_REQ[t].every((r) => S.players[o].built[r])) continue; while (KM.equip(S, bar, t)); }
       // estoque de armas (quartel + armazém)
       const have = {};
       for (const r of KM.WEAPONS) have[r] = (bar.inv[r] || 0) + (st.inv[r] || 0);
@@ -236,15 +237,24 @@
     }
   }
 
+  // ordem de um jogador humano competente, respeitando a árvore de progressão
+  const WANT_FAIR = [
+    ['woodcutter', 1], ['quarry', 1], ['sawmill', 1], ['woodcutter', 2], ['quarry', 2], ['inn', 1], ['farm', 1], ['weaponworkshop', 1], ['barracks', 1],
+    ['coalmine', 1], ['goldmine', 1], ['goldsmelter', 1], ['mill', 1], ['bakery', 1], ['farm', 2], ['tower', 2], ['swine', 1], ['tannery', 1], ['armorworkshop', 1], ['butcher', 1],
+    ['ironmine', 1], ['ironsmithy', 1], ['weaponsmithy', 1], ['armorsmithy', 1],
+    ['coalmine', 2], ['farm', 3], ['woodcutter', 3], ['quarry', 3], ['stables', 1], ['tower', 4], ['inn', 2], ['farm', 4],
+  ];
+
   function planBuild(S, o, ai, st) {
     let sites = 0;
     for (const id in S.houses) { const h = S.houses[id]; if (h.owner === o && h.state !== 'built') sites++; }
     if (sites >= (ai.mult >= 1.4 ? 3 : 2)) return;
     const foe = nearestHostileHouse(S, o, st.ex, st.ey);
     const cx = KM.hcx(st), cy = KM.hcy(st);
-    for (const [t, n] of WANT) {
+    for (const [t, n] of ai.fair ? WANT_FAIR : WANT) {
       if (count(S, o, t) >= n) continue;
       if ((ai.fail[t + n] || 0) > S.time) continue;
+      if (ai.fair && KM.TECH[t] && !KM.TECH[t].every((r) => S.players[o].built[r])) continue;
       let score = KM.spotScore(S, t);
       let R = 16;
       if (KM.HOUSES[t].mine) R = 24;

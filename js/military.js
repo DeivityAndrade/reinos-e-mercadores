@@ -172,7 +172,7 @@
     if (!u.target && u.scanT <= 0) {
       u.scanT = 0.4 + KM.rand() * 0.3;
       if (!u.order || u.order.am) {
-        const e = findEnemy(S, u, sd.range ? sd.range + 1.5 : 7, u.ai === 'atk' || !!(u.order && u.order.am));
+        const e = findEnemy(S, u, sd.range ? sd.range + 1.5 : u.order ? 7 : 9,u.ai === 'atk' || !!(u.order && u.order.am));
         if (e) u.target = e;
       }
     }

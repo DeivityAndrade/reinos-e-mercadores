@@ -418,7 +418,7 @@
   KM.TOWNS = {
     human: () => ({
       houses: ['storehouse', 'school'],
-      stock: { wood: 45, stone: 50, trunk: 6, gold: 30, bread: 20, sausages: 15, wine: 15, fish: 10, corn: 8, axe: 6, shield: 4, armor: 4, bow: 3 },
+      stock: { wood: 45, stone: 50, trunk: 6, gold: 40, bread: 20, sausages: 15, wine: 15, fish: 10, corn: 8, axe: 6, shield: 4, armor: 4, bow: 3 },
       units: [['serf', 10], ['laborer', 5], ['woodcutter', 2], ['stonemason', 2], ['carpenter', 1], ['farmer', 1], ['baker', 1]],
       soldiers: [['axeman', 3], ['militia', 2], ['bowman', 3]],
     }),

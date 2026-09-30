@@ -38,9 +38,13 @@
       return { ms: Math.round(performance.now() - t0), log, S };
     },
     // partida só de IAs: termina quando sobra um
-    bots({ seed = 1, minutes = 40, diff = 'normal', opponents = 1, mode = 'economy' } = {}) {
+    // fair: o jogador 0 começa com a cidade de um humano, sem bônus, e segue a árvore de progressão
+    bots({ seed = 1, minutes = 40, diff = 'normal', opponents = 1, mode = 'economy', fair = false } = {}) {
       const cfg = KM.skirmishConfig({ diff, opponents, aiMode: mode });
-      cfg.players[0] = { team: 0, name: 'Bot', ai: KM.TOWNS.economy(KM.DIFF[diff]) };
+      const D = KM.DIFF[diff];
+      cfg.players[0] = fair
+        ? { team: 0, name: 'Justo', ai: Object.assign(KM.TOWNS.human(), { mode: 'economy', fair: true, peace: D.peace + 300, mult: 1, def: 8 }) }
+        : { team: 0, name: 'Bot', ai: KM.TOWNS.economy(D) };
       cfg.seed = seed;
       const sk = KM.skirmishConfig, cg = KM.checkGoals;
       KM.skirmishConfig = () => cfg;

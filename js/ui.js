@@ -543,6 +543,38 @@
       this.mmt = (this.mmt || 0) + dt;
       if (this.mmt > 0.5) { this.mmt = 0; this.renderMini(); }
       KM.tutorial.update(KM.S, dt);
+      this.advT = (this.advT || 0) + dt;
+      if (this.advT > 3) { this.advT = 0; this.advise(KM.S); }
+    },
+
+    // ---------- conselheiro: avisa sobre gargalos da economia (no máximo um aviso a cada 2 min por assunto) ----------
+    advise(S) {
+      if (!S || S.editor || S.paused || S.over || S.time < 20) return;
+      const o = ME(), P = S.players[o];
+      if (!P || P.out || !P.eco) return;
+      const tot = {}, have = {};
+      let starving = 0, cit = 0, sitesNeed = { wood: 0, stone: 0 };
+      for (const id in S.houses) {
+        const h = S.houses[id];
+        if (h.owner !== o) continue;
+        if (h.state === 'built') { have[h.type] = (have[h.type] || 0) + 1; if (h.type === 'storehouse') for (const r in h.inv) KM.add(tot, r, h.inv[r]); }
+        else for (const r in h.mat || {}) { const mt = h.mat[r]; if (sitesNeed[r] != null) sitesNeed[r] += Math.max(0, mt.need - mt.got - (mt.inc || 0)); }
+      }
+      for (const id in S.units) { const u = S.units[id]; if (u.owner !== o || KM.isSoldier(u.type)) continue; cit++; if (u.hunger <= 0) starving++; }
+      const adv = S.adv || (S.adv = {});
+      const say = (k, msg) => { if (S.time - (adv[k] || -999) < 120) return; adv[k] = S.time; this.toast('🧙 ' + msg, 'warn'); };
+      const name = (t) => `${KM.HOUSES[t].i} ${KM.HOUSES[t].n}`;
+      const path = (t) => (KM.houseUnlocked(S, o, t) ? `construa ${name(t)}` : `libere e construa ${name(t)} (antes: ${KM.reqNames(KM.TECH[t])})`);
+      const school = Object.values(S.houses).find((h) => h.owner === o && h.type === 'school' && h.state === 'built');
+      if (school && school.queue.length && !(tot.gold > 0) && !(school.inv.gold > 0)) {
+        say('gold', `Acabou o ouro: a Escola parou de treinar. Para produzir ouro, ${have.goldmine ? path('goldsmelter') : path('goldmine')} perto de montanhas com pontos dourados.`);
+      }
+      if (sitesNeed.stone > 0 && !(tot.stone > 0)) say('stone', `Acabou a pedra e há obras esperando. ${have.quarry ? 'Construa mais uma' : 'Construa uma'} ${name('quarry')} perto de rochas cinzentas.`);
+      if (sitesNeed.wood > 0 && !(tot.wood > 0)) say('wood', (tot.trunk > 0 && !have.sawmill) ? `Há troncos, mas falta madeira: ${path('sawmill')}.` : `Acabou a madeira. Mais ${name('woodcutter')} e uma ${name('sawmill')} ajudam.`);
+      if (starving >= 3 && starving >= cit * 0.2) {
+        if (!have.inn) say('food', `${starving} cidadãos com fome trabalham pela metade. ${path('inn')}.`);
+        else say('food', `${starving} cidadãos com fome e sem comida na Taverna. Produza pão (Fazenda → Moinho → Padaria), peixe, vinho ou salsichas.`);
+      }
     },
 
     // ---------- menus ----------
