@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reinos & Mercadores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Alegreya+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="topbar"></div>
+    <aside id="sidebar">
+      <div class="brand">⚜️ Reinos &amp; Mercadores</div>
+      <canvas id="minimap" width="264" height="264"></canvas>
+      <nav id="tabs"></nav>
+      <div id="tabcontent"></div>
+    </aside>
+    <div id="selpanel" class="empty"></div>
+    <div id="toasts"></div>
+  </div>
+  <div id="tooltip"></div>
+
+  <div id="menu">
+    <div class="card hero">
+      <div class="crest">⚜️</div>
+      <div id="loadbar" data-t="Carregando o reino…"></div>
+      <h1>Reinos &amp; Mercadores</h1>
+      <p class="sub">Um tributo moderno ao clássico de estratégia econômica medieval.<br>Construa, abasteça, treine e defenda seu reino.</p>
+
+      <div class="screen" data-s="main">
+        <button class="mbtn primary" data-screen="campaign">📜 Campanha</button>
+        <button class="mbtn primary alt" data-screen="skirmish">⚔️ Escaramuça</button>
+        <div class="mgrid">
+          <button class="mbtn" data-screen="mp">🌐 Multijogador</button>
+          <button class="mbtn" data-screen="editor">🗺️ Editor de mapas</button>
+        </div>
+        <div id="continue"></div>
+        <button class="mbtn ghost" data-help="1">❓ Como jogar</button>
+      </div>
+
+      <div class="screen hidden" data-s="mp">
+        <h3>Multijogador online (P2P)</h3>
+        <p class="muted">Conexão direta entre dois navegadores, sem servidor. Troquem os códigos por WhatsApp, Discord etc.</p>
+        <div class="mgrid">
+          <button class="mbtn primary" data-net="host">👑 Criar partida</button>
+          <button class="mbtn primary alt" data-net="join">🤝 Entrar numa partida</button>
+        </div>
+        <div id="mpbox"></div>
+        <button class="mbtn ghost" data-screen="main">← Voltar</button>
+      </div>
+
+      <div class="screen hidden" data-s="editor">
+        <h3>Editor de mapas</h3>
+        <label class="inline">Tamanho <select id="edsize"><option value="64">64×64</option><option value="80" selected>80×80</option><option value="96">96×96</option><option value="112">112×112</option></select></label>
+        <div class="mgrid">
+          <button class="mbtn primary" data-editor="new">📄 Mapa vazio</button>
+          <button class="mbtn primary alt" data-editor="gen">🎲 Gerar e editar</button>
+        </div>
+        <label class="inline">Mapas salvos <select id="edmap"></select></label>
+        <div class="mgrid">
+          <button class="mbtn" data-editor="load">📂 Abrir</button>
+          <button class="mbtn" data-editor="import">📥 Importar arquivo</button>
+        </div>
+        <button class="mbtn ghost" data-screen="main">← Voltar</button>
+      </div>
+
+      <div class="screen hidden" data-s="campaign">
+        <h3>A Reunificação de Aldor</h3>
+        <label class="inline">Dificuldade
+          <select id="cdiff"><option value="easy">Fácil</option><option value="normal" selected>Normal</option><option value="hard">Difícil</option></select>
+        </label>
+        <div id="missions"></div>
+        <button class="mbtn ghost" data-screen="main">← Voltar</button>
+      </div>
+
+      <div class="screen hidden" data-s="skirmish">
+        <div class="form">
+          <label>Dificuldade
+            <select id="diff">
+              <option value="easy">Fácil: 15 min de paz</option>
+              <option value="normal" selected>Normal: 10 min de paz</option>
+              <option value="hard">Difícil: 6 min de paz</option>
+            </select>
+          </label>
+          <label>Inimigo
+            <select id="aimode">
+              <option value="economy" selected>Economia real (como no original)</option>
+              <option value="waves">Ondas de ataque (clássico arcade)</option>
+            </select>
+          </label>
+          <label>Oponentes
+            <select id="opps"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option></select>
+          </label>
+          <label>Mapa <select id="smap"><option value="">Aleatório (procedural)</option></select></label>
+          <label>Semente do mapa <input id="seed" placeholder="aleatória"></label>
+          <label class="chkl"><input type="checkbox" id="ally"> Com aliado (IA)</label>
+          <label class="chkl" title="Sem progressão: todas as construções e soldados disponíveis desde o início"><input type="checkbox" id="allun"> Tudo liberado (modo livre)</label>
+        </div>
+        <button class="mbtn primary" data-new="1">⚔️ Começar</button>
+        <button class="mbtn ghost" data-screen="main">← Voltar</button>
+      </div>
+      <div class="foot">v0.3 · HTML5 · sem instalação · gráficos, sons e música procedurais</div>
+    </div>
+  </div>
+
+  <div id="brief" class="hidden"></div>
+
+  <div id="help" class="hidden">
+    <div class="card help">
+      <button class="close" data-close="1">✕</button>
+      <h2>Como jogar</h2>
+      <div class="cols">
+        <div>
+          <h3>🏰 Economia</h3>
+          <ol>
+            <li><b>Estradas são tudo.</b> Carregadores 🧺 só entregam entre casas ligadas por estrada ao mesmo Armazém. Cada trecho de estrada custa 1 🪨.</li>
+            <li>Construtores 🔨 nivelam o terreno e erguem a casa com 🪜 madeira e 🪨 pedra trazidas pelos carregadores. Eles também consertam casas danificadas.</li>
+            <li>Cada casa precisa de um trabalhador. A <b>Escola</b> treina cidadãos por 1 🪙 ouro cada. Torres precisam de um recruta.</li>
+            <li><b>Progressão:</b> no início só o básico está disponível. Cada construção erguida libera novas casas, profissões e soldados. Veja os <b>Próximos passos</b> na aba Construir e a <b>Árvore de progresso</b> na aba Objetivos.</li>
+            <li>Cidadãos comem na <b>Taverna</b> 🍞 🌭 🍷 🐟. Soldados recebem comida dos carregadores. Sem comida, cidadãos trabalham pela metade e soldados morrem.</li>
+            <li>Oficinas de armas e armaduras só produzem <b>por encomenda</b> (📋 no painel da casa).</li>
+            <li>Na aba 📦, a <b>Distribuição</b> decide quem recebe carvão, ferro, trigo e madeira. No painel do Armazém dá para bloquear recursos.</li>
+          </ol>
+          <h3>⛓️ Cadeias de produção</h3>
+          <ul class="chains">
+            <li>🪓 Lenhador → 🪵 → 🪚 Serraria → 🪜</li>
+            <li>🌾 Fazenda (+campos) → 🌀 Moinho → 🥣 → 🍞 Padaria</li>
+            <li>🌾 → 🐖 Porcos → 🔪 Açougue → 🌭 · 🐾 → 🧳 Curtume → couro</li>
+            <li>⚫ Carvão + 🟤 Ferro → 🔩 → 🗡️⛓️ Ferrarias</li>
+            <li>⚫ Carvão + 🟡 Ouro → 🪙 (paga a Escola!)</li>
+          </ul>
+        </div>
+        <div>
+          <h3>⚔️ Exército</h3>
+          <ol>
+            <li>Treine <b>Recrutas</b> 🪖 na Escola: eles vão sozinhos ao Quartel.</li>
+            <li>No <b>Quartel</b>, clique no tipo de soldado para equipar. Novos soldados formam <b>grupos</b> com estandarte.</li>
+            <li>Os grupos marcham em formação. É possível girar, mudar as colunas, dividir, unir e alimentar.</li>
+            <li>Lanceiros e piqueiros causam dano dobrado contra cavalaria. Atacar pelo flanco causa mais dano.</li>
+          </ol>
+          <h3>⌨️ Controles</h3>
+          <table>
+            <tr><td><kbd>WASD</kbd>/setas/bordas</td><td>Mover câmera</td></tr>
+            <tr><td>Botão do meio + arrastar</td><td>Girar e inclinar a câmera (<kbd>,</kbd> <kbd>.</kbd> também giram)</td></tr>
+            <tr><td>Roda do mouse</td><td>Aproximar / afastar</td></tr>
+            <tr><td>Clique / arrastar</td><td>Selecionar grupo(s) · <kbd>Shift</kbd> adiciona</td></tr>
+            <tr><td>Botão direito</td><td>Mover / atacar / cancelar</td></tr>
+            <tr><td><kbd>A</kbd> <kbd>S</kbd></td><td>Atacar-mover · Parar</td></tr>
+            <tr><td><kbd>Q</kbd> <kbd>E</kbd> · <kbd>[</kbd> <kbd>]</kbd></td><td>Girar · Colunas</td></tr>
+            <tr><td><kbd>T</kbd> <kbd>L</kbd> <kbd>H</kbd></td><td>Dividir · Unir · Alimentar</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>1-9</kbd></td><td>Criar atalho de grupo</td></tr>
+            <tr><td><kbd>R</kbd> <kbd>F</kbd> <kbd>V</kbd> <kbd>X</kbd></td><td>Estrada, campo, vinhedo, demolir</td></tr>
+            <tr><td><kbd>P</kbd> <kbd>+</kbd> <kbd>-</kbd> <kbd>M</kbd></td><td>Pausa, velocidade, música</td></tr>
+            <tr><td><kbd>Espaço</kbd> · <kbd>F5</kbd>/<kbd>F9</kbd></td><td>Voltar ao Armazém · Salvar/carregar</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Chat (multijogador)</td></tr>
+          </table>
+          <h3>🌐 Multijogador e 🗺️ Editor</h3>
+          <ul>
+            <li><b>Multijogador:</b> um jogador cria a partida e envia o código de convite, o outro responde com o código dele. A conexão é direta entre os navegadores (1 contra 1 ou cooperativo contra a IA).</li>
+            <li><b>Editor:</b> pinte terreno, relevo, árvores, rochas e minérios, posicione até 4 bases e casas prontas. Os mapas salvos aparecem na Escaramuça e podem ser exportados como arquivo.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="endscreen" class="hidden"></div>
+
+  <script type="importmap">{ "imports": { "three": "./js/vendor/three/build/three.module.js" } }</script>
+  <script type="module">
+    import * as T from "three";
+    import { GLTFLoader } from "./js/vendor/three/examples/jsm/loaders/GLTFLoader.js";
+    import * as SkeletonUtils from "./js/vendor/three/examples/jsm/utils/SkeletonUtils.js";
+    window.THREE = Object.assign({}, T, { GLTFLoader, SkeletonUtils });
+    window.dispatchEvent(new Event("three-ready"));
+  </script>
+  <script src="js/config.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/economy.js"></script>
+  <script src="js/units.js"></script>
+  <script src="js/military.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/campaign.js"></script>
+  <script src="js/cmd.js"></script>
+  <script src="js/render3d.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
