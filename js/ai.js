@@ -14,6 +14,7 @@
       wave: 0, defT: 30, warned: false,
       buildT: 3 + o, cheatT: 45, fieldT: 5 + o, equipT: 4,
       attackN: ai.attackN || Math.round(12 * D.mult), fail: {},
+      strat: ai.strat || ['assalto', 'pinca', 'cerco', 'saque', 'equilibrado'][Math.floor(KM.hash(o, (S.seed | 0) % 9973, 17) * 5)], // estilo de ataque
       fair: !!ai.fair, // fair: sem recursos extras e seguindo a árvore de progressão (usado para testar o equilíbrio)
     };
   };
@@ -39,7 +40,9 @@
   }
   // alvo de ataque: pesa distância, defesa ao redor (soldados e torres) e valor (Armazém, Escola e Quartel derrubam o reino)
   const CORE = { storehouse: 10, school: 8, barracks: 9, tower: -2 };
-  function bestTarget(S, o, x, y) {
+  // mode: 'raid' (saque: casas de produção longe da defesa) ou 'siege' (cerco: torres primeiro)
+  const ECON = { farm: 1, vineyard: 1, woodcutter: 1, quarry: 1, sawmill: 1, mill: 1, bakery: 1, swine: 1, butcher: 1, fisher: 1, coalmine: 1, ironmine: 1, goldmine: 1, tannery: 1, market: 1 };
+  function bestTarget(S, o, x, y, mode) {
     const cand = [];
     for (const id in S.houses) {
       const h = S.houses[id];
@@ -54,7 +57,8 @@
       let def = 0;
       for (const id in S.units) { const u = S.units[id]; if (u.owner === h.owner && KM.isSoldier(u.type) && Math.abs(u.x - h.ex) < 7 && Math.abs(u.y - h.ey) < 7) def++; }
       for (const id in S.houses) { const t = S.houses[id]; if (t.owner === h.owner && t.type === 'tower' && t.state === 'built' && Math.abs(t.ex - h.ex) < 7 && Math.abs(t.ey - h.ey) < 7) def += 3; }
-      const s = Math.hypot(h.ex - x, h.ey - y) + def * 1.2 - (CORE[h.type] || 0);
+      const val = mode === 'raid' ? (ECON[h.type] ? 10 : -25) : mode === 'siege' ? (h.type === 'tower' ? 14 : CORE[h.type] || 0) : CORE[h.type] || 0;
+      const s = Math.hypot(h.ex - x, h.ey - y) + def * (mode === 'raid' ? 4 : 1.2) - val;
       if (s < bs) { bs = s; best = h; }
     }
     return best;
@@ -101,27 +105,52 @@
     }
   }
   // reúne as tropas num ponto antes do alvo e só então ataca todas juntas
-  function launchAssault(S, o, ai, groups, from, target) {
-    if (ai.assault) { ai.assault.t = -1e9; updateAssault(S, o, ai); }
+  // side: deslocamento lateral do ponto de encontro (pinça); cada ataque é acompanhado separadamente
+  function launchAssault(S, o, ai, groups, from, target, side) {
+    ai.assaults = ai.assaults || [];
+    if (ai.assault) { ai.assaults.push(ai.assault); ai.assault = null; }
     const dx = target.ex - from.x, dy = target.ey - from.y, dl = Math.hypot(dx, dy) || 1;
     const k = KM.clamp((dl - 11) / dl, 0, 0.7);
-    const p = KM.nearestWalkable(S, Math.round(from.x + dx * k), Math.round(from.y + dy * k), 6) || [target.ex, target.ey + 1];
+    const px = -dy / dl, py = dx / dl, off = (side || 0) * 9;
+    const p = KM.nearestWalkable(S, Math.round(from.x + dx * k + px * off), Math.round(from.y + dy * k + py * off), 7) || [target.ex, target.ey + 1];
     for (const g of groups) { g.stage = 1; g.size0 = g.m.length; }
     KM.orderGroups(S, groups, p[0], p[1], true);
-    ai.assault = { g: groups.map((g) => g.id), x: p[0], y: p[1], t: S.time, target: target.id };
+    ai.assaults.push({ g: groups.map((g) => g.id), x: p[0], y: p[1], t: S.time, target: target.id, pair: side ? ai.wave + 1 : 0 });
   }
   function updateAssault(S, o, ai) {
-    const a = ai.assault;
-    if (!a) return;
-    const gs = a.g.map((id) => S.army[id]).filter(Boolean);
-    if (!gs.length) { ai.assault = null; return; }
-    const ready = gs.filter((g) => { const c = KM.groupCenter(S, g); return Math.hypot(c.x - a.x, c.y - a.y) < 5; }).length;
-    if (ready < gs.length * 0.8 && S.time - a.t < 55) return;
-    let tg = S.houses[a.target];
-    if (!tg || !KM.hostile(S, o, tg.owner) || S.players[tg.owner].out) tg = nearestHostileHouse(S, o, a.x, a.y);
-    for (const g of gs) g.stage = 0;
-    if (tg) KM.orderGroups(S, gs, tg.ex, tg.ey + 1, true);
-    ai.assault = null;
+    if (ai.assault) { (ai.assaults = ai.assaults || []).push(ai.assault); ai.assault = null; }
+    const list = ai.assaults || [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const a = list[i];
+      const gs = a.g.map((id) => S.army[id]).filter(Boolean);
+      if (!gs.length) { list.splice(i, 1); continue; }
+      const ready = gs.filter((g) => { const c = KM.groupCenter(S, g); return Math.hypot(c.x - a.x, c.y - a.y) < 5; }).length;
+      a.ready = ready >= gs.length * 0.8 || S.time - a.t > 55;
+      // pinça: as duas metades esperam uma pela outra para atacar juntas
+      const partner = a.pair ? list.find((b) => b !== a && b.pair === a.pair) : null;
+      if (!a.ready || (partner && !partner.ready && S.time - a.t < 70)) continue;
+      let tg = S.houses[a.target];
+      if (!tg || !KM.hostile(S, o, tg.owner) || S.players[tg.owner].out) tg = nearestHostileHouse(S, o, a.x, a.y);
+      for (const g of gs) g.stage = 0;
+      if (tg) KM.orderGroups(S, gs, tg.ex, tg.ey + 1, true);
+      list.splice(i, 1);
+    }
+  }
+  // saque: grupo pequeno e rápido contra casas de produção mal defendidas (recua quando apanha)
+  function raid(S, o, ai, st) {
+    if (S.time < ai.next - 60 || S.time - (ai.raidT || 0) < 150) return;
+    const idle = Object.values(S.army).filter((g) => g.owner === o && !g.stage && KM.groupUnits(S, g).every((u) => u.ai !== 'atk'));
+    idle.sort((a, b) => (KM.SOLDIERS[b.type].spd - KM.SOLDIERS[a.type].spd) || a.id - b.id);
+    const pick = [];
+    let n = 0;
+    for (const g of idle) { if (n >= 6) break; pick.push(g); n += g.m.length; }
+    if (n < 3) return;
+    const tg = bestTarget(S, o, st.ex, st.ey, 'raid');
+    if (!tg) return;
+    ai.raidT = S.time;
+    for (const g of pick) { g.size0 = g.m.length; for (const u of KM.groupUnits(S, g)) u.ai = 'atk'; }
+    KM.orderGroups(S, pick, tg.ex, tg.ey + 1, true);
+    warnMe(S, o, `🐎 Saqueadores de ${S.players[o].name} atacam sua produção!`, tg.owner === KM.me ? { x: tg.ex, y: tg.ey } : null);
   }
 
   // ---------- ondas ----------
@@ -233,6 +262,7 @@
         if (rec < feasible + 2) school.queue.push('recruit');
       }
     }
+    if (ai.strat === 'saque') raid(S, o, ai, st);
     if (S.time >= ai.next) {
       const groups = Object.values(S.army).filter((g) => g.owner === o);
       let n = 0;
@@ -246,9 +276,15 @@
         for (const g of def) { if (cnt >= ai.attackN * 1.15) break; send.push(g); cnt += g.m.length; }
         let sent = 0;
         for (const g of send) for (const u of KM.groupUnits(S, g)) { u.ai = 'atk'; sent++; }
-        const target = bestTarget(S, o, st.ex, st.ey);
+        // estratégia do reino: assalto, pinça (dois lados), cerco (torres primeiro) ou saque (com assalto principal)
+        const strat = ai.strat === 'equilibrado' ? (ai.wave % 2 ? 'pinca' : 'assalto') : ai.strat || 'assalto';
+        const target = bestTarget(S, o, st.ex, st.ey, strat === 'cerco' ? 'siege' : null);
         if (target && sent) {
-          launchAssault(S, o, ai, send, { x: st.ex, y: st.ey }, target);
+          if (strat === 'pinca' && send.length >= 2) {
+            launchAssault(S, o, ai, send.filter((g, i) => i % 2 === 0), { x: st.ex, y: st.ey }, target, 1);
+            launchAssault(S, o, ai, send.filter((g, i) => i % 2 === 1), { x: st.ex, y: st.ey }, target, -1);
+            warnMe(S, o, `⚔️ ${S.players[o].name} está atacando pelos dois lados!`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
+          } else launchAssault(S, o, ai, send, { x: st.ex, y: st.ey }, target);
           ai.wave++;
           warnMe(S, o, `🚩 ${S.players[o].name} enviou ${sent} soldados para a batalha!`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
           if (target.owner === KM.me) KM.sfx && KM.sfx('horn');

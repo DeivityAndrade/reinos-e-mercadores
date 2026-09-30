@@ -26,7 +26,7 @@
 
   KM.genMap = function (seed, opts) {
     opts = opts || {};
-    const n = opts.players || 2;
+    const n = opts.players || 2, type = opts.type || 'continente';
     const W = opts.W || (n > 2 ? 96 : 80), H = opts.H || W;
     KM.setMapSize(W, H);
     const m = KM.emptyMap(W, H), N = W * H;
@@ -44,7 +44,12 @@
       for (const s of starts) d = Math.min(d, Math.hypot(x - s.x, y - s.y));
       if (d < 13) h = h + (0.52 - h) * (1 - d / 13);
       let t = T.GRASS;
-      if (h < 0.3) t = T.WATER; else if (h < 0.33) t = T.SAND; else if (h > 0.72) t = T.MOUNTAIN;
+      // tipos de mapa: mudam limites de água e montanha e acrescentam feições próprias
+      const wl = type === 'lagos' ? 0.37 : 0.3;
+      if (h < wl) t = T.WATER; else if (h < wl + 0.03) t = T.SAND; else if (h > (type === 'cordilheiras' ? 0.78 : 0.72)) t = T.MOUNTAIN;
+      if (type === 'cordilheiras' && d > 12) { const r = 1 - Math.abs(2 * rN(x / 22 + 7, y / 22 + 3, 3) - 1); if (r > 0.86) { t = T.MOUNTAIN; h = Math.max(h, 0.75 + (r - 0.86) * 2); } }
+      if (type === 'rio' && d > 11) { const rv = Math.abs((x - W / 2) * 0.7 + (y - H / 2) * 0.7 + Math.sin((x - y) / 9) * 6); if (rv < 2.3) { t = T.WATER; h = 0.2; } else if (rv < 3.2 && t === T.GRASS) t = T.SAND; }
+      if (type === 'planalto') { const dc = Math.hypot(x - W / 2, y - H / 2) + hN(x / 5, y / 5, 2) * 4; if (dc < W * 0.13) { t = T.MOUNTAIN; h = Math.max(h, 0.8); } }
       m.terrain[i] = t;
       m.shade[i] = Math.floor(sN(x / 5, y / 5, 3) * 255);
       th[i] = t === T.WATER ? 0 : t === T.SAND ? 0.6 : t === T.MOUNTAIN ? 3.5 + (h - 0.72) * 22 + rN(x / 3, y / 3, 2) * 2 : 0.8 + (h - 0.33) * 5 + rN(x / 6, y / 6, 2) * 1.2;
@@ -96,7 +101,7 @@
     const TPL = { blobs: [[-10, 10, 4, [1, 2, 1, 2]], [14, -10, 3.6, [3, 1, 3]]], stones: [[8, 8, 2], [-7, -7, 2]], forest: [[10, -3, 4], [-9, 2, 3]], lakes: [[20, 3, 3]] };
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = I(x, y);
-      if (m.terrain[i] === T.GRASS && fN(x / 9, y / 9, 3) > 0.58) m.tree[i] = 1 + Math.min(3, Math.floor(rnd() * 5));
+      if (m.terrain[i] === T.GRASS && fN(x / 9, y / 9, 3) > (type === 'floresta' ? 0.44 : 0.58)) m.tree[i] = 1 + Math.min(3, Math.floor(rnd() * 5));
     }
     for (const s of starts) {
       const fx = s.x < W / 2 ? 1 : -1, fy = s.y < H / 2 ? 1 : -1;
@@ -106,6 +111,8 @@
       for (const [x, y, r] of TPL.forest) { const c = w(x, y); forest(c.x, c.y, r); }
       for (const [x, y, r] of TPL.stones) { const c = w(x, y); stones(c.x, c.y, r); }
     }
+    // planalto central: minérios ricos para todos disputarem
+    if (type === 'planalto') for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + 0.4; blob(Math.round(W / 2 + Math.cos(a) * W * 0.07), Math.round(H / 2 + Math.sin(a) * H * 0.07), 2.6, [[1, 2], [3, 1], [2, 3], [1, 3]][k]); }
     for (let k = 0; k < 10 + n * 3; k++) stones(Math.floor(rnd() * W), Math.floor(rnd() * H), 1);
 
     // 3) corredores entre as bases e o centro

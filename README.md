@@ -75,6 +75,15 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 - **Tutorial na Conquista:** aparece na fase I para quem ainda não concluiu nem fechou o tutorial.
 - **Desempenho:** as 6 partes do corpo de cada personagem viram uma malha só, e só o corpo projeta sombra. Numa batalha com 209 soldados, o tempo por quadro caiu de 24,6 ms para 14,2 ms.
 
+- **Tipos de mapa:** continente, rio (com vaus), lagos, cordilheiras, floresta densa e planalto central (montanha rica em minério disputada por todos). Escolha na Escaramuça ou use "Surpresa". Cada fase da Conquista tem um tipo próprio, e todas as bases continuam ligadas por terra.
+- **Estratégias da IA:** cada reino ataca de um jeito.
+  - **Assalto:** exército concentrado.
+  - **Pinça:** divide o exército, que ataca por dois lados ao mesmo tempo.
+  - **Cerco:** derruba primeiro as torres.
+  - **Saque:** grupos rápidos atacam fazendas, minas e lenhadores mal defendidos e recuam quando apanham.
+
+  Na Conquista, o estilo segue a personalidade de cada reino e aparece no briefing.
+
 ## 👑 Modo Conquista
 - A vitória é sempre a mesma: **eliminar todos os reinos rivais**. Um reino cai quando fica sem Armazém, Escola e Quartel prontos e sem nenhum soldado.
 - **Desafios opcionais** (construir algo, formar tropas, vencer rápido) valem **coroas**: 1 pela vitória e 1 por desafio, até 4 por fase. As melhores marcas ficam salvas.

@@ -461,7 +461,7 @@
     const mapData = opts.map || cfg.map;
     let m, starts;
     if (mapData) { ({ m, starts } = KM.mapFromData(mapData, seed)); }
-    else ({ m, starts } = KM.genMap(seed, { players: Math.max(2, pl.length), W: cfg.W, H: cfg.W }));
+    else ({ m, starts } = KM.genMap(seed, { players: Math.max(2, pl.length), W: cfg.W, H: cfg.W, type: opts.mapType || cfg.mapType }));
     const diff = opts.diff || cfg.diff || 'normal';
     const S = {
       v: KM.SAVE_V, seed, rs: seed | 0, time: 0, tick: 0, speed: 1, paused: false, map: m, houses: {}, units: {}, army: {}, nid: 1, starts,

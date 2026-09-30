@@ -651,7 +651,8 @@
         if (b.dataset.new) {
           const seedv = $('#seed').value.trim();
           const map = $('#smap').value ? KM.editor.loadMapData($('#smap').value) : null;
-          KM.startGame({ diff: $('#diff').value, aiMode: $('#aimode').value, opponents: +$('#opps').value, ally: $('#ally').checked, allUnlocked: $('#allun').checked, map, seed: seedv ? (parseInt(seedv, 10) || seedv.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0) : 0 });
+          const mt = $('#mtype').value, TYPES = ['continente', 'rio', 'lagos', 'cordilheiras', 'floresta', 'planalto'];
+          KM.startGame({ diff: $('#diff').value, aiMode: $('#aimode').value, opponents: +$('#opps').value, ally: $('#ally').checked, allUnlocked: $('#allun').checked, map, mapType: mt === 'surpresa' ? TYPES[Math.floor(Math.random() * TYPES.length)] : mt, seed: seedv ? (parseInt(seedv, 10) || seedv.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0) : 0 });
         }
         if (b.dataset.cont) KM.load(+b.dataset.cont);
         if (b.dataset.help) this.showHelp(true);
@@ -687,7 +688,7 @@
       $('#conquests').innerHTML = KM.conquestList(diff).map((m, i) => {
         const open = i + 1 <= P.open, cr = P.crowns[m.id] || 0;
         const foes = m.players.slice(1).map((p, k) => `<i class="shield" style="background:${KM.COLORS[k + 1]}" title="${esc(p.name)}"></i>`).join('');
-        return `<button class="mission conq ${open ? '' : 'locked'}" ${open ? `data-conquest="${m.id}"` : 'disabled'}><span>${cr ? '🏆' : open ? '⚔️' : '🔒'}</span><div><b>${esc(m.n)}</b><small>${open ? `${foes} ${m.players.length - 1} reino${m.players.length > 2 ? 's' : ''} rival${m.players.length > 2 ? 'is' : ''} · mapa ${m.W}×${m.W}` : 'Vença a fase anterior'}</small></div><em class="cr">${[1, 2, 3, 4].map((k) => `<span class="${k <= cr ? 'on' : ''}">👑</span>`).join('')}</em></button>`;
+        return `<button class="mission conq ${open ? '' : 'locked'}" ${open ? `data-conquest="${m.id}"` : 'disabled'}><span>${cr ? '🏆' : open ? '⚔️' : '🔒'}</span><div><b>${esc(m.n)}</b><small>${open ? `${foes} ${m.players.length - 1} reino${m.players.length > 2 ? 's' : ''} rival${m.players.length > 2 ? 'is' : ''}· ${{ continente: 'continente', rio: 'rio', lagos: 'lagos', cordilheiras: 'cordilheiras', floresta: 'floresta densa', planalto: 'planalto central' }[m.mapType] || ''} ${m.W}×${m.W}` : 'Vença a fase anterior'}</small></div><em class="cr">${[1, 2, 3, 4].map((k) => `<span class="${k <= cr ? 'on' : ''}">👑</span>`).join('')}</em></button>`;
       }).join('');
     },
     renderCampaign() {

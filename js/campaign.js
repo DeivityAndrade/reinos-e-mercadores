@@ -152,28 +152,28 @@
     construtor: (m, p) => ({ mult: m * 1.1, peace: Math.round(p * 1.25), def: Math.round(4 + 5 * m), attackN: Math.round(16 * m + 2) }),
     fortificado: (m, p) => ({ mult: m, peace: Math.round(p * 1.1), def: Math.round(8 + 7 * m), attackN: Math.round(14 * m), towers: true }),
   };
-  const PERS_N = { equilibrado: 'equilibrado', agressivo: 'agressivo: ataca cedo', construtor: 'construtor: demora, mas vem forte', fortificado: 'fortificado: muitas torres' };
+  const PERS_N = { equilibrado: 'equilibrado: alterna assaltos e ataques em pinça', agressivo: 'agressivo: ataca cedo e saqueia sua produção', construtor: 'construtor: demora, mas ataca forte pelos dois lados', fortificado: 'fortificado: muitas torres, derruba as suas primeiro' };
   // fases: inimigos [personalidade, força], paz base (s), tamanho do mapa, alianças e desafios opcionais
   const LEVELS = [
-    { n: 'O Primeiro Rival', W: 72, peace: 1200, foes: [['equilibrado', 0.5]], text: 'Um único reino vizinho disputa estas terras. Ele é fraco e está distraído com a própria colheita: é o momento de crescer.',
+    { n: 'O Primeiro Rival', mapType: 'continente', W: 72, peace: 1200, foes: [['equilibrado', 0.5]], text: 'Um único reino vizinho disputa estas terras. Ele é fraco e está distraído com a própria colheita: é o momento de crescer.',
       opt: [{ k: 'build', t: 'bakery', n: 1 }, { k: 'army', n: 10 }, { k: 'fast', t: 45 * 60 }] },
-    { n: 'O Vale Dividido', W: 76, peace: 1080, foes: [['agressivo', 0.62]], text: 'Do outro lado do vale, um senhor impaciente já afia as espadas. Espere ataques cedo e prepare torres.',
+    { n: 'O Vale Dividido', mapType: 'rio', W: 76, peace: 1080, foes: [['agressivo', 0.62]], text: 'Do outro lado do vale, um senhor impaciente já afia as espadas. Espere ataques cedo e prepare torres.',
       opt: [{ k: 'build', t: 'tower', n: 2 }, { k: 'res', r: 'bread', n: 40 }, { k: 'fast', t: 45 * 60 }] },
-    { n: 'O Senhor da Colina', W: 80, peace: 1020, foes: [['fortificado', 0.75]], text: 'O rival se entrincheirou atrás de torres. Uma economia forte e armas melhores vão abrir caminho.',
+    { n: 'O Senhor da Colina', mapType: 'cordilheiras', W: 80, peace: 1020, foes: [['fortificado', 0.75]], text: 'O rival se entrincheirou atrás de torres. Uma economia forte e armas melhores vão abrir caminho.',
       opt: [{ k: 'units', t: 'axeman', n: 8 }, { k: 'build', t: 'ironsmithy', n: 1 }, { k: 'fast', t: 50 * 60 }] },
-    { n: 'Duas Coroas', W: 88, peace: 1080, foes: [['equilibrado', 0.6], ['construtor', 0.55]], allied: true, text: 'Dois reinos firmaram um pacto contra você. Um deles demora a se armar, mas quando vier, virá forte.',
+    { n: 'Duas Coroas', mapType: 'lagos', W: 88, peace: 1080, foes: [['equilibrado', 0.6], ['construtor', 0.55]], allied: true, text: 'Dois reinos firmaram um pacto contra você. Um deles demora a se armar, mas quando vier, virá forte.',
       opt: [{ k: 'build', t: 'goldsmelter', n: 1 }, { k: 'army', n: 20 }, { k: 'fast', t: 55 * 60 }] },
-    { n: 'Fronteira em Chamas', W: 92, peace: 960, foes: [['agressivo', 0.68], ['equilibrado', 0.68]], allied: true, text: 'Seus vizinhos querem suas terras antes que você cresça. Aguente a primeira onda e contra-ataque.',
+    { n: 'Fronteira em Chamas', mapType: 'floresta', W: 92, peace: 960, foes: [['agressivo', 0.68], ['equilibrado', 0.68]], allied: true, text: 'Seus vizinhos querem suas terras antes que você cresça. Aguente a primeira onda e contra-ataque.',
       opt: [{ k: 'units', t: 'bowman', n: 8 }, { k: 'build', t: 'tower', n: 4 }, { k: 'fast', t: 55 * 60 }] },
-    { n: 'O Pacto de Ferro', W: 96, peace: 960, foes: [['fortificado', 0.78], ['construtor', 0.72]], allied: true, text: 'Um reino de muralhas e outro de forjas. Separe-os e derrote um de cada vez.',
+    { n: 'O Pacto de Ferro', mapType: 'planalto', W: 96, peace: 960, foes: [['fortificado', 0.78], ['construtor', 0.72]], allied: true, text: 'Um reino de muralhas e outro de forjas. Separe-os e derrote um de cada vez.',
       opt: [{ k: 'units', t: 'swordsman', n: 6 }, { k: 'res', r: 'gold', n: 40 }, { k: 'fast', t: 60 * 60 }] },
-    { n: 'Três Tronos', W: 100, peace: 1020, foes: [['equilibrado', 0.62], ['agressivo', 0.6], ['construtor', 0.6]], allied: false, text: 'Três reinos, nenhuma aliança: todos lutam contra todos. Deixe que se enfraqueçam e ataque na hora certa.',
+    { n: 'Três Tronos', mapType: 'rio', W: 100, peace: 1020, foes: [['equilibrado', 0.62], ['agressivo', 0.6], ['construtor', 0.6]], allied: false, text: 'Três reinos, nenhuma aliança: todos lutam contra todos. Deixe que se enfraqueçam e ataque na hora certa.',
       opt: [{ k: 'build', t: 'stables', n: 1 }, { k: 'army', n: 30 }, { k: 'fast', t: 60 * 60 }] },
-    { n: 'O Cerco de Pedra', W: 104, peace: 960, foes: [['fortificado', 0.75], ['equilibrado', 0.75], ['agressivo', 0.7]], allied: false, text: 'Uma fortaleza no centro e dois reinos famintos nas bordas. Todos contra todos, mas você é o alvo mais cobiçado.',
+    { n: 'O Cerco de Pedra', mapType: 'planalto', W: 104, peace: 960, foes: [['fortificado', 0.75], ['equilibrado', 0.75], ['agressivo', 0.7]], allied: false, text: 'Uma fortaleza no centro e dois reinos famintos nas bordas. Todos contra todos, mas você é o alvo mais cobiçado.',
       opt: [{ k: 'units', t: 'crossbowman', n: 8 }, { k: 'build', t: 'armorsmithy', n: 1 }, { k: 'fast', t: 65 * 60 }] },
-    { n: 'A Grande Aliança', W: 108, peace: 900, foes: [['agressivo', 0.85], ['construtor', 0.85], ['equilibrado', 0.85]], allied: true, text: 'Os três reinos restantes se uniram contra você. Eles vão atacar juntos. Fortifique, abasteça e resista.',
+    { n: 'A Grande Aliança', mapType: 'cordilheiras', W: 108, peace: 900, foes: [['agressivo', 0.85], ['construtor', 0.85], ['equilibrado', 0.85]], allied: true, text: 'Os três reinos restantes se uniram contra você. Eles vão atacar juntos. Fortifique, abasteça e resista.',
       opt: [{ k: 'units', t: 'knight', n: 6 }, { k: 'build', t: 'tower', n: 6 }, { k: 'fast', t: 70 * 60 }] },
-    { n: 'O Rei de Todos', W: 112, peace: 900, foes: [['construtor', 1.0], ['fortificado', 0.95], ['agressivo', 0.95]], allied: true, text: 'A última guerra. Os senhores mais poderosos do continente contra a sua coroa. Vença e todos os reinos serão um só.',
+    { n: 'O Rei de Todos', mapType: 'lagos', W: 112, peace: 900, foes: [['construtor', 1.0], ['fortificado', 0.95], ['agressivo', 0.95]], allied: true, text: 'A última guerra. Os senhores mais poderosos do continente contra a sua coroa. Vença e todos os reinos serão um só.',
       opt: [{ k: 'army', n: 50 }, { k: 'units', t: 'knight', n: 10 }, { k: 'fast', t: 80 * 60 }] },
   ];
   const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
@@ -184,7 +184,7 @@
     L.foes.forEach(([pers, m], k) => {
       const riv = RIVALS[(i + k * 2) % RIVALS.length];
       const P = PERS[pers](m * D.m, Math.round(L.peace * D.p) + k * 60);
-      const ai = Object.assign(KM.TOWNS.economy({ peace: P.peace, mult: P.mult, def: P.def }), { attackN: P.attackN });
+      const ai = Object.assign(KM.TOWNS.economy({ peace: P.peace, mult: P.mult, def: P.def }), { attackN: P.attackN, strat: { equilibrado: 'equilibrado', agressivo: 'saque', construtor: 'pinca', fortificado: 'cerco' }[pers] });
       if (P.towers) ai.houses = ai.houses.concat(['tower', 'tower', 'tower']);
       players.push({ team: L.allied ? 9 : 10 + k, name: riv.name, title: riv.title, pers, ai });
     });
@@ -194,7 +194,7 @@
       + (foes.length > 1 ? `<br><br>${L.allied ? '🤝 Os rivais são <b>aliados entre si</b>.' : '⚔️ <b>Todos contra todos:</b> os rivais também lutam entre si.'}` : '')
       + `<br><br>🕊️ Paz inicial de cerca de ${Math.round((L.peace * D.p) / 60)} minutos.`;
     return {
-      id, conquest: true, idx: i, n: `${ROMAN[i]} · ${L.n}`, seed: 70000 + i * 1013, W: L.W, brief, players,
+      id, conquest: true, idx: i, n: `${ROMAN[i]} · ${L.n}`, seed: 70000 + i * 1013, W: L.W, mapType: L.mapType, brief, players,
       goals: [{ k: 'destroy' }].concat(L.opt.map((g) => Object.assign({ opt: true }, g))),
     };
   }
