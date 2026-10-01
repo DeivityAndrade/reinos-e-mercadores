@@ -441,16 +441,26 @@
     }),
   };
 
-  // opts: { diff, seed, opponents, ally, aiMode, humans, teams:'versus'|'coop', map }
+  // opts: { diff, seed, opponents, ally, aiMode, humans, teams:'versus'|'coop'|'2x2', map }
+  // Multijogador (2 a 4 humanos): 'versus' = todos contra todos (cada reino no seu time),
+  // 'coop' = humanos juntos contra as IAs, '2x2' = reinos 0 e 1 contra 2 e 3 (IA completa as vagas).
   KM.skirmishConfig = function (opts) {
     const D = KM.DIFF[opts.diff || 'normal'];
     const humans = opts.humans || 1;
-    const players = [];
-    for (let h = 0; h < humans; h++) players.push({ human: true, team: opts.teams === 'versus' ? h : 0, name: humans > 1 ? 'Jogador ' + (h + 1) : KM.NAMES[0], town: KM.TOWNS.human() });
     const maxP = opts.map ? Math.min(4, opts.map.starts.length) : 4;
-    if (opts.ally && players.length < maxP - 1) players.push({ team: 0, name: 'Aliado', ai: KM.TOWNS.economy(D) });
-    const nOpp = Math.max(humans > 1 && opts.teams === 'versus' ? 0 : 1, Math.min(maxP - players.length, opts.opponents || 1));
-    for (let k = 0; k < nOpp; k++) players.push({ team: 9, name: KM.NAMES[1 + (k % 3)], ai: opts.aiMode === 'waves' ? KM.TOWNS.waves(D) : KM.TOWNS.economy(D) });
+    const aiTown = () => (opts.aiMode === 'waves' ? KM.TOWNS.waves(D) : KM.TOWNS.economy(D));
+    const players = [];
+    const mode = humans > 1 ? opts.teams : null;
+    const teamOf = (i) => (mode === '2x2' ? (i < 2 ? 0 : 1) : mode === 'versus' ? i : 0);
+    for (let h = 0; h < humans; h++) players.push({ human: true, team: teamOf(h), name: humans > 1 ? 'Jogador ' + (h + 1) : KM.NAMES[0], town: KM.TOWNS.human() });
+    if (opts.ally && !mode && players.length < maxP - 1) players.push({ team: 0, name: 'Aliado', ai: KM.TOWNS.economy(D) });
+    const want = opts.opponents == null ? 1 : opts.opponents;
+    const free = Math.max(0, maxP - players.length);
+    const nOpp = mode === '2x2' ? free : mode === 'versus' ? Math.min(free, want) : Math.min(free, Math.max(1, want));
+    for (let k = 0; k < nOpp; k++) {
+      const i = players.length;
+      players.push({ team: mode === '2x2' ? teamOf(i) : mode === 'versus' ? 10 + k : 9, name: KM.NAMES[1 + (k % 3)], ai: aiTown() });
+    }
     return { diff: opts.diff || 'normal', seed: opts.seed, goals: [{ k: 'destroy' }], players, map: opts.map || null };
   };
 
