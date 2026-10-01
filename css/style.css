@@ -276,6 +276,10 @@ label.inline { display: flex; align-items: center; justify-content: center; gap:
 textarea { width: 100%; background: rgba(0,0,0,0.35); color: var(--text); border: none; padding: 8px; font: 11px monospace; resize: vertical; user-select: text; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(227,185,92,0.3); }
 #mpbox { display: flex; flex-direction: column; gap: 8px; text-align: left; }
 #mpbox .good { text-align: center; }
+.mpslots { display: grid; gap: 4px; }
+.mpslot { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,0.25); color: var(--muted); }
+.mpslot.on { color: var(--text); box-shadow: inset 0 0 0 1px rgba(227,185,92,0.35); }
+#mpbox .mbtn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.6); }
 body.editing #tabs { display: none; }
 .ratio button[style] { color: #fff; font-weight: 800; }
 
