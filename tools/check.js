@@ -22,7 +22,7 @@ function check(name, run) { run(); passed++; console.log('✓ ' + name); }
 function flat() {
   const S = KM.newState({ seed: 7, diff: 'normal' });
   S.map = KM.emptyMap(40, 40); KM.setMapSize(40, 40); S.map.explored.fill(15);
-  S.units = {}; S.army = {}; S.houses = {}; S.sites = []; S.protected = []; S.resv = {};
+  S.units = {}; S.army = {}; S.houses = {}; S.sites = []; S.protected = []; S.resv = {}; S.zones = null;
   S.players.forEach((p) => { p.built = {}; p.out = false; p.ai = null; p.homeStore = 0; });
   KM.rt = { comp: null, roadsDirty: true }; KM.simS = S; KM.me = 0;
   return S;
@@ -177,6 +177,28 @@ check('Tundra leva 25% mais tempo para crescer e saves antigos usam Pradaria', (
   KM.growMap(S, 30); assert.equal(S.map.fstage[0], 1);
   KM.growMap(S, 7.5); assert.equal(S.map.fstage[0], 2);
   delete S.map.biome; assert.equal(KM.biome(S.map).n, 'Pradaria');
+});
+check('Escaramuça começa com 2 construtores e 2 carregadores; a última Escola não pode ser demolida', () => {
+  const S = KM.newState({ seed: 3, diff: 'normal' }); KM.simS = S;
+  const mine = Object.values(S.units).filter((u) => u.owner === 0 && !KM.isSoldier(u.type));
+  assert.equal(mine.filter((u) => u.type === 'laborer').length, 2); assert.equal(mine.filter((u) => u.type === 'serf').length, 2); assert.equal(mine.length, 4);
+  const school = Object.values(S.houses).find((h) => h.owner === 0 && h.type === 'school');
+  KM.exec(S, { o: 0, c: 'demolish', id: school.id }); assert.ok(S.houses[school.id]);
+  KM.exec(S, { o: 0, c: 'demolishAt', x: school.x, y: school.y }); assert.ok(S.houses[school.id]);
+});
+check('Durante a paz cada reino fica no próprio quadrante; depois a fronteira abre', () => {
+  const S = KM.newState({ seed: 3, diff: 'normal' }); KM.simS = S; KM.me = 0;
+  assert.equal(S.peaceEnd, KM.DIFF.normal.peace);
+  const z = KM.zone(S, 0), st = S.starts[0], hw = S.map.W >> 1;
+  assert.ok(z && st.x >= z.x0 && st.x <= z.x1 && st.y >= z.y0 && st.y <= z.y1);
+  const g = Object.values(S.army).find((a) => a.owner === 0);
+  KM.exec(S, { o: 0, c: 'move', g: [g.id], x: S.map.W - 3, y: 3 });
+  for (const u of KM.groupUnits(S, g)) assert.ok(KM.inZone(S, 0, u.order.x, u.order.y));
+  assert.equal(KM.canPlace(S, 'woodcutter', hw + 2, z.y0 + 5, 0).ok, false);
+  S.time = S.peaceEnd + 1; assert.equal(KM.zone(S, 0), null);
+  KM.exec(S, { o: 0, c: 'move', g: [g.id], x: S.map.W - 3, y: 3 });
+  assert.ok(KM.groupUnits(S, g).some((u) => !(u.order.x <= z.x1 && u.order.y >= z.y0)));
+  const mis = KM.newState({ mission: 'm2', diff: 'normal' }); assert.equal(mis.zones, null);
 });
 check('Tutorial completo salva o curso, inclui produção/encomendas/recrutas e conclui a missão', () => {
   const S = KM.newState({ mission: 't1', diff: 'normal' }); KM.tutorial.start(S, true);

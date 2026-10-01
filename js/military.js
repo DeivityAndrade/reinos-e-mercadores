@@ -50,18 +50,20 @@
     const f = KM.DIRS8[dir], fl = Math.hypot(f[0], f[1]);
     const fx = f[0] / fl, fy = f[1] / fl, px = -fy, py = fx;
     const cols = Math.min(g.cols, us.length);
-    const used = new Set();
+    const used = new Set(), z = KM.zone(S, g.owner);
+    const inZ = (tx, ty) => !z || (tx >= z.x0 && tx <= z.x1 && ty >= z.y0 && ty <= z.y1);
     // mantém a ordem: os com mais vida na frente
     us.sort((a, b) => b.hp - a.hp || a.id - b.id);
     us.forEach((u, k) => {
       const c = (k % cols) - (cols - 1) / 2, r = Math.floor(k / cols);
       let sx = Math.round(x + px * c - fx * r), sy = Math.round(y + py * c - fy * r);
+      if (z) { sx = KM.clamp(sx, z.x0, z.x1); sy = KM.clamp(sy, z.y0, z.y1); }
       let p = null;
       for (let rr = 0; rr <= 5 && !p; rr++) {
         for (let dy = -rr; dy <= rr && !p; dy++) for (let dx = -rr; dx <= rr; dx++) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== rr) continue;
           const tx = sx + dx, ty = sy + dy;
-          if (KM.walkable(S, tx, ty) && !used.has(tx + ',' + ty)) { p = [tx, ty]; break; }
+          if (KM.walkable(S, tx, ty) && inZ(tx, ty) && !used.has(tx + ',' + ty)) { p = [tx, ty]; break; }
         }
       }
       if (!p) p = [x, y];
@@ -185,6 +187,8 @@
     tg = KM.resolveTarget(S, u.target);
     if (tg) {
       const k = u.target.k;
+      // durante a paz ninguém persegue alvos fora do próprio quadrante
+      if (!KM.inZone(S, u.owner, Math.round(k === 'u' ? tg.x : tg.ex), Math.round(k === 'u' ? tg.y : tg.ey))) { u.target = null; u.forced = false; return; }
       const d = KM.distToTarget(u, tg, k);
       const range = sd.range || 1.5;
       if (d <= range && (!sd.range || KM.hasLineOfSight(S, u.x, u.y, tg, k))) {

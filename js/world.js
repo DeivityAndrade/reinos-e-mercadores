@@ -13,6 +13,10 @@
   KM.hostile = (S, a, b) => a !== b && S.players[a] && S.players[b] && S.players[a].team !== S.players[b].team;
   KM.isExp = (S, i, o) => (S.map.explored[i] >> (o == null ? KM.me : o)) & 1;
   KM.pcolor = (S, o) => (S && S.players[o] && S.players[o].color) || KM.COLORS[o] || '#999';
+  // quadrante do reino durante a paz (null = sem limite)
+  KM.zone = (S, o) => (S.zones && S.time < S.peaceEnd && S.zones[o]) || null;
+  KM.inZone = (S, o, x, y) => { const z = KM.zone(S, o); return !z || (x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1); };
+  KM.ZONE_MSG = '🕊️ Durante a paz seu reino fica no próprio quadrante. A fronteira abre quando a paz acabar.';
 
   KM.houseAccepts = function (h) {
     const d = KM.def(h);
@@ -127,6 +131,8 @@
     }
     if (!silent) {
       S.stats[h.owner].built++;
+      // comemoração: estandarte sobe, faíscas douradas e o nome da casa flutuando por cima (render3d)
+      S.fx.push({ k: 'built', id: h.id, x: h.x, y: h.y, w: h.w, h: h.h, o: h.owner, t: 0, T: 3.2 });
       if (h.owner === KM.me) {
         KM.notify(S, `${KM.def(h).i} ${KM.def(h).n} concluído!`, 'ok', { x: h.ex, y: h.ey });
         if (h.orders) KM.notify(S, `📋 ${KM.def(h).n}: faça encomendas no painel da casa para começar a produzir.`, 'info', { x: h.ex, y: h.ey });
@@ -163,6 +169,7 @@
       if (!KM.inb(xx, yy)) return { ok: false, why: 'Fora do mapa' };
       const i = yy * m.W + xx, t = m.terrain[i];
       if (hum && !KM.isExp(S, i, owner)) return { ok: false, why: 'Área inexplorada' };
+      if (!KM.inZone(S, owner, xx, yy)) return { ok: false, why: 'Fora do seu território até o fim da paz' };
       if (t !== KM.T.GRASS && t !== KM.T.SAND) return { ok: false, why: 'Terreno inadequado' };
       if (m.house[i]) return { ok: false, why: 'Espaço ocupado' };
       if (m.stone[i]) return { ok: false, why: 'Há rochas aqui' };
@@ -419,8 +426,9 @@
   KM.TOWNS = {
     human: () => ({
       houses: ['storehouse', 'school'],
-      stock: { wood: 45, stone: 50, trunk: 6, gold: 40, bread: 20, sausages: 15, wine: 15, fish: 10, corn: 8, axe: 6, shield: 4, armor: 4, bow: 3 },
-      units: [['serf', 10], ['laborer', 5], ['woodcutter', 2], ['stonemason', 2], ['carpenter', 1], ['farmer', 1], ['baker', 1]],
+      // povo mínimo: o resto sai da Escola (1 ouro cada), então o ouro inicial cobre os primeiros ofícios
+      stock: { wood: 45, stone: 50, trunk: 6, gold: 55, bread: 20, sausages: 15, wine: 15, fish: 10, corn: 8, axe: 6, shield: 4, armor: 4, bow: 3 },
+      units: [['serf', 2], ['laborer', 2]],
       soldiers: [['axeman', 3], ['militia', 2], ['bowman', 3]],
     }),
     economy: (D) => Object.assign(KM.TOWNS.human(), {
@@ -493,6 +501,19 @@
         for (let k = 0; k < n; k++) us.push(KM.addUnit(S, type, o, site.x, site.y));
         const g = KM.newGroup(S, o, type, us);
         KM.formGroup(S, g, site.x + off, site.y, 0, false, true);
+      }
+    }
+    // Paz territorial (escaramuça e multijogador): o mapa é dividido em 4 quadrantes e,
+    // até o fim da paz, cada reino só constrói, anda e ataca dentro do próprio.
+    S.peaceEnd = 0; S.zones = null;
+    if (!mis) {
+      const ais = S.players.map((p) => p.ai).filter((a) => a && (a.mode === 'economy' || a.mode === 'waves'));
+      S.peaceEnd = ais.length ? Math.min(...ais.map((a) => a.next)) : pl.length > 1 ? KM.DIFF[diff].peace : 0;
+      if (S.peaceEnd > 0) {
+        const hw = m.W >> 1, hh = m.H >> 1;
+        const zs = pl.map((p, i) => { const s = starts[i] || starts[0]; return s.x < hw ? (s.y < hh ? 0 : 2) : (s.y < hh ? 1 : 3); });
+        // dois reinos no mesmo quadrante (mapas do editor): nenhum dos dois fica preso
+        S.zones = zs.map((q) => (zs.filter((k) => k === q).length > 1 ? null : { x0: q & 1 ? hw : 0, x1: q & 1 ? m.W - 1 : hw - 1, y0: q & 2 ? hh : 0, y1: q & 2 ? m.H - 1 : hh - 1 }));
       }
     }
     S.protected = [];

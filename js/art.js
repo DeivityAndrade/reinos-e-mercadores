@@ -892,7 +892,10 @@
   // ================= personagens próprios =================
   // Corpo facetado gerado por peças rígidas presas aos ossos do esqueleto (reaproveita todas as animações).
   // Tudo (corpo, roupa, chapéu, armas, escudo) vira UMA malha com cor por vértice: 1 desenho por unidade.
-  const SKIN = ['#e8b894', '#c98e66', '#a46a45', '#f0c8a8'];
+  const SKIN = ['#e8b894', '#c98e66', '#a46a45', '#f0c8a8', '#d9a47c', '#8a5636'];
+  const HAIR = ['#3a2a1a', '#6a4424', '#1e1610', '#a8743a', '#c9a060', '#7a2e18', '#8a8278'];
+  // variações por unidade (pele, cabelo, barba, porte): o povo não parece um exército de clones
+  A.CHAR_VARIANTS = 4;
   const CH = {
     serf: { tunic: '#8a6a44', pants: '#5a4632', hat: 'hood', hatC: '#b89a6a', belt: 1 },
     laborer: { tunic: '#5f7289', pants: '#4a3c2c', hat: 'cap', hatC: '#7a5a3a', apron: '#8a5a34', beard: '#5a3a22' },
@@ -920,17 +923,25 @@
   };
   A.CHAR_TYPES = Object.keys(CH);
   const charCache = {};
-  A.character = function (type, owner, rig) {
-    const key = type + ':' + owner;
+  A.character = function (type, owner, rig, variant) {
+    const vr = (variant || 0) % A.CHAR_VARIANTS;
+    const key = type + ':' + owner + ':' + vr;
     if (charCache[key]) return charCache[key];
     const sp = CH[type] || CH.serf;
     const team = lin(KM.COLORS[owner] || '#888888');
     const C = (hex) => (hex === 'team' ? team : lin(hex));
-    const skin = lin(SKIN[(KM.hash(type.length, owner, 3) * SKIN.length) | 0] || SKIN[0]);
+    const vh = (k) => KM.hash(type.length * 7 + vr, owner + 3, k);
+    const skin = lin(SKIN[(vh(3) * SKIN.length) | 0] || SKIN[0]);
+    const hairHex = sp.hair && vr === 0 ? sp.hair : HAIR[(vh(5) * HAIR.length) | 0];
+    const beardHex = sp.beard || (vh(6) < 0.4 ? hairHex : null);
+    const bw = 0.95 + vh(8) * 0.12; // porte: mais magro ou mais largo
     const P = rig.P, parts = [];
+    // cabeça um pouco maior que o esqueleto (lê melhor de longe, estilo "chibi"); chapéus acompanham
+    const HS = 1.2, HC = new THREE.Vector3(0, 1.36, 0.01);
     // peça rígida: geometria em espaço de ligação, presa a um osso, com cor facetada
     const put = (g, col, bone, jitter) => {
       g = g.index ? g.toNonIndexed() : g;
+      if (bone === 'head') g.translate(-HC.x, -HC.y, -HC.z).scale(HS, HS, HS).translate(HC.x, HC.y, HC.z);
       if (g.attributes.uv) g.deleteAttribute('uv');
       const n = g.attributes.position.count, c = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
       const bi = rig.idx[bone] != null ? rig.idx[bone] : 0;
@@ -954,44 +965,76 @@
       return at(g, a);
     };
     const v = (x, y, z) => new THREE.Vector3(x, y, z);
-    const tunic = C(sp.tunic), pants = C(sp.pants), boot = lin('#3a2a1e'), dark = lin('#1a1410');
-    // pernas e botas
+    const tunic = C(sp.tunic), pants = C(sp.pants), boot = lin(vr % 2 ? '#3a2a1e' : '#4a3424'), dark = lin('#1a1410');
+    const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+    const hair = lin(hairHex);
+    // pernas e botas (arredondadas, com cano dobrado)
     for (const s of ['l', 'r']) {
-      put(seg(P['upperleg' + s], P['lowerleg' + s], 0.085, 0.07), pants, 'upperleg' + s);
-      put(seg(P['lowerleg' + s], P['foot' + s], 0.07, 0.06), pants, 'lowerleg' + s);
-      put(at(new THREE.BoxGeometry(0.13, 0.12, 0.24), v(P['foot' + s].x, 0.06, P['foot' + s].z + 0.04)), boot, 'foot' + s);
-      put(seg(v(P['lowerleg' + s].x, P['lowerleg' + s].y - 0.02, 0), v(P['foot' + s].x, 0.12, 0), 0.075, 0.075), boot, 'lowerleg' + s);
+      put(seg(P['upperleg' + s], P['lowerleg' + s], 0.09, 0.074, 8), pants, 'upperleg' + s);
+      put(seg(P['lowerleg' + s], P['foot' + s], 0.074, 0.062, 8), pants, 'lowerleg' + s);
+      put(at(new THREE.SphereGeometry(1, 10, 6).scale(0.075, 0.07, 0.135), v(P['foot' + s].x, 0.065, P['foot' + s].z + 0.045)), boot, 'foot' + s, 0.06);
+      put(seg(v(P['lowerleg' + s].x, P['lowerleg' + s].y - 0.02, 0), v(P['foot' + s].x, 0.1, 0), 0.08, 0.072, 8), boot, 'lowerleg' + s, 0.06);
+      put(seg(v(P['lowerleg' + s].x, P['lowerleg' + s].y - 0.05, 0), v(P['lowerleg' + s].x, P['lowerleg' + s].y + 0.0, 0), 0.092, 0.088, 8), shade(boot, 1.25), 'lowerleg' + s, 0.04);
     }
-    // quadril e tronco (túnica ou cota de malha)
+    // quadril e tronco (túnica ou cota de malha), mais encorpado
     const body = sp.mail ? lin('#8a9098') : tunic;
-    put(at(new THREE.BoxGeometry(0.36, 0.16, 0.22), v(0, 0.46, 0)), pants, 'hips');
-    put(seg(v(0, 0.44, 0), v(0, 0.82, 0), 0.2, 0.2, 8), body, 'spine');
-    put(seg(v(0, 0.8, 0), v(0, 1.2, 0), 0.21, 0.19, 8), body, 'chest');
-    // saia da túnica
-    if (!sp.mail) put(seg(v(0, 0.3, 0), v(0, 0.56, 0), 0.25, 0.2, 8), tunic, 'hips');
-    else put(seg(v(0, 0.3, 0), v(0, 0.56, 0), 0.24, 0.2, 8), lin('#7a8088'), 'hips');
-    if (sp.tabard) { put(at(new THREE.BoxGeometry(0.3, 0.7, 0.03), v(0, 0.72, 0.205)), team, 'chest'); put(at(new THREE.BoxGeometry(0.3, 0.7, 0.03), v(0, 0.72, -0.205)), team, 'chest'); put(at(new THREE.BoxGeometry(0.12, 0.12, 0.035), v(0, 0.95, 0.21)), lin('#f0d060'), 'chest', 0); }
-    if (sp.apron) put(at(new THREE.BoxGeometry(0.3, 0.5, 0.03), v(0, 0.6, 0.215)), C(sp.apron), 'spine');
-    if (sp.belt || sp.tabard || sp.apron) put(seg(v(0, 0.55, 0), v(0, 0.6, 0), 0.215, 0.215, 8), lin('#4a3020'), 'spine', 0.05);
-    if (sp.cape) put(at(new THREE.BoxGeometry(0.4, 0.75, 0.03), v(0, 0.8, -0.23)), team, 'chest');
-    // braços e mãos
+    put(at(new THREE.BoxGeometry(0.36 * bw, 0.16, 0.22), v(0, 0.46, 0)), pants, 'hips');
+    put(seg(v(0, 0.44, 0), v(0, 0.82, 0), 0.21 * bw, 0.215 * bw, 12), body, 'spine');
+    put(seg(v(0, 0.8, 0), v(0, 1.16, 0), 0.225 * bw, 0.2 * bw, 12), body, 'chest');
+    put(at(new THREE.SphereGeometry(0.2 * bw, 12, 5, 0, PI * 2, 0, PI / 2).scale(1, 0.45, 0.95), v(0, 1.15, 0)), body, 'chest');
+    // saia da túnica com barra mais escura
+    const skirt = sp.mail ? lin('#7a8088') : tunic;
+    put(seg(v(0, 0.3, 0), v(0, 0.56, 0), 0.26 * bw, 0.21 * bw, 12), skirt, 'hips');
+    put(seg(v(0, 0.28, 0), v(0, 0.33, 0), 0.265 * bw, 0.26 * bw, 12), shade(skirt, 0.7), 'hips', 0.04);
+    // gola
+    if (!sp.mail) put(at(new THREE.TorusGeometry(0.1, 0.035, 5, 12).rotateX(PI / 2), v(0, 1.19, 0)), shade(tunic, 0.72), 'chest', 0.04);
+    if (sp.tabard) { put(at(new THREE.BoxGeometry(0.3, 0.7, 0.03), v(0, 0.72, 0.215 * bw)), team, 'chest'); put(at(new THREE.BoxGeometry(0.3, 0.7, 0.03), v(0, 0.72, -0.215 * bw)), team, 'chest'); put(at(new THREE.BoxGeometry(0.12, 0.12, 0.035), v(0, 0.95, 0.225 * bw)), lin('#f0d060'), 'chest', 0); }
+    if (sp.apron) put(at(new THREE.BoxGeometry(0.3, 0.5, 0.03), v(0, 0.6, 0.225 * bw)), C(sp.apron), 'spine');
+    if (sp.belt || sp.tabard || sp.apron || !sp.mail) {
+      put(seg(v(0, 0.55, 0), v(0, 0.61, 0), 0.225 * bw, 0.225 * bw, 12), lin('#4a3020'), 'spine', 0.05);
+      put(at(new THREE.BoxGeometry(0.06, 0.06, 0.02), v(0, 0.58, 0.228 * bw)), lin('#d8b050'), 'spine', 0);
+    }
+    // bolsa de couro no quadril do povo
+    if (!KM.SOLDIERS[type]) put(at(new THREE.BoxGeometry(0.1, 0.12, 0.06), v(0.2 * bw, 0.5, 0.06)), lin('#6a4a2a'), 'hips');
+    if (sp.cape) put(at(new THREE.BoxGeometry(0.42, 0.78, 0.03), v(0, 0.78, -0.235 * bw)), team, 'chest');
+    // braços e mãos (ombros arredondados, punho da manga, mão redonda)
     for (const s of ['l', 'r']) {
       const sl = sp.mail ? lin('#8a9098') : tunic;
-      put(at(new THREE.IcosahedronGeometry(0.09, 0), P['upperarm' + s]), sl, 'upperarm' + s);
-      put(seg(P['upperarm' + s], P['lowerarm' + s], 0.07, 0.06), sl, 'upperarm' + s);
-      put(seg(P['lowerarm' + s], P['wrist' + s], 0.058, 0.05), sp.mail ? lin('#6a6a70') : skin, 'lowerarm' + s);
-      put(at(new THREE.BoxGeometry(0.1, 0.1, 0.09), P['hand' + s]), skin, 'hand' + s);
+      put(at(new THREE.IcosahedronGeometry(0.1, 1), P['upperarm' + s]), sl, 'upperarm' + s);
+      put(seg(P['upperarm' + s], P['lowerarm' + s], 0.074, 0.064, 8), sl, 'upperarm' + s);
+      put(seg(P['lowerarm' + s], P['wrist' + s], 0.062, 0.052, 8), sp.mail ? lin('#6a6a70') : skin, 'lowerarm' + s);
+      if (!sp.mail) put(at(new THREE.TorusGeometry(0.06, 0.022, 4, 10).rotateX(PI / 2), P['lowerarm' + s]), shade(tunic, 0.75), 'lowerarm' + s, 0.04);
+      put(at(new THREE.IcosahedronGeometry(0.062, 1).scale(1, 1.05, 0.9), P['hand' + s]), sp.mail && sp.hat === 'greathelm' ? lin('#7a8088') : skin, 'hand' + s, 0.04);
     }
-    // pescoço e cabeça
-    put(seg(v(0, 1.18, 0), v(0, 1.28, 0), 0.07, 0.07), skin, 'head');
+    // pescoço e cabeça com rosto: olhos, sobrancelhas, nariz, boca, orelhas e bochechas
+    put(seg(v(0, 1.16, 0), v(0, 1.28, 0), 0.075, 0.072, 8), skin, 'head');
     const hc = v(0, 1.43, 0.01);
-    put(at(lumpy(new THREE.IcosahedronGeometry(0.17, 1), 0.06, 5).scale(1, 1.08, 1), hc), skin, 'head', 0.08);
-    put(at(new THREE.ConeGeometry(0.03, 0.07, 4).rotateX(PI / 2), v(0, 1.42, 0.19)), skin, 'head', 0);
-    for (const s of [-1, 1]) put(at(new THREE.BoxGeometry(0.035, 0.035, 0.02), v(s * 0.06, 1.47, 0.16)), dark, 'head', 0);
-    if (sp.beard) put(at(new THREE.ConeGeometry(0.1, 0.16, 6).rotateX(PI), v(0, 1.3, 0.1)), lin(sp.beard), 'head');
+    put(at(lumpy(new THREE.IcosahedronGeometry(0.17, 2), 0.035, 5).scale(1, 1.06, 0.98), hc), skin, 'head', 0.05);
+    put(at(new THREE.IcosahedronGeometry(0.034, 1).scale(1, 1.1, 1.2), v(0, 1.415, 0.18)), shade(skin, 0.92), 'head', 0);
+    for (const s of [-1, 1]) {
+      put(at(new THREE.SphereGeometry(0.03, 8, 6).scale(1, 1.15, 0.6), v(s * 0.062, 1.462, 0.155)), lin('#f4efe6'), 'head', 0);
+      put(at(new THREE.SphereGeometry(0.018, 6, 5).scale(1, 1.2, 0.6), v(s * 0.06, 1.458, 0.172)), dark, 'head', 0);
+      put(at(new THREE.BoxGeometry(0.06, 0.016, 0.02).rotateZ(-s * 0.18), v(s * 0.064, 1.512, 0.158)), shade(hair, 0.8), 'head', 0);
+      put(at(new THREE.SphereGeometry(0.036, 6, 5).scale(0.55, 1, 0.8), v(s * 0.168, 1.43, 0.0)), skin, 'head', 0.04);
+      put(at(new THREE.SphereGeometry(0.026, 6, 4).scale(1, 0.7, 0.4), v(s * 0.1, 1.395, 0.148)), [skin[0] * 1.15, skin[1] * 0.85, skin[2] * 0.85], 'head', 0);
+    }
+    put(at(new THREE.BoxGeometry(0.06, 0.012, 0.012), v(0, 1.36, 0.163)), lin('#5a2a20'), 'head', 0);
+    if (beardHex) {
+      const bd = lin(beardHex);
+      if (vr % 2 || sp.beard) put(at(new THREE.ConeGeometry(0.1, 0.16, 7).rotateX(PI), v(0, 1.3, 0.1)), bd, 'head');
+      else put(at(new THREE.SphereGeometry(0.165, 10, 5, PI * 0.1, PI * 0.8, PI * 0.55, PI * 0.33), v(0, 1.43, 0.015)), bd, 'head', 0.06);
+      put(at(new THREE.BoxGeometry(0.09, 0.022, 0.02), v(0, 1.383, 0.168)), bd, 'head', 0);
+    }
     // cabelo e chapéus
     const hat = sp.hat || 'none', hcol = sp.hatC ? C(sp.hatC) : lin('#5a3a1a');
-    if (hat === 'none') put(at(new THREE.SphereGeometry(0.175, 8, 4, 0, PI * 2, 0, PI / 2), v(0, 1.46, -0.01)), lin(sp.hair || '#5a3a1a'), 'head');
+    // mechas aparecendo por baixo de gorros, capacetes e chapéus
+    const back = (r, z) => new THREE.SphereGeometry(r, 10, 5, PI * 1.05, PI * 0.9, PI * 0.3, PI * 0.38).translate(0, 0, z);
+    if (['cap', 'straw', 'band', 'kettle', 'nasal', 'minerhelm', 'chef'].includes(hat)) put(at(back(0.18, -0.01), v(0, 1.45, 0)), hair, 'head', 0.06);
+    if (hat === 'none') {
+      put(at(new THREE.SphereGeometry(0.182, 10, 5, 0, PI * 2, 0, PI / 2), v(0, 1.455, -0.01)), hair, 'head', 0.06);
+      put(at(back(0.182, -0.02), v(0, 1.45, 0)), hair, 'head', 0.06);
+      put(at(new THREE.BoxGeometry(0.2, 0.05, 0.05).rotateX(0.3), v(0, 1.555, 0.13)), hair, 'head', 0.06); // franja
+    }
     if (hat === 'hood') { put(at(new THREE.SphereGeometry(0.2, 8, 5, 0, PI * 2, 0, PI * 0.62), v(0, 1.44, -0.03)), hcol, 'head'); put(at(new THREE.ConeGeometry(0.1, 0.18, 6).rotateX(-0.9), v(0, 1.55, -0.16)), hcol, 'head'); put(seg(v(0, 1.2, 0), v(0, 1.3, 0), 0.23, 0.17, 8), hcol, 'chest'); }
     if (hat === 'cap') { put(at(new THREE.SphereGeometry(0.185, 8, 4, 0, PI * 2, 0, PI / 2), v(0, 1.48, 0)), hcol, 'head'); put(at(new THREE.BoxGeometry(0.2, 0.02, 0.1), v(0, 1.5, 0.17)), hcol, 'head'); }
     if (hat === 'band') { put(at(new THREE.SphereGeometry(0.175, 8, 4, 0, PI * 2, 0, PI / 2), v(0, 1.46, -0.01)), lin('#6a4a2a'), 'head'); put(seg(v(0, 1.47, 0.01), v(0, 1.52, 0.01), 0.18, 0.18, 8), hcol, 'head'); }
