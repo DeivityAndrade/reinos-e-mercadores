@@ -137,8 +137,13 @@
     },
   ];
 
-  // ================= Conquista (estilo KaM) =================
-  // A vitória é sempre eliminar todos os reinos rivais. Os objetivos viram desafios opcionais que valem coroas.
+  KM.TUTORIAL_MISSION = {
+    id: 't1', n: 'Aprenda a governar', seed: 1101,
+    brief: 'Construa sua primeira vila sem ataques inimigos. O guia acompanha você das estradas até a produção de pão e a formação do primeiro soldado. Você pode salvar e continuar depois.',
+    player: Object.assign(KM.TOWNS.human(), { soldiers: [], stock: { wood: 45, stone: 50, trunk: 6, gold: 40, bread: 30, sausages: 15, wine: 10, fish: 5 } }),
+    ai: { mode: 'none' }, goals: [{ k: 'learn' }],
+  };
+  // ================= Conquista =================
   // Um reino cai quando fica sem Armazém, Escola e Quartel prontos e sem nenhum soldado.
   const RIVALS = [
     { name: 'Reino de Varga', title: 'o Barão de Varga' }, { name: 'Marca de Tessel', title: 'a Condessa de Tessel' },
@@ -159,7 +164,7 @@
       opt: [{ k: 'build', t: 'bakery', n: 1 }, { k: 'army', n: 10 }, { k: 'fast', t: 45 * 60 }] },
     { n: 'O Vale Dividido', mapType: 'rio', W: 76, peace: 1080, foes: [['agressivo', 0.62]], text: 'Do outro lado do vale, um senhor impaciente já afia as espadas. Espere ataques cedo e prepare torres.',
       opt: [{ k: 'build', t: 'tower', n: 2 }, { k: 'res', r: 'bread', n: 40 }, { k: 'fast', t: 45 * 60 }] },
-    { n: 'O Senhor da Colina', mapType: 'cordilheiras', W: 80, peace: 1020, foes: [['fortificado', 0.75]], text: 'O rival se entrincheirou atrás de torres. Uma economia forte e armas melhores vão abrir caminho.',
+    { n: 'O Senhor da Colina', mapType: 'cordilheiras', W: 80, peace: 360, foes: [['fortificado', 0.75]], text: 'Você encontrou uma vila arruinada nos bosques de outono. Recupere suas casas e proteja-a por 14 minutos, ou elimine o senhor da colina.',
       opt: [{ k: 'units', t: 'axeman', n: 8 }, { k: 'build', t: 'ironsmithy', n: 1 }, { k: 'fast', t: 50 * 60 }] },
     { n: 'Duas Coroas', mapType: 'lagos', W: 88, peace: 1080, foes: [['equilibrado', 0.6], ['construtor', 0.55]], allied: true, text: 'Dois reinos firmaram um pacto contra você. Um deles demora a se armar, mas quando vier, virá forte.',
       opt: [{ k: 'build', t: 'goldsmelter', n: 1 }, { k: 'army', n: 20 }, { k: 'fast', t: 55 * 60 }] },
@@ -176,26 +181,62 @@
     { n: 'O Rei de Todos', mapType: 'lagos', W: 112, peace: 900, foes: [['construtor', 1.0], ['fortificado', 0.95], ['agressivo', 0.95]], allied: true, text: 'A última guerra. Os senhores mais poderosos do continente contra a sua coroa. Vença e todos os reinos serão um só.',
       opt: [{ k: 'army', n: 50 }, { k: 'units', t: 'knight', n: 10 }, { k: 'fast', t: 80 * 60 }] },
   ];
+  // Condições e cidades iniciais diferentes fazem cada região pedir um plano próprio.
+  const SCENARIOS = {
+    1: { biome: 'pradaria', sites: [{ id: 'vau', n: 'Passagem do rio', x: 0.5, y: 0.5, garrison: 6 }],
+      goals: [{ k: 'any', routes: [{ k: 'destroy' }, { k: 'hold', sites: ['vau'], t: 180 }] }],
+      hint: 'Você pode vencer derrotando o rival ou mantendo a passagem por 3 minutos. Leve pelo menos 3 soldados; a contagem reinicia se o ponto ficar vazio ou contestado.' },
+    2: { biome: 'outono', town: 'restore', goals: [{ k: 'any', routes: [{ k: 'destroy' }, { k: 'all', routes: [{ k: 'restore' }, { k: 'survive', t: 840 }] }] }],
+      hint: 'As casas marcadas da vila começam danificadas. Construtores reparam com madeira e pedra; mantenha essas casas de pé até a vitória.' },
+    3: { biome: 'pantano', sites: [{ id: 'oeste', n: 'Rota oeste', x: 0.4, y: 0.5, outpost: true, garrison: 4 }, { id: 'leste', n: 'Rota leste', x: 0.6, y: 0.5, outpost: true, garrison: 4, rival: 2 }],
+      goals: [{ k: 'any', routes: [{ k: 'destroy' }, { k: 'hold', sites: ['oeste', 'leste'], t: 120 }] }],
+      hint: 'Abra as duas rotas: em cada ponto, erga um Armazém a até 6 casas do marcador, conecte-o por estrada pronta ao Armazém inicial e mantenha 3 soldados por 2 minutos. Você também pode derrotar os dois rivais.' },
+    4: { biome: 'outono', town: 'frontier', peace: 240, goals: [{ k: 'any', routes: [{ k: 'destroy' }, { k: 'survive', t: 960 }] }],
+      hint: 'A fronteira já tem produção de pão e tropas, mas sofrerá ataques cedo. Vença resistindo por 16 minutos ou eliminando os rivais. Proteja o Armazém marcado; sua destruição encerra a missão.' },
+    5: { biome: 'pantano', sites: [{ id: 'jazida', n: 'Jazida central', x: 0.5, y: 0.5, outpost: true, garrison: 8 }],
+      goals: [{ k: 'any', routes: [{ k: 'destroy' }, { k: 'all', routes: [{ k: 'hold', sites: ['jazida'], t: 240 }, { k: 'build', t: 'goldsmelter', n: 1 }] }] }],
+      hint: 'Escolha entre conquistar os rivais e sustentar a jazida central: conecte um Armazém ao ponto, mantenha 3 soldados por 4 minutos e construa sua Fundição de ouro.' },
+    6: { biome: 'outono', hint: 'Os rivais também lutam entre si. Explore antes de comprometer o exército e aproveite a disputa para crescer.' },
+    7: { biome: 'tundra', town: 'siege', hint: 'Você começa com tropas de cerco e uma vila de apoio. Colheitas mais lentas exigem reserva de comida, pesca ou criação de porcos antes de prolongar a guerra.' },
+    8: { biome: 'tundra', town: 'frontier', peace: 360,
+      goals: [{ k: 'all', routes: [{ k: 'survive', t: 1200 }, { k: 'army', n: 30 }, { k: 'res', r: 'bread', n: 40 }, { k: 'res', r: 'gold', n: 30 }] }],
+      hint: 'Prepare a expedição real: sobreviva por 20 minutos e tenha, ao mesmo tempo, 30 soldados, 40 pães e 30 ouros. Proteja o Armazém marcado; perdê-lo encerra a missão. A aliança inimiga tentará interromper o abastecimento.' },
+    9: { biome: 'tundra', hint: 'A última região reúne tudo que você aprendeu: produção, abastecimento, formações e escolha do momento de atacar.' },
+  };
+  function scenarioTown(profile) {
+    const town = KM.TOWNS.human();
+    if (!profile) return town;
+    town.houses = profile === 'restore' ? ['storehouse', 'school', 'woodcutter', 'quarry', 'sawmill', 'inn'] : MED.concat(['weaponworkshop']);
+    town.stock = S2({ wood: 55, stone: 65, gold: 45, bread: 45, sausages: 25, axe: 8 });
+    if (profile === 'siege') { town.houses = FULL.concat(['ironmine', 'coalmine', 'ironsmithy', 'weaponsmithy', 'armorsmithy']); town.soldiers = [['swordsman', 8], ['crossbowman', 6], ['pikeman', 6]]; }
+    return town;
+  }
   const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const DMOD = { easy: { m: 0.8, p: 1.3 }, normal: { m: 1, p: 1 }, hard: { m: 1.2, p: 0.8 } };
   function conquestMission(i, diff) {
     const L = LEVELS[i], D = DMOD[diff] || DMOD.normal, id = 'c' + (i + 1);
-    const players = [{ human: true, team: 0, name: KM.NAMES[0], town: KM.TOWNS.human() }];
+    const scenario = SCENARIOS[i] || { biome: 'pradaria' };
+    const peace = scenario.peace || L.peace;
+    const players = [{ human: true, team: 0, name: KM.NAMES[0], town: scenarioTown(scenario.town) }];
     L.foes.forEach(([pers, m], k) => {
       const riv = RIVALS[(i + k * 2) % RIVALS.length];
-      const P = PERS[pers](m * D.m, Math.round(L.peace * D.p) + k * 60);
+      const P = PERS[pers](m * D.m, Math.round(peace * D.p) + k * 60);
       const ai = Object.assign(KM.TOWNS.economy({ peace: P.peace, mult: P.mult, def: P.def }), { attackN: P.attackN, strat: { equilibrado: 'equilibrado', agressivo: 'saque', construtor: 'pinca', fortificado: 'cerco' }[pers] });
-      if (P.towers) ai.houses = ai.houses.concat(['tower', 'tower', 'tower']);
+      if (P.towers) ai.houses = ai.houses.concat(['woodcutter', 'quarry', 'sawmill', 'inn', 'weaponworkshop', 'barracks', 'tower', 'tower']);
       players.push({ team: L.allied ? 9 : 10 + k, name: riv.name, title: riv.title, pers, ai });
     });
     const foes = players.slice(1);
-    const brief = `${L.text}<br><br><b>Objetivo: eliminar ${foes.length > 1 ? 'todos os ' + foes.length + ' reinos rivais' : 'o reino rival'}.</b> Um reino cai quando perde o Armazém, a Escola e o Quartel e fica sem soldados.`
+    const biome = KM.BIOMES[scenario.biome];
+    const brief = `${L.text}<br><br><b>${scenario.hint || 'Elimine o reino rival. Um reino cai quando perde o Armazém, a Escola e o Quartel e fica sem soldados.'}</b>`
+      + `<br><br>🌿 <b>${biome.n}</b> — ${biome.desc}`
+      + '<br><br>Os rivais produzem seus recursos, respeitam os desbloqueios e precisam alimentar as tropas. As cidades e guarnições iniciais fazem parte do desafio desta região.'
       + `<br><br>${foes.map((p, k) => `<i class="shield" style="background:${KM.COLORS[k + 1]}"></i> <b>${p.name}</b>, governado por ${p.title} (${PERS_N[p.pers]})`).join('<br>')}`
       + (foes.length > 1 ? `<br><br>${L.allied ? '🤝 Os rivais são <b>aliados entre si</b>.' : '⚔️ <b>Todos contra todos:</b> os rivais também lutam entre si.'}` : '')
-      + `<br><br>🕊️ Paz inicial de cerca de ${Math.round((L.peace * D.p) / 60)} minutos.`;
+      + `<br><br>🕊️ Primeiro ataque planejado a partir de ${Math.round(Math.min(...foes.map((p) => p.ai.peace)) / 60)} minutos. Defensores reagem a invasões antes disso.`;
     return {
       id, conquest: true, idx: i, n: `${ROMAN[i]} · ${L.n}`, seed: 70000 + i * 1013, W: L.W, mapType: L.mapType, brief, players,
-      goals: [{ k: 'destroy' }].concat(L.opt.map((g) => Object.assign({ opt: true }, g))),
+      biome: scenario.biome, scenario: scenario.town || null, sites: scenario.sites || [],
+      goals: (scenario.goals || [{ k: 'destroy' }]).concat(L.opt.map((g) => Object.assign({ opt: true }, g))),
     };
   }
   KM.CONQUEST_N = LEVELS.length;
@@ -203,6 +244,7 @@
   // procura uma missão da campanha ou uma fase da Conquista
   KM.findMission = function (id, diff) {
     if (!id) return null;
+    if (id === 't1') return KM.TUTORIAL_MISSION;
     if (id[0] === 'c') { const i = +id.slice(1) - 1; return LEVELS[i] ? conquestMission(i, diff || 'normal') : null; }
     return KM.MISSIONS.find((m) => m.id === id) || null;
   };
@@ -219,6 +261,7 @@
   function conquestWin(S) {
     const P = KM.conquestProgress(), i = +S.mission.slice(1);
     const crowns = 1 + S.goals.filter((g) => g.opt && KM.goalStatus(S, g).done).length;
+    S.unlockedBiomes = Object.keys(KM.BIOMES).filter((id) => KM.BIOMES[id].unlock > P.open && KM.BIOMES[id].unlock <= i + 1);
     P.open = Math.max(P.open, i + 1);
     P.crowns[S.mission] = Math.max(P.crowns[S.mission] || 0, crowns);
     S.crowns = crowns;
@@ -240,6 +283,22 @@
 
   KM.goalStatus = function (S, g) {
     const me = KM.me;
+    if (g.k === 'any' || g.k === 'all') {
+      const statuses = g.routes.map((r) => KM.goalStatus(S, r));
+      return { done: g.k === 'any' ? statuses.some((s) => s.done) : statuses.every((s) => s.done),
+        text: statuses.map((s) => s.text).join(g.k === 'any' ? ' OU ' : ' + '), prog: statuses.map((s) => s.prog || (s.done ? 'feito' : 'pendente')).join(' · ') };
+    }
+    if (g.k === 'learn') return { done: !!S.tutorialDone, text: 'Concluir o guia de economia e exército', prog: S.tutorialDone ? 'feito' : 'Siga o tutorial' };
+    if (g.k === 'restore') {
+      const ids = S.protected || [], houses = ids.map((id) => S.houses[id]);
+      const restored = houses.filter((h) => h && h.state === 'built' && h.hp >= h.maxHp * 0.9).length;
+      return { done: ids.length > 0 && restored === ids.length, text: 'Recuperar todas as casas marcadas a 90% de integridade', prog: `${restored}/${ids.length}` };
+    }
+    if (g.k === 'hold') {
+      const sites = g.sites.map((id) => (S.sites || []).find((s) => s.id === id));
+      return { done: sites.every((s) => s && (s.held[me] || 0) >= g.t), text: `Manter ${sites.map((s, i) => s ? s.n : g.sites[i]).join(' e ')} por ${g.t / 60} min`,
+        prog: sites.map((s) => s ? `${s.n}: ${KM.fmtTime(Math.max(0, g.t - (s.held[me] || 0)))}` : 'ponto pendente').join(' · ') };
+    }
     if (g.k === 'fast') {
       const left = Math.max(0, g.t - S.time);
       return { done: !!g.done, fail: !g.done && S.time > g.t, text: `Vencer em menos de ${Math.round(g.t / 60)} minutos`, prog: g.done ? 'feito' : S.time > g.t ? 'tempo esgotado' : KM.fmtTime(left) };
@@ -279,6 +338,7 @@
   }
 
   KM.checkGoals = function (S) {
+    KM.updateSites(S);
     S.players.forEach((p, o) => {
       if (p.out || !defeated(S, o)) return;
       p.out = true;
@@ -291,12 +351,15 @@
       if (g.opt && KM.S === S) KM.notify(S, `👑 Desafio cumprido: ${KM.goalStatus(S, g).text}`, 'unlock');
     }
     const req = S.goals.filter((g) => !g.opt);
-    if (S.players[KM.me].out) S.over = 'lose';
+    if (S.players[KM.me].out || (S.protected || []).some((id) => !S.houses[id])) {
+      S.over = 'lose';
+      if (!S.players[KM.me].out) S.defeatReason = 'Uma construção protegida da vila foi destruída.';
+    }
     else if (req.length && req.every((g) => KM.goalStatus(S, g).done)) {
       S.over = 'win';
       for (const g of S.goals) if (g.k === 'fast' && S.time <= g.t) g.done = true;
       if (S.mission && S.mission[0] === 'c') { if (KM.S === S) conquestWin(S); }
-      else if (S.mission) { const i = KM.MISSIONS.findIndex((m) => m.id === S.mission); unlock(i + 2); }
+      else if (S.mission && S.mission !== 't1') { const i = KM.MISSIONS.findIndex((m) => m.id === S.mission); unlock(i + 2); }
     }
     if (S.over && KM.ui && KM.S === S) KM.ui.showEnd(S.over);
   };

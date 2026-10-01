@@ -76,17 +76,17 @@
   const reqsMet = (S, o, reqs) => !reqs || reqs.every((r) => S.players[o].built && S.players[o].built[r]);
   KM.houseUnlocked = function (S, o, type) {
     const p = S.players[o];
-    if (!p || p.all || !p.human) return true;
+    if (!p || p.all || !p.eco) return true;
     return reqsMet(S, o, KM.TECH[type]);
   };
   KM.soldierUnlocked = function (S, o, type) {
     const p = S.players[o];
-    if (!p || p.all || !p.human) return true;
+    if (!p || p.all || !p.eco) return true;
     return reqsMet(S, o, KM.SOLDIER_REQ[type]);
   };
   KM.profUnlocked = function (S, o, prof) {
     const p = S.players[o];
-    if (!p || p.all || !p.human || prof === 'serf' || prof === 'laborer') return true;
+    if (!p || p.all || !p.eco || prof === 'serf' || prof === 'laborer') return true;
     if (prof === 'recruit') return KM.houseUnlocked(S, o, 'barracks') && !!p.built.barracks || KM.houseUnlocked(S, o, 'tower') && !!p.built.tower;
     for (const t in KM.HOUSES) if (KM.HOUSES[t].worker === prof && KM.houseUnlocked(S, o, t)) return true;
     return false;
@@ -249,7 +249,7 @@
       task: null, carry: null, hp, maxHp: hp, hunger: 80 + KM.rand() * 20,
       home: 0, inside: 0, cd: 0, order: null, target: null, forced: false, guard: { x, y },
       anim: KM.rand() * 6, face: 1, wt: 0, scanT: KM.rand(), rp: 0, pfT: 0, noFood: 0, work: false, ai: null,
-      g: 0, wantFood: false, fedInc: 0,
+      g: 0, heading: 0, wantFood: false, fedInc: 0,
     };
     S.units[u.id] = u;
     return u;
@@ -423,12 +423,8 @@
       units: [['serf', 10], ['laborer', 5], ['woodcutter', 2], ['stonemason', 2], ['carpenter', 1], ['farmer', 1], ['baker', 1]],
       soldiers: [['axeman', 3], ['militia', 2], ['bowman', 3]],
     }),
-    economy: (D) => ({
+    economy: (D) => Object.assign(KM.TOWNS.human(), {
       mode: 'economy', peace: D.peace, mult: D.mult, def: D.def,
-      houses: ['school', 'inn', 'woodcutter', 'quarry', 'sawmill', 'farm', 'barracks', 'tower'],
-      stock: { wood: 35, stone: 35, gold: 30, bread: 20, sausages: 10, wine: 10, corn: 6, axe: 2, shield: 2, armor: 2, bow: 2 },
-      units: [['serf', 10], ['laborer', 5]],
-      soldiers: [['axeman', 3], ['bowman', Math.ceil(D.def / 3)], ['lancer', 2], ['swordsman', Math.max(0, D.def - 8)]],
     }),
     waves: (D) => ({
       mode: 'waves', peace: D.peace, interval: D.interval, mult: D.mult, def: D.def,
@@ -461,7 +457,7 @@
     const mapData = opts.map || cfg.map;
     let m, starts;
     if (mapData) { ({ m, starts } = KM.mapFromData(mapData, seed)); }
-    else ({ m, starts } = KM.genMap(seed, { players: Math.max(2, pl.length), W: cfg.W, H: cfg.W, type: opts.mapType || cfg.mapType }));
+    else ({ m, starts } = KM.genMap(seed, { players: Math.max(2, pl.length), W: cfg.W, H: cfg.W, type: opts.mapType || cfg.mapType, biome: opts.biome || cfg.biome }));
     const diff = opts.diff || cfg.diff || 'normal';
     const S = {
       v: KM.SAVE_V, seed, rs: seed | 0, time: 0, tick: 0, speed: 1, paused: false, map: m, houses: {}, units: {}, army: {}, nid: 1, starts,
@@ -481,17 +477,69 @@
       KM.reveal(S, st.x, st.y, 14, i);
       const pre = mapData && mapData.houses ? mapData.houses.filter((h) => h.owner === i) : null;
       KM.setupTown(S, i, st, p.human ? p.town || KM.TOWNS.human() : Object.assign({ ai: true }, p.ai), pre);
+      const base = Object.values(S.houses).find((h) => h.owner === i && h.type === 'storehouse' && h.state === 'built');
+      S.players[i].homeStore = base ? base.id : 0;
       if (!p.human) KM.setupAI(S, i, p.ai, diff);
     });
+    S.sites = (cfg.sites || []).map((site) => {
+      const p = KM.nearestWalkable(S, Math.round(site.x * m.W), Math.round(site.y * m.H), 16);
+      return Object.assign({}, site, { x: p ? p[0] : starts[0].x, y: p ? p[1] : starts[0].y, r: 6, owner: -1, contested: false, held: pl.map(() => 0) });
+    });
+    for (const site of S.sites) {
+      const o = Math.min(pl.length - 1, site.rival || 1);
+      KM.reveal(S, site.x, site.y, site.r + 2, 0);
+      for (const [type, n, off] of [['lancer', Math.ceil(site.garrison / 2), -2], ['bowman', Math.floor(site.garrison / 2), 2]]) {
+        const us = [];
+        for (let k = 0; k < n; k++) us.push(KM.addUnit(S, type, o, site.x, site.y));
+        const g = KM.newGroup(S, o, type, us);
+        KM.formGroup(S, g, site.x + off, site.y, 0, false, true);
+      }
+    }
+    S.protected = [];
+    if (cfg.scenario === 'restore') {
+      for (const h of Object.values(S.houses).filter((h) => h.owner === 0)) { h.hp = Math.round(h.maxHp * 0.35); S.protected.push(h.id); }
+    } else if (cfg.scenario === 'frontier') {
+      const core = Object.values(S.houses).find((h) => h.owner === 0 && h.type === 'storehouse');
+      if (core) S.protected.push(core.id);
+    }
     for (const id in S.units) { const u = S.units[id]; if (!KM.human(S, u.owner) && KM.isSoldier(u.type)) u.ai = 'def'; }
     KM.updateFog(S);
     return S;
+  };
+
+  KM.updateSites = function (S) {
+    if (!S.sites || !S.sites.length) return;
+    const dt = Math.max(0, Math.min(2, S.time - (S.siteUpdated || 0)));
+    S.siteUpdated = S.time;
+    for (const site of S.sites) {
+      const counts = S.players.map(() => 0);
+      for (const u of Object.values(S.units)) if (!u.inside && KM.isSoldier(u.type) && !S.players[u.owner].out && Math.hypot(u.x - site.x, u.y - site.y) <= site.r) counts[u.owner]++;
+      const present = counts.map((n, o) => n > 0 ? o : -1).filter((o) => o >= 0);
+      site.contested = present.some((a) => present.some((b) => KM.hostile(S, a, b)));
+      let owner = -1;
+      if (!site.contested) {
+        for (const o of present) {
+          if (counts[o] < 3) continue;
+          if (site.outpost) {
+            const stores = Object.values(S.houses).filter((h) => h.owner === o && h.type === 'storehouse' && h.state === 'built');
+            const base = S.houses[S.players[o].homeStore] || (!S.players[o].homeStore && stores[0]);
+            const connected = base && stores.some((h) => h.id !== base.id && Math.hypot(KM.hcx(h) - site.x, KM.hcy(h) - site.y) <= site.r && KM.rt.comp && KM.rt.comp[h.ey * S.map.W + h.ex] >= 0 && KM.rt.comp[h.ey * S.map.W + h.ex] === KM.rt.comp[base.ey * S.map.W + base.ex]);
+            if (!connected) continue;
+          }
+          if (owner < 0 || counts[o] > counts[owner]) owner = o;
+        }
+      }
+      site.owner = owner;
+      site.held = site.held || S.players.map(() => 0);
+      for (let o = 0; o < S.players.length; o++) site.held[o] = o === owner ? (site.held[o] || 0) + dt : 0;
+    }
   };
 
   // mapa vindo do editor
   KM.mapFromData = function (d, seed) {
     KM.setMapSize(d.W, d.H);
     const m = KM.emptyMap(d.W, d.H);
+    m.biome = KM.BIOMES[d.biome] ? d.biome : 'pradaria';
     for (const k of ['terrain', 'tree', 'stone', 'ore', 'oreAmt', 'hv']) if (d[k]) m[k] = d[k].slice();
     const sN = KM.makeNoise(seed + 3);
     for (let i = 0; i < d.W * d.H; i++) {

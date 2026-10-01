@@ -69,6 +69,7 @@
       u.target = null; u.forced = false; u.pk = null;
       if (instant) { u.x = u.tx = p[0]; u.y = u.ty = p[1]; u.guard = { x: p[0], y: p[1] }; u.order = null; u.path = null; }
       else u.order = { type: 'move', x: p[0], y: p[1], am: !!am };
+      u.heading = dir;
       u.face = fx > 0.1 ? 1 : fx < -0.1 ? -1 : u.face;
     });
   };
@@ -92,6 +93,9 @@
     });
   };
   KM.orderAttack = function (S, groups, tgt) {
+    const target = KM.resolveTarget(S, tgt);
+    if (!target) return;
+    groups = groups.filter((g) => KM.hostile(S, g.owner, target.owner));
     for (const g of groups) for (const u of KM.groupUnits(S, g)) { u.target = { k: tgt.k, id: tgt.id }; u.forced = true; u.order = null; u.path = null; u.rp = 0; }
   };
   KM.orderStop = function (S, groups) {
@@ -155,9 +159,9 @@
     u.cd -= dt; u.scanT -= dt;
     if (u.atkA > 0) u.atkA -= dt;
     // fome (como no original, soldados precisam ser alimentados)
-    if (KM.human(S, u.owner)) {
+    if (KM.eco(S, u.owner)) {
       u.hunger = Math.max(0, u.hunger - dt * 0.055);
-      if (u.hunger < 35 && !u.wantFood) u.wantFood = true;
+      if (u.hunger < 50 && !u.wantFood) u.wantFood = true;
       if (u.hunger <= 0) {
         u.hp -= dt * 0.35;
         if (u.owner === KM.me && S.time - (S.hungerWarn || -99) > 60) { S.hungerWarn = S.time; KM.notify(S, '🍖 Seus soldados estão morrendo de fome! Tenha comida no Armazém.', 'danger', { x: u.tx, y: u.ty }); }
@@ -165,7 +169,7 @@
       }
     }
     // recuperação: sem lutar há 8 s e bem alimentado, o soldado recupera vida devagar
-    if (u.hp < u.maxHp && S.time - (u.hitAt || -99) > 8 && (!KM.human(S, u.owner) || u.hunger > 40)) u.hp = Math.min(u.maxHp, u.hp + dt * 0.5);
+    if (u.hp < u.maxHp && S.time - (u.hitAt == null ? -99 : u.hitAt) > 8 && (!KM.eco(S, u.owner) || u.hunger > 40)) u.hp = Math.min(u.maxHp, u.hp + dt * 0.5);
     let tg = KM.resolveTarget(S, u.target);
     if (!tg && u.target) {
       u.target = null;
@@ -183,12 +187,14 @@
       const k = u.target.k;
       const d = KM.distToTarget(u, tg, k);
       const range = sd.range || 1.5;
-      if (d <= range) {
+      if (d <= range && (!sd.range || KM.hasLineOfSight(S, u.x, u.y, tg, k))) {
         if (u.path) {
           if (u.x === u.tx && u.y === u.ty) u.path = null;
           else { KM.updateMove(S, u, dt); return; }
         }
         const tx = k === 'u' ? tg.x : KM.hcx(tg);
+        const ty = k === 'u' ? tg.y : KM.hcy(tg);
+        u.heading = KM.dirFrom(tx - u.x, ty - u.y);
         if (Math.abs(tx - u.x) > 0.1) u.face = tx > u.x ? 1 : -1;
         if (u.cd <= 0) attack(S, u, tg, k, sd);
         return;
@@ -209,7 +215,10 @@
     }
     if (u.order) {
       const g = KM.goTo(S, u, dt, u.order.x, u.order.y);
-      if (g !== 0) { u.guard = { x: u.tx, y: u.ty }; u.order = null; }
+      if (g !== 0) {
+        u.guard = { x: u.tx, y: u.ty }; u.order = null;
+        const group = S.army[u.g]; if (group) u.heading = group.dir;
+      }
       return;
     }
     if (u.tx !== u.guard.x || u.ty !== u.guard.y) {
@@ -218,20 +227,47 @@
     } else if (u.path) KM.updateMove(S, u, dt);
   };
 
-  function damageFor(u, tg, k, sd) {
+  // A direção é atualizada ao marchar, girar a formação e enfrentar um alvo.
+  // Frente: sem bônus; lado: +15%; costas: +30%. Só golpes corpo a corpo flanqueiam.
+  KM.flankMultiplier = function (u, tg) {
+    const d = Math.hypot(u.x - tg.x, u.y - tg.y);
+    if (d < 0.01) return 1;
+    const f = KM.DIRS8[tg.heading == null ? 0 : tg.heading];
+    const dot = ((u.x - tg.x) * f[0] + (u.y - tg.y) * f[1]) / (d * Math.hypot(f[0], f[1]));
+    return dot < -0.5 ? 1.3 : dot < 0.5 ? 1.15 : 1;
+  };
+  // Montanhas e construções bloqueiam tiros; o alvo e o ladrilho de origem são ignorados.
+  KM.hasLineOfSight = function (S, x, y, target, kind) {
+    const tx = kind === 'h' ? KM.hcx(target) : target.x, ty = kind === 'h' ? KM.hcy(target) : target.y;
+    const steps = Math.ceil(Math.hypot(tx - x, ty - y) * 2);
+    const sx = Math.round(x), sy = Math.round(y), ex = Math.round(tx), ey = Math.round(ty);
+    const originHouse = S.map.house[sy * S.map.W + sx];
+    for (let i = 1; i < steps; i++) {
+      const xx = Math.round(x + (tx - x) * i / steps), yy = Math.round(y + (ty - y) * i / steps);
+      if ((xx === sx && yy === sy) || (xx === ex && yy === ey)) continue;
+      if (!KM.inb(xx, yy)) return false;
+      const n = yy * S.map.W + xx, house = S.map.house[n];
+      if (S.map.terrain[n] === KM.T.MOUNTAIN || (house && house !== originHouse && !(kind === 'h' && house === target.id))) return false;
+    }
+    return true;
+  };
+  KM.damageFor = function (u, tg, k, sd) {
     if (k === 'h') return sd.atk * (sd.range ? 0.35 : 0.8);
     const td = KM.SOLDIERS[tg.type];
     const mult = sd.antiCav && td && td.cav ? sd.antiCav : 1;
     const def = td ? td.def : 0;
-    // atacar pelas costas/lado causa mais dano (como no original)
-    const flank = td && tg.target && tg.target.id !== u.id ? 1.15 : 1;
+    const flank = td && !sd.range ? KM.flankMultiplier(u, tg) : 1;
     return Math.max(3, sd.atk * mult * flank * (0.85 + KM.rand() * 0.3) - def);
-  }
+  };
 
   function attack(S, u, tg, k, sd) {
     u.cd = sd.range ? 2.2 : 1.1;
     u.atkA = 0.3;
-    const dmg = damageFor(u, tg, k, sd);
+    const dmg = KM.damageFor(u, tg, k, sd);
+    if (k === 'u' && !sd.range && KM.isSoldier(tg.type)) {
+      const mult = KM.flankMultiplier(u, tg);
+      if (mult > 1) { tg.flankedAt = S.time; tg.flankBonus = mult; }
+    }
     if (sd.range) {
       const tx = k === 'u' ? tg.x : KM.hcx(tg), ty = k === 'u' ? tg.y : KM.hcy(tg);
       KM.shoot(S, u.x, u.y - 0.3, { k, id: tg.id }, tx, ty, dmg, u.owner, u.type === 'crossbowman' ? 'bolt' : 'arrow', u.id);
@@ -306,6 +342,7 @@
 
   KM.equip = function (S, h, type) {
     const sd = KM.SOLDIERS[type];
+    if (!sd || !KM.soldierUnlocked(S, h.owner, type)) return false;
     if (h.recruits < 1) return false;
     for (const r in sd.cost) if ((h.inv[r] || 0) < sd.cost[r]) return false;
     for (const r in sd.cost) h.inv[r] -= sd.cost[r];

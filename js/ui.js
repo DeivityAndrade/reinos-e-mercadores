@@ -141,6 +141,8 @@
       } else if (this.tab === 'goals') {
         const mis = S.mission && KM.findMission(S.mission, S.diff);
         html = `<h4>${mis ? esc(mis.n) : S.mp ? 'Multijogador' : 'Escaramuça'}</h4>${this.goalsHtml(S, false)}`;
+        html += `<div class="muted">🌿 ${KM.biome(S.map).n}: ${KM.biome(S.map).desc}</div>`;
+        if (S.sites && S.sites.length) html += `<h4>Pontos estratégicos</h4>${S.sites.map((s) => `<button class="mbtn wide" data-act="goto:${s.x}:${s.y}">🚩 ${esc(s.n)} · ${s.contested ? 'contestado' : s.owner >= 0 ? esc(S.players[s.owner].name) : 'sem controle'}</button>`).join('')}<div class="muted">Mantenha 3 soldados sem rivais no raio de 6 casas. ${S.sites.some((s) => s.outpost) ? 'Os postos exigem também um Armazém conectado à base por estrada pronta.' : ''}</div>`;
         if (mis) html += `<button class="mbtn wide" data-act="brief">📜 Rever briefing</button>`;
         if (!P.all) {
           const total = Object.keys(KM.HOUSES).length, open = Object.keys(KM.HOUSES).filter((t) => KM.houseUnlocked(S, ME(), t)).length;
@@ -159,6 +161,7 @@
             <button class="mbtn" data-act="pause">${S.paused ? '▶️ Continuar' : '⏸️ Pausar'} <kbd>P</kbd></button>
             <button class="mbtn" data-act="grid">${KM.R.showGrid ? '▦ Ocultar grade' : '▦ Mostrar grade'} <kbd>G</kbd></button>
             <button class="mbtn" data-act="help">❓ Como jogar <kbd>F1</kbd></button>
+            ${S.mission === 't1' ? '<button class="mbtn" data-act="tutorial">🎓 Reabrir tutorial completo</button>' : ''}
           </div>
           <h4>Opções</h4>
           <div class="opts">
@@ -232,6 +235,7 @@
       if (k === 'brief') { if (!S.mp) S.paused = true; this.showBriefing(S); }
       if (k === 'tree') this.showTree(true);
       if (k === 'stats') this.showStats();
+      if (k === 'tutorial') KM.tutorial.start(S, true);
       if (k === 'goto') KM.R.centerOn(+v, +w);
       if (k === 'restart') { if (confirm('Reiniciar a missão do começo?')) KM.startGame({ mission: S.mission, diff: S.diff }); }
       if (k === 'save') { KM.save(+v); this.toast(`💾 Jogo salvo no espaço ${v}`, 'ok'); this.renderTab(true); }
@@ -547,6 +551,8 @@
       if (!this.mmImg || this.mmImg.width !== m.W) this.mmImg = g.createImageData(m.W, m.H);
       const d = this.mmImg.data, bit = 1 << ME();
       const col = { 0: [92, 138, 58], 1: [38, 100, 150], 2: [128, 118, 106], 3: [208, 190, 140] };
+      col[0] = KM.biome(m).grass.map((c) => Math.round(c * 255));
+      col[3] = KM.biome(m).sand.map((c) => Math.round(c * 255));
       for (let i = 0; i < m.W * m.H; i++) {
         let c = col[m.terrain[i]];
         const x = i % m.W, y = (i / m.W) | 0;
@@ -579,6 +585,10 @@
       g.clearRect(0, 0, cv.width, cv.height);
       g.drawImage(this.mmTmp, 0, 0, cv.width, cv.height);
       const poly = KM.R.poly, sx = cv.width / m.W, sy = cv.height / m.H;
+      for (const site of S.sites || []) {
+        g.strokeStyle = site.contested ? '#ff6050' : site.owner >= 0 ? S.players[site.owner].color : '#ffe066';
+        g.lineWidth = 2; g.strokeRect(site.x * sx - 5, site.y * sy - 5, 10, 10);
+      }
       if (poly) {
         g.strokeStyle = '#ffe066'; g.lineWidth = 1.5;
         g.beginPath();
@@ -655,7 +665,7 @@
           const seedv = $('#seed').value.trim();
           const map = $('#smap').value ? KM.editor.loadMapData($('#smap').value) : null;
           const mt = $('#mtype').value, TYPES = ['continente', 'rio', 'lagos', 'cordilheiras', 'floresta', 'planalto'];
-          KM.startGame({ diff: $('#diff').value, aiMode: $('#aimode').value, opponents: +$('#opps').value, ally: $('#ally').checked, allUnlocked: $('#allun').checked, map, mapType: mt === 'surpresa' ? TYPES[Math.floor(Math.random() * TYPES.length)] : mt, seed: seedv ? (parseInt(seedv, 10) || seedv.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0) : 0 });
+          KM.startGame({ diff: $('#diff').value, aiMode: $('#aimode').value, opponents: +$('#opps').value, ally: $('#ally').checked, allUnlocked: $('#allun').checked, map, biome: $('#biome').value, mapType: mt === 'surpresa' ? TYPES[Math.floor(Math.random() * TYPES.length)] : mt, seed: seedv ? (parseInt(seedv, 10) || seedv.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0) : 0 });
         }
         if (b.dataset.cont) KM.load(+b.dataset.cont);
         if (b.dataset.help) this.showHelp(true);
@@ -684,6 +694,15 @@
       if (s === 'campaign') this.renderCampaign();
       if (s === 'conquest') this.renderConquest();
       if (s === 'skirmish' || s === 'editor') KM.editor.fillMapLists();
+      if (s === 'skirmish') this.renderBiomes();
+    },
+    renderBiomes() {
+      const el = $('#biome'), current = el.value, open = KM.conquestProgress().open;
+      el.innerHTML = Object.entries(KM.BIOMES).map(([id, b]) => `<option value="${id}" ${open < b.unlock ? 'disabled' : ''}>${b.n}${open < b.unlock ? ' · descoberta na fase ' + b.unlock : ''}</option>`).join('');
+      el.value = KM.BIOMES[current] && open >= KM.BIOMES[current].unlock ? current : 'pradaria';
+      const hint = () => { $('#biomehint').textContent = KM.BIOMES[el.value].desc; };
+      if (!this.biomeBound) { el.addEventListener('change', hint); this.biomeBound = true; }
+      hint();
     },
     renderConquest() {
       const P = KM.conquestProgress(), diff = $('#qdiff').value;
@@ -691,7 +710,7 @@
       $('#conquests').innerHTML = KM.conquestList(diff).map((m, i) => {
         const open = i + 1 <= P.open, cr = P.crowns[m.id] || 0;
         const foes = m.players.slice(1).map((p, k) => `<i class="shield" style="background:${KM.COLORS[k + 1]}" title="${esc(p.name)}"></i>`).join('');
-        return `<button class="mission conq ${open ? '' : 'locked'}" ${open ? `data-conquest="${m.id}"` : 'disabled'}><span>${cr ? '🏆' : open ? '⚔️' : '🔒'}</span><div><b>${esc(m.n)}</b><small>${open ? `${foes} ${m.players.length - 1} reino${m.players.length > 2 ? 's' : ''} rival${m.players.length > 2 ? 'is' : ''}· ${{ continente: 'continente', rio: 'rio', lagos: 'lagos', cordilheiras: 'cordilheiras', floresta: 'floresta densa', planalto: 'planalto central' }[m.mapType] || ''} ${m.W}×${m.W}` : 'Vença a fase anterior'}</small></div><em class="cr">${[1, 2, 3, 4].map((k) => `<span class="${k <= cr ? 'on' : ''}">👑</span>`).join('')}</em></button>`;
+        return `<button class="mission conq ${open ? '' : 'locked'}" ${open ? `data-conquest="${m.id}"` : 'disabled'}><span>${cr ? '🏆' : open ? '⚔️' : '🔒'}</span><div><b>${esc(m.n)}</b><small>${open ? `${foes} ${m.players.length - 1} reino${m.players.length > 2 ? 's' : ''} rival${m.players.length > 2 ? 'is' : ''} · ${KM.BIOMES[m.biome].n} · ${m.W}×${m.W}` : 'Vença a fase anterior · ' + KM.BIOMES[m.biome].n}</small></div><em class="cr">${[1, 2, 3, 4].map((k) => `<span class="${k <= cr ? 'on' : ''}">👑</span>`).join('')}</em></button>`;
       }).join('');
     },
     renderCampaign() {
@@ -735,7 +754,7 @@
       }).join('');
       el.innerHTML = `<div class="card treecard"><button class="close" data-close="1">✕</button>
         <h2>🌳 Árvore de progresso</h2>
-        <p class="muted">Cada construção erguida libera novas opções, como no original. Siga da esquerda para a direita.</p>
+        <p class="muted">Cada construção erguida libera novas opções. Siga da esquerda para a direita.</p>
         <div class="tcols">${cols.map((c, i) => `<div class="tcol"><div class="tera">${ERAS[i] || 'Era ' + (i + 1)}</div>${c.map(card).join('')}</div>`).join('')}</div>
         <h3>⚔️ Soldados</h3><div class="tsol">${sol}</div></div>`;
       el.classList.remove('hidden');
@@ -783,9 +802,10 @@
       if (!S.hist || !S.hist.t.length || S.hist.t[S.hist.t.length - 1] < S.time - 5) KM.recordHist(S);
       const nextId = res === 'win' ? KM.nextMission(S.mission) : null, next = nextId && KM.findMission(nextId, S.diff);
       const conq = S.mission && S.mission[0] === 'c';
-      const txt = res === 'win' ? (conq ? (next ? 'Todos os reinos rivais caíram. Novas terras aguardam a sua coroa.' : 'Não resta nenhum reino rival. Todo o continente se curva à sua coroa!') : S.mission ? (next ? 'Missão cumprida! O Rei aguarda suas próximas ordens.' : 'Todos os traidores caíram. O Reino de Aldor está reunido sob sua bandeira!') : 'Todos os inimigos foram derrotados. Seu reino prospera!') : 'Seu reino caiu. Os mercadores fugiram e os cavaleiros depuseram as armas.';
+      const txt = res === 'win' ? (conq ? (next ? 'Objetivo cumprido. Novas terras aguardam a sua coroa.' : 'Sua conquista está completa. Todo o continente se curva à sua coroa!') : S.mission === 't1' ? 'Você aprendeu a construir, abastecer e comandar seu reino. A Conquista espera por você!' : S.mission ? (next ? 'Missão cumprida! O Rei aguarda suas próximas ordens.' : 'Todos os traidores caíram. O Reino de Aldor está reunido sob sua bandeira!') : 'Todos os inimigos foram derrotados. Seu reino prospera!') : S.defeatReason || 'Seu reino caiu. Os mercadores fugiram e os cavaleiros depuseram as armas.';
       el.innerHTML = `<div class="card endcard"><h1>${res === 'win' ? '🏆 Vitória!' : '💀 Derrota'}</h1><p>${txt}</p>
         ${conq && res === 'win' ? `<div class="crowns">${[1, 2, 3, 4].map((k) => `<span class="${k <= (S.crowns || 1) ? 'on' : ''}">👑</span>`).join('')}</div><div class="muted">1 coroa pela vitória + 1 por desafio cumprido</div>` : ''}
+        ${res === 'win' && S.unlockedBiomes && S.unlockedBiomes.length ? `<p>🌿 Novo bioma disponível na Escaramuça: <b>${S.unlockedBiomes.map((id) => KM.BIOMES[id].n).join(', ')}</b></p>` : ''}
         ${this.statsHtml(S)}
         <div class="mgrid">${next ? `<button class="mbtn primary" data-next="${next.id}">➡️ ${conq ? 'Próxima fase' : 'Próxima missão'}</button>` : ''}${res === 'win' ? '<button class="mbtn" data-cont="1">Continuar jogando</button>' : ''}${res === 'lose' && S.mission ? '<button class="mbtn" data-retry="1">🔄 Tentar de novo</button>' : ''}<button class="mbtn" data-menu="1">Menu principal</button></div></div>`;
       el.classList.remove('hidden');

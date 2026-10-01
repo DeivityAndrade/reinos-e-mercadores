@@ -9,7 +9,7 @@
     const N = W * H;
     const arr = (v) => new Array(N).fill(v);
     return {
-      W, H,
+      W, H, biome: 'pradaria',
       terrain: arr(0), shade: arr(0), hv: new Array((W + 1) * (H + 1)).fill(1),
       tree: arr(0), treeT: arr(0), stone: arr(0), ore: arr(0), oreAmt: arr(0), fish: arr(0),
       road: arr(0), rown: arr(-1), rmat: arr(0),
@@ -30,6 +30,8 @@
     const W = opts.W || (n > 2 ? 96 : 80), H = opts.H || W;
     KM.setMapSize(W, H);
     const m = KM.emptyMap(W, H), N = W * H;
+    m.biome = KM.BIOMES[opts.biome] ? opts.biome : 'pradaria';
+    const biome = KM.biome(m);
     const rnd = KM.rng(seed);
     const hN = KM.makeNoise(seed + 1), fN = KM.makeNoise(seed + 2), sN = KM.makeNoise(seed + 3), rN = KM.makeNoise(seed + 4);
     const starts = KM.startPositions(W, H, n);
@@ -45,7 +47,7 @@
       if (d < 13) h = h + (0.52 - h) * (1 - d / 13);
       let t = T.GRASS;
       // tipos de mapa: mudam limites de água e montanha e acrescentam feições próprias
-      const wl = type === 'lagos' ? 0.37 : 0.3;
+      const wl = (type === 'lagos' ? 0.37 : 0.3) + biome.water;
       if (h < wl) t = T.WATER; else if (h < wl + 0.03) t = T.SAND; else if (h > (type === 'cordilheiras' ? 0.78 : 0.72)) t = T.MOUNTAIN;
       if (type === 'cordilheiras' && d > 12) { const r = 1 - Math.abs(2 * rN(x / 22 + 7, y / 22 + 3, 3) - 1); if (r > 0.86) { t = T.MOUNTAIN; h = Math.max(h, 0.75 + (r - 0.86) * 2); } }
       if (type === 'rio' && d > 11) { const rv = Math.abs((x - W / 2) * 0.7 + (y - H / 2) * 0.7 + Math.sin((x - y) / 9) * 6); if (rv < 2.3) { t = T.WATER; h = 0.2; } else if (rv < 3.2 && t === T.GRASS) t = T.SAND; }
@@ -101,7 +103,7 @@
     const TPL = { blobs: [[-10, 10, 4, [1, 2, 1, 2]], [14, -10, 3.6, [3, 1, 3]]], stones: [[8, 8, 2], [-7, -7, 2]], forest: [[10, -3, 4], [-9, 2, 3]], lakes: [[20, 3, 3]] };
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = I(x, y);
-      if (m.terrain[i] === T.GRASS && fN(x / 9, y / 9, 3) > (type === 'floresta' ? 0.44 : 0.58)) m.tree[i] = 1 + Math.min(3, Math.floor(rnd() * 5));
+      if (m.terrain[i] === T.GRASS && fN(x / 9, y / 9, 3) > (type === 'floresta' ? Math.min(0.44, biome.forest) : biome.forest)) m.tree[i] = 1 + Math.min(3, Math.floor(rnd() * 5));
     }
     for (const s of starts) {
       const fx = s.x < W / 2 ? 1 : -1, fy = s.y < H / 2 ? 1 : -1;

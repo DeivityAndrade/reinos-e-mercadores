@@ -14,6 +14,7 @@
     let sp = (sd ? sd.spd : 1.6) * (onRoad ? 1.35 : 1) * (u.hunger <= 0 ? 0.6 : 1);
     if (u.carry) sp *= 0.9;
     const step = sp * dt, dx = nx - u.x, dy = ny - u.y, dd = Math.hypot(dx, dy);
+    if (sd && dd > 0.01) u.heading = KM.dirFrom(dx, dy);
     if (Math.abs(dx) > 0.01) u.face = dx > 0 ? 1 : -1;
     u.anim += dt * sp * 7;
     if (dd <= step) {
