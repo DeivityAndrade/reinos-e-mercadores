@@ -32,7 +32,7 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 - **IA menos insistente:** depois de cada ataque, a IA espera mais antes do próximo (cerca de 5½ min no Normal), as ondas ficaram mais espaçadas e os saques só começam depois da paz.
 - **Rota das tropas:** com um grupo selecionado, uma trilha tracejada mostra o caminho até o destino, com marcas onde cada soldado vai parar e um estandarte fincado no ponto final. Ataques mostram uma linha vermelha até o alvo.
 - **Bordas do mapa:** em vez de um corte seco, o mapa continua em colinas, mata fechada e serras que escurecem e somem na névoa.
-- **Personagens refeitos:** cabeça maior, rosto com olhos, sobrancelhas e orelhas, mãos e botas arredondadas, gola, cinto e barra na roupa. Cada pessoa varia em pele, cabelo, barba e porte, e os bonecos estão um pouco maiores.
+- **Personagens novos:** o povo e os soldados agora usam modelos de [Quaternius](https://quaternius.com) (CC0): roupas de camponês e de patrulheiro, cabeças com rosto, cabelos, barbas e as animações da Universal Animation Library. Cada profissão tem tom de roupa e ferramenta próprios; soldados usam tabardo, escudo e capacete na cor do reino. Espada, machado, picareta e escudo vêm do Fantasy Props MegaKit (Quaternius, CC0); as demais ferramentas e armas foram modeladas com as mesmas texturas de madeira, metal e tecido. Homens e mulheres variam em pele, cabelo e barba, e todos estão maiores. Cada pessoa é desenhada numa só malha com texturas num atlas, então o desempenho é o mesmo dos bonecos antigos.
 - **Escola protegida:** a última Escola do reino não pode ser demolida.
 
 ## 🆕 Novidades da versão 0.6
