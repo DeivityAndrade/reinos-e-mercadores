@@ -255,6 +255,50 @@ check('Mapa, combate e objetivos reproduzem o mesmo estado e sobrevivem a salvar
   for (let i = 0; i < 40; i++) KM.step(a, KM.DT);
   assert.equal(JSON.stringify(a), JSON.stringify(copy));
 });
+check('Multijogador monta times para 2 a 4 humanos', () => {
+  const teams = (cfg) => cfg.players.map((p) => p.team);
+  const humansOf = (cfg) => cfg.players.filter((p) => p.human).length;
+  for (let n = 2; n <= 4; n++) {
+    for (let opp = 0; opp <= 3; opp++) {
+      const v = KM.skirmishConfig({ mp: true, humans: n, teams: 'versus', opponents: opp });
+      assert.equal(v.players.length, Math.min(4, n + opp), `versus ${n}+${opp}`);
+      assert.equal(humansOf(v), n);
+      assert.equal(new Set(teams(v)).size, v.players.length, 'todos contra todos: cada reino no seu time');
+      v.players.forEach((p, i) => assert.equal(p.team, p.human ? i : 10 + i - n));
+      const c = KM.skirmishConfig({ mp: true, humans: n, teams: 'coop', opponents: opp });
+      assert.ok(c.players.length <= 4, `coop ${n}+${opp}`);
+      assert.equal(humansOf(c), n);
+      if (n <= 3) assert.equal(c.players.length, Math.min(4, n + Math.max(1, opp)));
+      c.players.forEach((p) => assert.equal(p.team, p.human ? 0 : 9));
+      const x = KM.skirmishConfig({ mp: true, humans: n, teams: '2x2', opponents: opp });
+      assert.equal(JSON.stringify(teams(x)), "[0,0,1,1]");
+      assert.equal(JSON.stringify(x.players.map((p) => !!p.human)), JSON.stringify([0, 1, 2, 3].map((i) => i < n)));
+    }
+  }
+  const S = KM.newState({ mp: true, humans: 4, teams: 'versus', seed: 3, diff: 'normal' });
+  assert.equal(S.players.length, 4);
+  assert.ok(S.players.every((p) => p.human));
+  assert.equal(new Set(S.starts.slice(0, 4).map((s) => s.x + ',' + s.y)).size, 4);
+  const solo = KM.skirmishConfig({ diff: 'normal', opponents: 2, ally: true });
+  assert.equal(JSON.stringify(teams(solo)), "[0,0,9,9]");
+});
+check('Quatro humanos com os mesmos comandos geram o mesmo estado; quem sai vira IA no mesmo turno', () => {
+  function run() {
+    const S = KM.newState({ mp: true, humans: 4, teams: 'versus', seed: 11, diff: 'normal' }); KM.simS = S;
+    for (let i = 0; i < 600; i++) {
+      if (i === 40) for (let o = 0; o < 4; o++) { const st = S.starts[o]; KM.exec(S, { o, c: 'build', t: 'woodcutter', x: st.x + 4, y: st.y + 3 }); }
+      if (i === 200) KM.exec(S, { o: 3, c: 'leave' });
+      KM.step(S, KM.DT);
+    }
+    return S;
+  }
+  const a = run(), b = run(), c = run();
+  assert.equal(KM.checksum(a), KM.checksum(b));
+  assert.equal(KM.checksum(b), KM.checksum(c));
+  assert.equal(a.players[3].human, false);
+  assert.ok(a.players[3].ai);
+  assert.ok(a.players.slice(0, 3).every((p) => p.human));
+});
 if (process.argv.includes('--balance')) {
   for (const seed of [1, 7, 19]) {
     const r = KM.sim.bots({ seed, minutes: 40, fair: true });

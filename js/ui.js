@@ -683,7 +683,11 @@
         }
         if (b.dataset.cont) KM.load(+b.dataset.cont);
         if (b.dataset.help) this.showHelp(true);
-        if (b.dataset.screen) this.menuScreen(b.dataset.screen);
+        if (b.dataset.screen) {
+          // sair da tela do multijogador fecha a sala/conexão que ainda não virou partida
+          if (b.dataset.screen !== 'mp' && KM.net && !KM.net.active && KM.net.role) { KM.net.close(); $('#mpbox').innerHTML = ''; }
+          this.menuScreen(b.dataset.screen);
+        }
         if (b.dataset.mission) KM.startGame({ mission: b.dataset.mission, diff: $('#cdiff').value });
         if (b.dataset.conquest) KM.startGame({ mission: b.dataset.conquest, diff: $('#qdiff').value });
         if (b.dataset.editor) KM.editor.open(b.dataset.editor);

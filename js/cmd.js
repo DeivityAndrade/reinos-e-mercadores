@@ -107,6 +107,15 @@
       case 'link': KM.linkGroups(S, myGroups(S, o, c.g)); return;
       case 'feed': for (const g of myGroups(S, o, c.g)) KM.feedGroup(S, g); return;
       case 'speed': if (o === 0) S.speed = KM.clamp(c.v, 1, 5); return;
+      // multijogador: um jogador saiu da partida e a IA assume o reino (aplicado no mesmo turno em todos)
+      case 'leave': {
+        const P = S.players[o];
+        if (!P.human) return;
+        P.human = false;
+        KM.setupAI(S, o, { mode: 'economy', peace: Math.max(S.peaceEnd || 0, S.time + 180) }, S.diff);
+        if (o !== KM.me) KM.notify(S, `🔌 ${P.name} saiu da partida. A IA assumiu o reino.`, 'warn');
+        return;
+      }
       case 'pause': if (o === 0) S.paused = !!c.v; return;
     }
   };
