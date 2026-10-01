@@ -1,6 +1,6 @@
 # 🗺️ Roadmap — Reinos & Mercadores
 
-Estado atual: **v0.7** (out/2026). Jogo jogável de ponta a ponta: Tutorial, Conquista (10 fases), Campanha (14 missões), Escaramuça, Multijogador por sala, Editor de mapas, PWA offline, celular/tablet.
+Estado atual: **v0.7** (out/2026). Jogo jogável de ponta a ponta: Tutorial, Conquista (10 fases), Campanha (14 missões), Escaramuça, Multijogador por sala (até 4 jogadores), Editor de mapas, PWA offline, celular/tablet.
 
 Este roadmap é uma proposta. Prioridades podem mudar conforme os testes com jogadores.
 
@@ -22,7 +22,7 @@ Este roadmap é uma proposta. Prioridades podem mudar conforme os testes com jog
 
 Objetivo: consolidar o que existe antes de crescer.
 
-- **Testes automáticos no CI:** rodar `tools/check.js` (e `--balance` em modo curto) a cada PR via GitHub Actions. Hoje depende de Node instalado localmente.
+- **Testes automáticos no CI:** rodar `tools/check.js`, `tools/net-check.js` (e `--balance` em modo curto) a cada PR via GitHub Actions. Hoje depende de Node instalado localmente.
 - **Teste de sincronia do multijogador:** verificar que duas simulações com a mesma semente e os mesmos comandos geram o mesmo hash de estado (detecção de *desync* com aviso na tela).
 - **Reconexão no multijogador:** retomar a partida se a conexão WebRTC cair, a partir do último estado confirmado.
 - **Versão dos saves:** migrar saves antigos (`KM.VERSION`) em vez de invalidar; avisar quando o save é de outra versão.
@@ -66,7 +66,7 @@ Objetivo: versão "completa" para divulgar.
 
 ## 🔭 Depois da v1.0 (ideias)
 
-- Multijogador para até 4 humanos e modo espectador.
+- Modo espectador no multijogador (até 4 humanos já é possível desde a v0.7).
 - Servidor de encontro próprio (hoje usa o ntfy.sh público).
 - Ranking online opcional para a Conquista (melhores tempos).
 - Suporte a mods: dados de `js/config.js` carregáveis por arquivo JSON.

@@ -22,10 +22,11 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 | **👑 Conquista** | 10 fases com controle de passagens, postos avançados, reconstrução, defesa, preparação de uma expedição e guerras entre reinos. Rivais com personalidade, alianças e desafios opcionais que valem coroas (até 4 por fase). Novos biomas acompanham a progressão |
 | **Campanha "A Reunificação de Aldor"** | 14 missões com briefing, objetivos, aliados e até 3 inimigos simultâneos |
 | **Escaramuça** | Mapa procedural ou feito no editor, 1 a 3 oponentes, aliado opcional, IA com economia real ou em ondas |
-| **Multijogador online** | **Salas por código de 5 letras**: um cria a sala e o outro digita o código. A partida roda direto entre os navegadores (WebRTC), em 1 contra 1 ou cooperativo contra a IA, com chat. Também há o modo manual, trocando códigos longos |
+| **Multijogador online** | **Salas por código de 5 letras** para **até 4 jogadores**: um cria a sala e os amigos digitam o código. A partida roda direto entre os navegadores (WebRTC), em todos contra todos, cooperativo contra a IA ou 2 contra 2, com IA nas vagas livres e chat. Também há o modo manual (2 jogadores), trocando códigos longos |
 | **Editor de mapas** | Terreno, relevo, árvores, rochas, minérios, até 4 bases e casas prontas. Salva localmente e exporta/importa arquivos |
 
 ## 🆕 Novidades da versão 0.7
+- **Multijogador para até 4:** a sala por código aceita até 3 convidados. O anfitrião vê as vagas, escolhe o modo (todos contra todos, cooperativo contra a IA ou 2 contra 2) e quantas IAs ocupam as vagas livres. Se um convidado cair, a IA assume o reino dele ao mesmo tempo em todos os navegadores, sem travar a partida.
 - **Começo enxuto:** na Escaramuça e na Conquista o reino começa só com 2 construtores e 2 carregadores. O resto do povo sai da Escola (1 ouro cada; o ouro inicial subiu para 55).
 - **Obras que pesam:** cada construção pede 50% a mais de material, e nivelar o terreno e assentar cada peça leva mais tempo. Ao terminar, a obra comemora com faíscas, poeira e o nome da casa subindo no céu.
 - **Paz territorial:** na Escaramuça e no multijogador o mapa é dividido em 4 quadrantes. Até a paz acabar (10 min no Normal), cada reino só constrói, anda e ataca no próprio quadrante. A divisa aparece como uma cerca de luz no chão e tracejada no minimapa, e o fim da paz é anunciado.
@@ -65,7 +66,7 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 - **Instalável e offline (PWA):** no Chrome ou Edge, use "Instalar aplicativo" na barra de endereço. Depois de aberto uma vez, funciona sem internet.
 
 ## 🧪 Ferramenta de balanceamento
-Com Node.js disponível, execute `node tools/check.js` para verificar regras de combate, IA, tutorial, objetivos, inicialização das 25 missões/fases em três dificuldades e continuidade após salvar/carregar. `node tools/check.js --balance` também simula três mapas por até 40 minutos cada. São amostras de diagnóstico, não uma estimativa da taxa de vitória de jogadores humanos.
+Com Node.js disponível, execute `node tools/check.js` para verificar regras de combate, IA, tutorial, objetivos, inicialização das 25 missões/fases em três dificuldades e continuidade após salvar/carregar. `node tools/check.js --balance` também simula três mapas por até 40 minutos cada. São amostras de diagnóstico, não uma estimativa da taxa de vitória de jogadores humanos. `node tools/net-check.js` testa o multijogador (repasse das jogadas entre 4 jogadores, sala cheia e queda de jogador) sem navegador.
 
 Para conferir visualmente cada fase sem desbloquear a Conquista, abra `tools/playtest.html` no servidor local. A prévia começa pausada e não faz autosave. Ela permite examinar briefing, mapa e pontos estratégicos.
 
@@ -225,6 +226,7 @@ js/audio.js       sons, música e vozes procedurais (Web Audio)
 js/main.js        laço de 20 ticks/s, lockstep, salvar/carregar, histórico para os gráficos
 tools/sim.js      simulador de partidas para balanceamento
 tools/check.js    regressões da simulação, sem dependências externas
+tools/net-check.js  regressões do multijogador (lockstep em estrela), sem navegador
 tools/playtest.html  prévia pausada de fases para inspeção visual
 sw.js, manifest.webmanifest, icon.svg   modo offline e instalação como aplicativo
 ```
