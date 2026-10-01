@@ -88,6 +88,14 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 - **Tutorial na Conquista:** aparece na fase I para quem ainda não concluiu nem fechou o tutorial.
 - **Desempenho:** as 6 partes do corpo de cada personagem viram uma malha só, e só o corpo projeta sombra. Numa batalha com 209 soldados, o tempo por quadro caiu de 24,6 ms para 14,2 ms.
 
+- **Acabamento visual:**
+  - **Estradas** de terra batida pintadas, com pedras chatas e bordas que se fundem ao gramado (antes eram ladrilhos de pedra com cara de carimbo).
+  - **Campos lavrados** com sulcos irregulares e bordas suaves que emendam com os vizinhos.
+  - Árvores com verde mais fundo, gramado menos saturado e menos terra sob as casas.
+  - Marcas discretas sob os soldados e estandartes de grupo pintados, com flâmula ondulante e número num escudo de pergaminho.
+  - Planos de obra dos reinos inimigos ficam escondidos, como no original.
+- **Ícones próprios na interface:** miniaturas renderizadas das construções e dos personagens no menu Construir, na Escola, no Quartel, na árvore de progresso, na aba Povo e nos painéis. Os ícones de recurso continuam como símbolos.
+- **Servidor local mais robusto:** o `Jogar.bat` agora envia músicas e arquivos grandes em pedaços e não trava mais.
 - **Celular e tablet:**
   - Toque seleciona; com tropas selecionadas, tocar no chão ou num inimigo dá a ordem.
   - Arrastar move a câmera, a pinça dá zoom e dois dedos girando giram a câmera.

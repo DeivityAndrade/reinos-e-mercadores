@@ -1110,6 +1110,12 @@
     if (!A._charMat) A._charMat = toon({ vertexColors: true });
     return A._charMat;
   };
+  // mastro com estandarte (marca das bases no editor)
+  const poleCache = {};
+  A.flagPole = function (o) {
+    if (!poleCache[o]) { const b = new Bag(); K.box(b, 'stone', 0.34, 0.12, 0.34, 0, 0, 0); K.banner(b, o, 0, 0.12, 0, 1.3, true); poleCache[o] = b.build(); }
+    return poleCache[o].clone(true);
+  };
   // itens carregados nas costas/mãos (troncos, pedra, sacos, caixotes)
   const carryCache = {};
   A.carry = function (k) {
@@ -1153,7 +1159,7 @@
   A.nature = {};
   A.buildNature = function () {
     const N = A.nature;
-    const bark = lin('#6b4a2e'), leafA = lin('#4f8f3a'), leafB = lin('#3b7a34'), leafC = lin('#6aa244'), pine = lin('#2f6a3c'), pine2 = lin('#3f7d45');
+    const bark = lin('#5e4028'), leafA = lin('#41772f'), leafB = lin('#33652c'), leafC = lin('#5a8a3a'), pine = lin('#2a5c36'), pine2 = lin('#376c3e');
     const trunk = (h, r) => colorize(new THREE.CylinderGeometry(r * 0.7, r, h, 6).translate(0, h / 2, 0), (x, y, z, f) => jit(bark, 0.3, f));
     // carvalho: copa de bolhas facetadas
     const oak = (seed, blobs, h) => {

@@ -7,6 +7,10 @@
   const ri = (r) => KM.RES[r].i;
   const costStr = (c) => Object.keys(c).map((r) => `${ri(r)}${c[r]}`).join(' ');
   const ME = () => KM.me;
+  // ícone da construção: miniatura 3D renderizada (cai no emoji se não houver)
+  const hic = (t) => (KM.R && KM.R.icons && KM.R.icons[t] ? `<i class="hic hic-${t}"></i>` : KM.HOUSES[t].i);
+  // ícone de unidade (soldado ou profissão): miniatura do personagem
+  const uic = (t) => (KM.R && KM.R.icons && KM.R.icons['u_' + t] ? `<i class="hic uic hic-u_${t}"></i>` : (KM.SOLDIERS[t] || KM.PROF[t]).i);
 
   const ui = KM.ui = {
     tool: null, hover: null, drag: null, box: null, selHouse: 0, selUnits: [], selGroups: [], selSet: new Set(),
@@ -78,7 +82,7 @@
         if (!P.all) {
           const shown = next.slice(0, 3);
           if (shown.length) {
-            html += `<div class="progress-card"><div class="pc-title">📜 Próximos passos</div>${shown.map((n) => `<div class="pc-row"><span>${KM.HOUSES[n.t].i}</span><div>Construa <b>${KM.HOUSES[n.t].n}</b><small>libera ${n.gives.map((g) => KM.HOUSES[g].i + ' ' + KM.HOUSES[g].n).join(', ')}</small></div></div>`).join('')}<button class="pc-more" data-act="tree">Ver árvore completa ›</button></div>`;
+            html += `<div class="progress-card"><div class="pc-title">📜 Próximos passos</div>${shown.map((n) => `<div class="pc-row"><span>${hic(n.t)}</span><div>Construa <b>${KM.HOUSES[n.t].n}</b><small>libera ${n.gives.map((g) => KM.HOUSES[g].i + ' ' + KM.HOUSES[g].n).join(', ')}</small></div></div>`).join('')}<button class="pc-more" data-act="tree">Ver árvore completa ›</button></div>`;
           } else {
             const locked = Object.keys(KM.HOUSES).filter((t) => !KM.houseUnlocked(S, ME(), t)).length;
             if (!locked) html += `<div class="progress-card done"><div class="pc-title">🏰 Reino completo</div><small>Todas as construções estão liberadas.</small></div>`;
@@ -93,8 +97,8 @@
             if (d.g !== grp) continue;
             const open = KM.houseUnlocked(S, ME(), k);
             const isNew = open && KM.TECH[k] && !(P.built || {})[k] && !P.all;
-            if (open) html += `<button class="bbtn ${isNew ? 'new' : ''}" data-build="${k}" data-tip="${esc(this.houseTip(k))}"><span class="ic">${d.i}</span><span class="nm">${d.n}</span><span class="cost">${costStr(d.cost)}</span>${isNew ? '<i class="badge-new">novo</i>' : ''}</button>`;
-            else html += `<button class="bbtn locked" data-locked="${k}" data-tip="${esc(`<b>🔒 ${d.n}</b><br>Para liberar, construa: ${KM.reqNames(KM.TECH[k])}<br><small>${d.desc || ''}</small>`)}"><span class="ic">${d.i}</span><span class="nm">${d.n}</span><span class="cost">🔒 bloqueado</span></button>`;
+            if (open) html += `<button class="bbtn ${isNew ? 'new' : ''}" data-build="${k}" data-tip="${esc(this.houseTip(k))}"><span class="ic">${hic(k)}</span><span class="nm">${d.n}</span><span class="cost">${costStr(d.cost)}</span>${isNew ? '<i class="badge-new">novo</i>' : ''}</button>`;
+            else html += `<button class="bbtn locked" data-locked="${k}" data-tip="${esc(`<b>🔒 ${d.n}</b><br>Para liberar, construa: ${KM.reqNames(KM.TECH[k])}<br><small>${d.desc || ''}</small>`)}"><span class="ic">${hic(k)}</span><span class="nm">${d.n}</span><span class="cost">🔒 bloqueado</span></button>`;
           }
           html += '</div>';
         }
@@ -130,11 +134,11 @@
         html = `<h4>Cidadãos (${nc})</h4>
           <div class="meter" data-tip="Fome média. Construa uma Taverna e mantenha comida nela."><span>🍗 Alimentação</span><div class="mbar"><i style="width:${nc ? hunger / nc : 0}%"></i></div></div>
           ${starving ? `<div class="warn">⚠️ ${starving} cidadão(s) passando fome: trabalham na metade da velocidade!</div>` : ''}
-          <div class="plist">${KM.PROF_ORDER.filter((p) => c[p]).map((p) => `<div class="prow"><span>${KM.PROF[p].i}</span><span class="sn">${KM.PROF[p].n}</span><b>${c[p]}</b><em>${idle[p] ? idle[p] + ' livre' + (idle[p] > 1 ? 's' : '') : ''}</em></div>`).join('')}</div>
+          <div class="plist">${KM.PROF_ORDER.filter((p) => c[p]).map((p) => `<div class="prow"><span>${uic(p)}</span><span class="sn">${KM.PROF[p].n}</span><b>${c[p]}</b><em>${idle[p] ? idle[p] + ' livre' + (idle[p] > 1 ? 's' : '') : ''}</em></div>`).join('')}</div>
           <label class="chk" data-tip="A Escola treina automaticamente os trabalhadores que suas casas precisam e mantém carregadores suficientes."><input type="checkbox" data-act="auto" ${P.autoTrain ? 'checked' : ''}> Treino automático na Escola</label>
           <h4>Exército (${ns})</h4>
           ${ns ? `<div class="meter" data-tip="Soldados com fome recebem comida dos carregadores. Com fome zero, eles perdem vida."><span>🍖 Tropas</span><div class="mbar"><i style="width:${sh / ns}%"></i></div></div>` : ''}
-          <div class="plist">${KM.SOLDIER_ORDER.filter((t) => sold[t]).map((t) => `<div class="prow"><span>${KM.SOLDIERS[t].i}</span><span class="sn">${KM.SOLDIERS[t].n}</span><b>${sold[t]}</b></div>`).join('') || '<div class="muted">Nenhum soldado.</div>'}</div>
+          <div class="plist">${KM.SOLDIER_ORDER.filter((t) => sold[t]).map((t) => `<div class="prow"><span>${uic(t)}</span><span class="sn">${KM.SOLDIERS[t].n}</span><b>${sold[t]}</b></div>`).join('') || '<div class="muted">Nenhum soldado.</div>'}</div>
           ${rec ? `<div class="muted">🪖 ${rec} recruta(s) aguardando no quartel</div>` : ''}
           <h4>Estatísticas</h4>
           <div class="muted">Casas construídas: ${st.built} · Treinados: ${st.trained}<br>Inimigos abatidos: ${st.killed} · Perdas: ${st.lost}</div>`;
@@ -290,7 +294,7 @@
       const d = KM.def(h), mine = h.owner === ME();
       const states = { plan: 'Planejada: aguardando construtor', site: 'Em construção', built: h.paused ? 'Pausada' : 'Pronta' };
       const rel = mine ? states[h.state] : KM.hostile(S, ME(), h.owner) ? `<span class="enemy">Inimigo · ${esc(S.players[h.owner].name)}</span>` : `<span class="good">Aliado · ${esc(S.players[h.owner].name)}</span>`;
-      let s = `<div class="ph"><span class="big">${d.i}</span><div><b>${d.n}</b><br><small>${rel}</small></div></div>`;
+      let s = `<div class="ph"><span class="big">${hic(h.type)}</span><div><b>${d.n}</b><br><small>${rel}</small></div></div>`;
       s += `<div class="hp"><i style="width:${(h.hp / h.maxHp) * 100}%" class="${mine ? '' : 'e'}"></i><span>${Math.ceil(h.hp)}/${h.maxHp}</span></div>`;
       if (!mine) return s;
       if (h.state !== 'built') {
@@ -353,9 +357,9 @@
         if (h.trainT) s += `<div class="pbar"><i style="width:${(1 - h.trainT / h.trainMax) * 100}%"></i></div>`;
         s += `<div class="queue">${h.queue.map((p, i) => `<button data-act2="unq:${i}" data-tip="Remover ${KM.PROF[p].n}">${KM.PROF[p].i}</button>`).join('') || '<small class="muted">vazia</small>'}</div>`;
         s += `<div class="lbl">Treinar (1 🪙 cada)</div><div class="tgrid">${KM.PROF_ORDER.map((p) => {
-          if (KM.profUnlocked(S, ME(), p)) return `<button data-act2="train:${p}" data-tip="${KM.PROF[p].n}">${KM.PROF[p].i}<small>${KM.PROF[p].n}</small></button>`;
+          if (KM.profUnlocked(S, ME(), p)) return `<button data-act2="train:${p}" data-tip="${KM.PROF[p].n}">${uic(p)}<small>${KM.PROF[p].n}</small></button>`;
           const need = p === 'recruit' ? 'Construa um ⚔️ Quartel' : 'Libere uma construção que use este profissional: ' + Object.keys(KM.HOUSES).filter((t) => KM.HOUSES[t].worker === p).map((t) => KM.HOUSES[t].i + ' ' + KM.HOUSES[t].n).join(', ');
-          return `<button class="locked" data-act2="lockedp:${p}" data-tip="<b>🔒 ${KM.PROF[p].n}</b><br>${need}">${KM.PROF[p].i}<small>🔒</small></button>`;
+          return `<button class="locked" data-act2="lockedp:${p}" data-tip="<b>🔒 ${KM.PROF[p].n}</b><br>${need}">${uic(p)}<small>🔒</small></button>`;
         }).join('')}</div>`;
         s += `<label class="chk"><input type="checkbox" data-act2="auto" ${P.autoTrain ? 'checked' : ''}> Treino automático</label>`;
       }
@@ -364,9 +368,9 @@
         s += `<div class="io">${KM.WEAPONS.map((r) => `<div class="chip ${h.inv[r] ? '' : 'zero'}" data-tip="${KM.RES[r].n}">${ri(r)} ${h.inv[r] || 0}</div>`).join('')}</div>`;
         s += `<div class="lbl">Equipar soldado <small class="muted">(Shift: 5 de uma vez)</small></div><div class="sgrid">${KM.SOLDIER_ORDER.map((t) => {
           const sd = KM.SOLDIERS[t];
-          if (!KM.soldierUnlocked(S, ME(), t)) return `<button class="locked" data-act2="lockeds:${t}" data-tip="<b>🔒 ${sd.n}</b><br>Para liberar, construa: ${esc(KM.reqNames(KM.SOLDIER_REQ[t]))}"><span>${sd.i}</span><small>${sd.n}</small><em>🔒 bloqueado</em></button>`;
+          if (!KM.soldierUnlocked(S, ME(), t)) return `<button class="locked" data-act2="lockeds:${t}" data-tip="<b>🔒 ${sd.n}</b><br>Para liberar, construa: ${esc(KM.reqNames(KM.SOLDIER_REQ[t]))}"><span>${uic(t)}</span><small>${sd.n}</small><em>🔒 bloqueado</em></button>`;
           const ok = h.recruits > 0 && Object.keys(sd.cost).every((r) => (h.inv[r] || 0) >= sd.cost[r]);
-          return `<button data-act2="equip:${t}" class="${ok ? '' : 'off'}" data-tip="<b>${sd.n}</b><br>Vida ${sd.hp} · Ataque ${sd.atk} · Defesa ${sd.def}${sd.range ? ' · Alcance ' + sd.range : ''}${sd.antiCav ? '<br>Forte contra cavalaria' : ''}<br>Custo: 🪖 + ${costStr(sd.cost)}"><span>${sd.i}</span><small>${sd.n}</small><em>${costStr(sd.cost)}</em></button>`;
+          return `<button data-act2="equip:${t}" class="${ok ? '' : 'off'}" data-tip="<b>${sd.n}</b><br>Vida ${sd.hp} · Ataque ${sd.atk} · Defesa ${sd.def}${sd.range ? ' · Alcance ' + sd.range : ''}${sd.antiCav ? '<br>Forte contra cavalaria' : ''}<br>Custo: 🪖 + ${costStr(sd.cost)}"><span>${uic(t)}</span><small>${sd.n}</small><em>${costStr(sd.cost)}</em></button>`;
         }).join('')}</div>`;
       }
       if (h.type === 'tower') s += `<div class="row">Munição: ${h.shots} tiros prontos + ${h.inv.stone || 0} 🪨</div>`;
@@ -386,7 +390,7 @@
       const sd = KM.SOLDIERS[u.type], p = KM.PROF[u.type];
       const nm = sd ? sd.n : p.n, ic = sd ? sd.i : p.i;
       const mine = u.owner === ME();
-      let s = `<div class="ph"><span class="big">${ic}</span><div><b>${nm}</b><br><small>${mine ? KM.taskText(S, u) : `<span class="${KM.hostile(S, ME(), u.owner) ? 'enemy' : 'good'}">${esc(S.players[u.owner].name)}</span>`}</small></div></div>`;
+      let s = `<div class="ph"><span class="big">${uic(u.type)}</span><div><b>${nm}</b><br><small>${mine ? KM.taskText(S, u) : `<span class="${KM.hostile(S, ME(), u.owner) ? 'enemy' : 'good'}">${esc(S.players[u.owner].name)}</span>`}</small></div></div>`;
       s += `<div class="hp"><i style="width:${(u.hp / u.maxHp) * 100}%" class="${mine ? '' : 'e'}"></i><span>${Math.ceil(u.hp)}/${u.maxHp}</span></div>`;
       if (mine) s += `<div class="meter"><span>🍗 Fome</span><div class="mbar"><i style="width:${u.hunger}%"></i></div></div>`;
       return s;
@@ -746,11 +750,11 @@
       const card = (t) => {
         const d = KM.HOUSES[t], open = KM.houseUnlocked(S, ME(), t), done = built[t];
         const st = done ? 'done' : open ? 'open' : 'lock';
-        return `<div class="tcard ${st}" data-tip="${esc(this.houseTip(t))}"><span class="ti">${d.i}</span><div><b>${d.n}</b><small>${done ? '✅ construída' : open ? '🔓 disponível' : '🔒 ' + esc(KM.reqNames(KM.TECH[t]))}</small></div></div>`;
+        return `<div class="tcard ${st}" data-tip="${esc(this.houseTip(t))}"><span class="ti">${hic(t)}</span><div><b>${d.n}</b><small>${done ? '✅ construída' : open ? '🔓 disponível' : '🔒 ' + esc(KM.reqNames(KM.TECH[t]))}</small></div></div>`;
       };
       const sol = KM.SOLDIER_ORDER.map((t) => {
         const sd = KM.SOLDIERS[t], open = KM.soldierUnlocked(S, ME(), t);
-        return `<div class="tcard ${open ? 'open' : 'lock'}"><span class="ti">${sd.i}</span><div><b>${sd.n}</b><small>${open ? '🔓 disponível no Quartel' : '🔒 ' + esc(KM.reqNames(KM.SOLDIER_REQ[t]))}</small></div></div>`;
+        return `<div class="tcard ${open ? 'open' : 'lock'}"><span class="ti">${uic(t)}</span><div><b>${sd.n}</b><small>${open ? '🔓 disponível no Quartel' : '🔒 ' + esc(KM.reqNames(KM.SOLDIER_REQ[t]))}</small></div></div>`;
       }).join('');
       el.innerHTML = `<div class="card treecard"><button class="close" data-close="1">✕</button>
         <h2>🌳 Árvore de progresso</h2>

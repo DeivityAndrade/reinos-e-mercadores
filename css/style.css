@@ -415,3 +415,17 @@ body.touch .tip, body.touch #tooltip { display: none !important; }
 @media (orientation: portrait) and (max-width: 600px) {
   #rotatehint { display: grid; place-items: center; text-align: center; position: fixed; inset: 0; z-index: 50; background: rgba(18,13,9,0.94); color: var(--gold2); font: 700 20px/1.5 var(--title); padding: 30px; }
 }
+
+/* ícones das construções: miniaturas 3D renderizadas pelo próprio jogo */
+.hic { display: inline-block; width: 1.9em; height: 1.9em; background-size: contain; background-position: center; background-repeat: no-repeat; vertical-align: middle; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.45)); }
+.bbtn .ic .hic { width: 46px; height: 46px; margin: -6px 0 -4px; }
+.ph .big .hic { width: 58px; height: 58px; }
+.tcard .ti .hic { width: 36px; height: 36px; }
+.pc-row .hic { width: 32px; height: 32px; }
+.bbtn.locked .hic, .tcard.lock .hic { filter: grayscale(1) brightness(0.62) contrast(0.9); opacity: 0.8; }
+.hic.uic { width: 2.2em; height: 2.2em; }
+.sgrid button .hic.uic, .tgrid button .hic.uic { width: 40px; height: 40px; margin: -4px 0 -2px; }
+.plist .hic.uic { width: 26px; height: 26px; }
+.tcard .ti .hic.uic { width: 36px; height: 36px; }
+.ph .big .hic.uic { width: 58px; height: 58px; }
+.sgrid button.locked .hic, .tgrid button.locked .hic { filter: grayscale(1) brightness(0.6); opacity: 0.8; }

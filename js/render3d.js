@@ -135,7 +135,7 @@
             float l = L(c);
             c = mix(c, c * vec3(0.86, 0.9, 1.08), (1.0 - smoothstep(0.15, 0.55, l)) * 0.55);
             c = mix(c, c * vec3(1.05, 1.0, 0.92), smoothstep(0.5, 0.95, l) * 0.5);
-            c = mix(vec3(L(c)), c, 1.12);
+            c = mix(vec3(L(c)), c, 1.03);
             // hachuras em traço de pena nas áreas escuras
             vec2 fc = gl_FragCoord.xy / uPx;
             float h1 = step(0.72, fract((fc.x + fc.y) / 5.0)), h2 = step(0.72, fract((fc.x - fc.y) / 5.0));
@@ -208,7 +208,7 @@
       const list = [];
       // construções, árvores, rochas e montanhas são arte própria (art.js); daqui vêm só personagens, animais e itens carregados
       for (const n of ['cloud_big', 'cloud_small']) list.push([n, `${AS}decoration/nature/${n}.gltf`]);
-      for (const n of ['sack', 'resource_lumber', 'resource_stone', 'flag_blue', 'flag_red', 'flag_green', 'flag_yellow']) list.push([n, `${AS}decoration/props/${n}.gltf`]);
+
       for (const n of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded']) list.push([n, `assets/kaykit/chars/${n}.glb`]);
       list.push(['horse', 'assets/quaternius/horse.glb'], ['pig', 'assets/quaternius/pig.glb']);
       let done = 0;
@@ -274,6 +274,62 @@
       // altura de referência dos personagens
       this.charH = this.proto.Knight ? this.proto.Knight.size.y : 2.4;
       this.makeTextures();
+      try { this.makeHouseIcons(); } catch (e) { console.warn("ícones", e); }
+    },
+    // miniaturas das construções (renderizadas das próprias casas 3D) para os ícones da interface
+    makeHouseIcons() {
+      const size = 112, cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      let r;
+      try { r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch (e) { return; }
+      r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping; r.setClearColor(0x000000, 0);
+      const sc = new THREE.Scene();
+      sc.add(new THREE.HemisphereLight('#eef3ff', '#7a6a50', 2.1));
+      const sun = new THREE.DirectionalLight('#ffe7c2', 2.4); sun.position.set(-3, 5, 4); sc.add(sun);
+      const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+      this.icons = {};
+      for (const t in KM.HOUSES) {
+        const d = KM.HOUSES[t];
+        const m = KM.ART.house(t, d.w, d.h, KM.me || 0, (d.w >> 1) + 0.5 - d.w / 2);
+        m.scale.y = 1.12;
+        sc.add(m);
+        const box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3()).length();
+        cam.position.set(c.x + s * 0.55, c.y + s * 0.62, c.z + s * 1.15);
+        cam.lookAt(c.x, c.y - s * 0.03, c.z);
+        r.render(sc, cam);
+        this.icons[t] = cv.toDataURL('image/png');
+        sc.remove(m);
+      }
+      // personagens: soldados e profissões, em pose de descanso (primeiro quadro da animação "Idle")
+      for (const t of KM.SOLDIER_ORDER.concat(KM.PROF_ORDER)) {
+        const cfg = CHAR[t] || CHAR.serf;
+        if (!this.rig[cfg.m] || !this.gltf[cfg.m]) continue;
+        const body = this.model(cfg.m), inner = body.userData.inner;
+        const parts = [];
+        inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
+        const rm = []; inner.traverse((o) => { if (o.isMesh) rm.push(o); });
+        const own = new THREE.SkinnedMesh(KM.ART.character(t, KM.me || 0, this.rig[cfg.m]), KM.ART.charMat());
+        parts[0].parent.add(own); own.bind(parts[0].skeleton, parts[0].bindMatrix);
+        for (const p of rm) p.parent.remove(p);
+        const mixer = new THREE.AnimationMixer(inner);
+        const clip = this.proto[cfg.m].anims.find((a) => a.name === 'Idle') || this.proto[cfg.m].anims[0];
+        if (clip) { mixer.clipAction(clip).play(); mixer.update(0.4); }
+        const g = new THREE.Group(); g.add(body);
+        if (cfg.horse) { const hz = this.model('horse'); this.ownAnimal(hz, 'horse', t === 'knight' ? KM.me || 0 : null); const hp = this.proto.horse, hs = (1.2 / Math.max(hp.size.x, hp.size.z)) / 0.26; hz.scale.setScalar(hs); body.position.y = hp.size.y * hs * 0.66; g.add(hz); }
+        g.rotation.y = 0.5;
+        sc.add(g); g.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3()).length();
+        cam.position.set(c.x + s * 0.12, c.y + s * 0.2, c.z + s * 0.92);
+        cam.lookAt(c.x, c.y, c.z);
+        r.render(sc, cam);
+        this.icons['u_' + t] = cv.toDataURL('image/png');
+        sc.remove(g);
+      }
+      r.dispose();
+      // uma classe CSS por construção (a imagem não se repete no HTML que é redesenhado a todo momento)
+      const st = document.createElement('style');
+      st.textContent = Object.keys(this.icons).map((t) => `.hic-${t}{background-image:url(${this.icons[t]})}`).join(' ');
+      document.head.appendChild(st);
     },
     // vento: desloca os vértices proporcionalmente à altura (só em malhas instanciadas)
     windify(mat, amp, freq) {
@@ -311,37 +367,79 @@
     makeTextures() {
       const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
       const H = KM.hash;
-      // atlas de estradas 4x4 (máscara N=1 L=2 S=4 O=8)
-      const S = 128, road = mk(S * 4, S * 4), g = road.getContext('2d');
+      // atlas de estradas 4x4 (máscara N=1 L=2 S=4 O=8): caminho de terra batida com bordas suaves e pedras chatas,
+      // em tons próximos do chão (sem contornos duros que viram "carimbo")
+      const S = 128, M = 28, road = mk(S * 4, S * 4), g = road.getContext('2d');
+      // textura da terra (um pouco maior que a célula, para as bordas emendarem)
+      const earth = mk(S + 2 * M, S + 2 * M), e = earth.getContext('2d');
+      e.fillStyle = '#a2845a'; e.fillRect(0, 0, S + 2 * M, S + 2 * M);
+      for (let k = 0; k < 700; k++) {
+        const x = H(k, 7, 1) * (S + 2 * M), y = H(k, 7, 2) * (S + 2 * M), t = (H(k, 7, 3) - 0.5) * 34;
+        e.fillStyle = `rgba(${150 + t},${122 + t},${84 + t * 0.7},0.55)`;
+        e.beginPath(); e.arc(x, y, 1 + H(k, 7, 4) * 3.5, 0, 7); e.fill();
+      }
+      for (let k = 0; k < 46; k++) {
+        const x = H(k, 8, 1) * (S + 2 * M), y = H(k, 8, 2) * (S + 2 * M), r = 6 + H(k, 8, 3) * 7, n = 6 + Math.floor(H(k, 8, 4) * 3);
+        const t = (H(k, 8, 5) - 0.5) * 26, pts = [];
+        for (let i = 0; i < n; i++) { const a = (i / n) * 6.283 + H(k, i, 6) * 0.6, rr = r * (0.75 + H(k, i, 7) * 0.4); pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.8]); }
+        const path = () => { e.beginPath(); pts.forEach(([px, py], i) => (i ? e.lineTo(px, py) : e.moveTo(px, py))); e.closePath(); };
+        e.save(); e.translate(1.5, 2); path(); e.fillStyle = 'rgba(70,48,24,0.22)'; e.fill(); e.restore();
+        path(); e.fillStyle = `rgb(${186 + t},${166 + t},${132 + t * 0.8})`; e.fill();
+        e.save(); e.translate(-1, -1.2); e.scale(1, 1); path(); e.fillStyle = 'rgba(255,248,226,0.12)'; e.fill(); e.restore();
+      }
       for (let mask = 0; mask < 16; mask++) {
         const ox = (mask % 4) * S, oy = Math.floor(mask / 4) * S;
-        g.save(); g.translate(ox, oy);
-        g.beginPath();
-        const c0 = S * 0.22, c1 = S * 0.78;
-        g.roundRect(c0, c0, c1 - c0, c1 - c0, 18);
-        if (mask & 1) g.rect(c0, 0, c1 - c0, c0 + 4);
-        if (mask & 4) g.rect(c0, c1 - 4, c1 - c0, S - c1 + 4);
-        if (mask & 8) g.rect(0, c0, c0 + 4, c1 - c0);
-        if (mask & 2) g.rect(c1 - 4, c0, S - c1 + 4, c1 - c0);
-        g.fillStyle = '#8a6f4e'; g.fill();
-        g.clip();
-        for (let k = 0; k < 90; k++) {
-          const x = H(k, mask, 1) * S, y = H(k, mask, 2) * S, w = 9 + H(k, mask, 3) * 10, hh = 7 + H(k, mask, 4) * 8;
-          const tone = 150 + Math.floor(H(k, mask, 5) * 60);
-          g.fillStyle = `rgb(${tone},${tone - 18},${tone - 42})`;
-          g.beginPath(); g.roundRect(x - w / 2, y - hh / 2, w, hh, 4); g.fill();
-          g.fillStyle = 'rgba(255,245,220,0.25)'; g.fillRect(x - w / 2 + 2, y - hh / 2 + 1, w - 4, 2);
-          g.strokeStyle = 'rgba(60,40,25,0.55)'; g.lineWidth = 1.5; g.stroke();
-        }
-        g.restore();
+        const tmp = mk(S + 2 * M, S + 2 * M), t = tmp.getContext('2d');
+        const c = M + S / 2, r = S * 0.38;
+        t.filter = 'blur(6px)';
+        t.fillStyle = '#fff';
+        t.beginPath(); t.arc(c, c, r, 0, 7); t.fill();
+        if (mask & 1) t.fillRect(c - r, 0, 2 * r, c);
+        if (mask & 4) t.fillRect(c - r, c, 2 * r, S + 2 * M - c);
+        if (mask & 8) t.fillRect(0, c - r, c, 2 * r);
+        if (mask & 2) t.fillRect(c, c - r, S + 2 * M - c, 2 * r);
+        t.filter = 'none';
+        t.globalCompositeOperation = 'source-in';
+        t.drawImage(earth, 0, 0);
+        g.drawImage(tmp, M, M, S, S, ox, oy, S, S);
       }
       this.roadTex = new THREE.CanvasTexture(road);
       this.roadTex.colorSpace = THREE.SRGBColorSpace; this.roadTex.anisotropy = 8;
-      // solo lavrado
-      const soil = mk(128, 128), s = soil.getContext('2d');
-      s.fillStyle = '#7a5530'; s.fillRect(0, 0, 128, 128);
-      for (let r = 0; r < 8; r++) { s.fillStyle = '#5e3f22'; s.fillRect(0, r * 16 + 9, 128, 5); s.fillStyle = '#946a3e'; s.fillRect(0, r * 16 + 5, 128, 3); }
-      this.soilTex = new THREE.CanvasTexture(soil); this.soilTex.colorSpace = THREE.SRGBColorSpace;
+      // solo lavrado: atlas 4x4 por vizinhança (como as estradas) com sulcos irregulares e bordas que se fundem ao capim
+      const SS = 128, SM = 24, soil = mk(SS * 4, SS * 4), s = soil.getContext('2d');
+      const furrow = mk(SS + 2 * SM, SS + 2 * SM), fu = furrow.getContext('2d');
+      fu.fillStyle = '#7d5a35'; fu.fillRect(0, 0, SS + 2 * SM, SS + 2 * SM);
+      for (let r = -1; r < 12; r++) {
+        const y0 = r * 15 + 6;
+        fu.strokeStyle = 'rgba(70,46,24,0.55)'; fu.lineWidth = 5; fu.beginPath();
+        for (let x = 0; x <= SS + 2 * SM; x += 8) fu.lineTo(x, y0 + Math.sin(x * 0.08 + r) * 1.6 + (H(x, r, 81) - 0.5) * 1.5);
+        fu.stroke();
+        fu.strokeStyle = 'rgba(160,120,78,0.5)'; fu.lineWidth = 3; fu.beginPath();
+        for (let x = 0; x <= SS + 2 * SM; x += 8) fu.lineTo(x, y0 - 5 + Math.sin(x * 0.08 + r) * 1.6);
+        fu.stroke();
+      }
+      for (let k = 0; k < 400; k++) { fu.fillStyle = `rgba(${90 + H(k, 3, 82) * 70},${62 + H(k, 4, 82) * 50},${36 + H(k, 5, 82) * 30},0.5)`; fu.beginPath(); fu.arc(H(k, 1, 82) * (SS + 2 * SM), H(k, 2, 82) * (SS + 2 * SM), 1 + H(k, 6, 82) * 2, 0, 7); fu.fill(); }
+      for (let mask = 0; mask < 16; mask++) {
+        const ox = (mask % 4) * SS, oy = Math.floor(mask / 4) * SS;
+        const tmp = mk(SS + 2 * SM, SS + 2 * SM), t = tmp.getContext('2d');
+        const a = SM + 8, b = SM + SS - 8;
+        t.filter = 'blur(4px)'; t.fillStyle = '#fff';
+        t.beginPath(); t.roundRect(a, a, b - a, b - a, 14); t.fill();
+        if (mask & 1) t.fillRect(a, 0, b - a, SM + 20);
+        if (mask & 4) t.fillRect(a, b - 20, b - a, SS + 2 * SM - b + 20);
+        if (mask & 8) t.fillRect(0, a, SM + 20, b - a);
+        if (mask & 2) t.fillRect(b - 20, a, SS + 2 * SM - b + 20, b - a);
+        // cantos internos preenchidos quando há vizinhos nas duas direções
+        if ((mask & 1) && (mask & 8)) t.fillRect(0, 0, SM + 20, SM + 20);
+        if ((mask & 1) && (mask & 2)) t.fillRect(b - 20, 0, SS + 2 * SM - b + 20, SM + 20);
+        if ((mask & 4) && (mask & 8)) t.fillRect(0, b - 20, SM + 20, SS + 2 * SM - b + 20);
+        if ((mask & 4) && (mask & 2)) t.fillRect(b - 20, b - 20, SS + 2 * SM - b + 20, SS + 2 * SM - b + 20);
+        t.filter = 'none';
+        t.globalCompositeOperation = 'source-in';
+        t.drawImage(furrow, 0, 0);
+        s.drawImage(tmp, SM, SM, SS, SS, ox, oy, SS, SS);
+      }
+      this.soilTex = new THREE.CanvasTexture(soil); this.soilTex.colorSpace = THREE.SRGBColorSpace; this.soilTex.anisotropy = 8;
       // contorno tracejado (planos)
       const dash = mk(64, 64), d = dash.getContext('2d');
       d.strokeStyle = '#fff'; d.lineWidth = 5; d.setLineDash([9, 6]); d.strokeRect(5, 5, 54, 54);
@@ -483,7 +581,7 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       const vx0 = Math.max(0, (x0 - 1) * SUB), vx1 = Math.min(VW - 1, (x1 + 2) * SUB);
       const vy0 = Math.max(0, (y0 - 1) * SUB), vy1 = Math.min(VH - 1, (y1 + 2) * SUB);
       const C = {
-        grass: [0.44, 0.6, 0.27], grass2: [0.3, 0.47, 0.2], sand: [0.86, 0.76, 0.52], rock: [0.5, 0.46, 0.41], rock2: [0.3, 0.28, 0.26],
+        grass: [0.43, 0.57, 0.27], grass2: [0.3, 0.45, 0.2], sand: [0.86, 0.76, 0.52], rock: [0.5, 0.46, 0.41], rock2: [0.3, 0.28, 0.26],
         bed: [0.24, 0.38, 0.4], dirt: [0.55, 0.42, 0.27],
       };
       const biome = KM.biome(m);
@@ -509,7 +607,7 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         }
         if (!n) n = 1;
         r /= n; g /= n; b /= n;
-        if (house) { const k = 0.35 * house / n; r += (C.dirt[0] - r) * k; g += (C.dirt[1] - g) * k; b += (C.dirt[2] - b) * k; }
+        if (house) { const k = 0.12 * house / n; r += (C.dirt[0] - r) * k; g += (C.dirt[1] - g) * k; b += (C.dirt[2] - b) * k; }
         const jitter = (KM.hash(vx, vy, 77) - 0.5) * 0.05;
         const ww = water / n;
         // oclusão ambiente "assada": vales e pés de encosta ficam mais escuros, cristas mais claras
@@ -767,20 +865,25 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           const mask = (isR(x, y - 1) ? 1 : 0) | (isR(x + 1, y) ? 2 : 0) | (isR(x, y + 1) ? 4 : 0) | (isR(x - 1, y) ? 8 : 0);
           const u0 = (mask % 4) / 4, v0 = Math.floor(mask / 4) / 4;
           roads.push({ x, y, u0: u0 + 0.002, v0: v0 + 0.002, u1: u0 + 0.248, v1: v0 + 0.248 });
-        } else if (m.road[i] === 1 && m.rown[i] >= 0) {
+        } else if (m.road[i] === 1 && m.rown[i] >= 0 && (S.editor || m.rown[i] === KM.me)) {
           const c = new THREE.Color(KM.pcolor(S, m.rown[i]));
           plans.push({ x, y, c: [c.r, c.g, c.b] });
           if (m.rmat[i] === 2) stones.push([x, y]);
         }
         const f = m.field[i];
-        if (f === 2 || f === 4) soils.push({ x, y, c: f === 4 ? [0.9, 0.85, 0.8] : [1, 1, 1] });
-        else if (f === 1 || f === 3) plans.push({ x, y, c: f === 1 ? [1, 0.9, 0.35] : [0.75, 0.35, 0.8] });
+        if (f === 2 || f === 4) {
+          const isF = (xx, yy) => KM.inb(xx, yy) && (m.field[yy * m.W + xx] === 2 || m.field[yy * m.W + xx] === 4);
+          const fm = (isF(x, y - 1) ? 1 : 0) | (isF(x + 1, y) ? 2 : 0) | (isF(x, y + 1) ? 4 : 0) | (isF(x - 1, y) ? 8 : 0);
+          const u0 = (fm % 4) / 4, v0 = Math.floor(fm / 4) / 4;
+          soils.push({ x, y, u0: u0 + 0.002, v0: v0 + 0.002, u1: u0 + 0.248, v1: v0 + 0.248, c: f === 4 ? [0.9, 0.85, 0.8] : [1, 1, 1] });
+        }
+        else if ((f === 1 || f === 3) && (S.editor || m.fown[i] === KM.me)) plans.push({ x, y, c: f === 1 ? [1, 0.9, 0.35] : [0.75, 0.35, 0.8] });
       }
       const add = (o) => { if (o) G.add(o); };
-      add(this.quadsMesh(soils, this.soilTex, false, 1, 0.02));
+      add(this.quadsMesh(soils, this.soilTex, true, 1, 0.02));
       add(this.quadsMesh(roads, this.roadTex, true, 1, 0.03));
       add(this.quadsMesh(plans, this.dashTex, true, 0.95, 0.04));
-      for (const [x, y] of stones) { const r = this.model('resource_stone'); r.scale.setScalar(0.45); r.position.set(x + 0.5, this.groundY(x + 0.5, y + 0.5), y + 0.5); G.add(r); }
+      for (const [x, y] of stones) { const r = KM.ART.carry('stone'); r.scale.setScalar(0.8); r.position.set(x + 0.5, this.groundY(x + 0.5, y + 0.5) + 0.02, y + 0.5); G.add(r); }
     },
     checksum(arrs) {
       let h = 0;
@@ -805,7 +908,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       for (let y = h.y; y <= h.y + h.h; y++) for (let x = h.x; x <= h.x + h.w; x++) gmin = Math.min(gmin, KM.hAt(S.map, x, y) * HY);
       const st = KM.ART.mat('stone'), di = KM.ART.mat('dirt');
       const pad = new THREE.Mesh(this.padGeo || (this.padGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, -0.48, 0)), this.padMats || (this.padMats = [st, st, di, di, st, st]));
-      pad.scale.set(h.w * 0.9, gy - gmin + 0.12, h.h * 0.84); pad.receiveShadow = true; pad.castShadow = true;
+      pad.scale.set(h.w * 0.8, gy - gmin + 0.12, h.h * 0.74); pad.receiveShadow = true; pad.castShadow = true;
       G.add(pad);
       const dx = (h.ex + 0.5) - cx;
       if (h.state === 'plan') {
@@ -820,8 +923,8 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         for (const r in h.mat) {
           const n = h.mat[r].have;
           for (let j = 0; j < Math.min(n, 4); j++) {
-            const o = this.model(r === 'wood' ? 'resource_lumber' : 'resource_stone');
-            o.scale.setScalar(0.45);
+            const o = KM.ART.carry(r === 'wood' ? 'planks' : 'stone');
+            o.scale.setScalar(0.85);
             o.position.set(-h.w / 2 + 0.3 + k * 0.55, j * 0.09, h.h / 2 - 0.12);
             G.add(o);
           }
@@ -943,7 +1046,8 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       for (const a of this.proto[cfg.m].anims) vis.actions[a.name] = vis.mixer.clipAction(a);
       // anel de time sob os soldados
       if (KM.SOLDIERS[u.type]) {
-        const ring = new THREE.Mesh(new THREE.RingGeometry(0.16, 0.21, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: team, transparent: true, opacity: 0.7, depthWrite: false }));
+        // marca discreta do reino sob os soldados (a seleção tem anel próprio, mais forte)
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.185, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: team.clone().multiplyScalar(0.8), transparent: true, opacity: 0.32, depthWrite: false }));
         ring.position.y = 0.03; ring.renderOrder = 2; ring.userData.own = true;
         root.add(ring);
       }
@@ -1389,8 +1493,8 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         G.add(circ);
       }
       if (S.editor) S.edStarts.forEach((s, k) => {
-        const f = this.model('flag_' + COLORS[k]);
-        f.scale.setScalar(2.2);
+        const f = KM.ART.flagPole(k);
+        f.scale.setScalar(1.3);
         f.position.set(s.x + 0.5, this.groundY(s.x + 0.5, s.y + 0.5), s.y + 0.5);
         G.add(f);
         const circ = new THREE.Mesh(new THREE.RingGeometry(7.3, 7.5, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: KM.COLORS[k], transparent: true, opacity: 0.8, depthWrite: false }));
@@ -1427,14 +1531,28 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (q.behind || q.x < -50 || q.y < -50 || q.x > this.vw + 50 || q.y > this.vh + 50) continue;
         if (u.hp < u.maxHp || selected) bar(q.x - 14, q.y - 6, 28, u.hp / u.maxHp, u.owner === KM.me ? '#5fd35a' : KM.hostile(S, KM.me, u.owner) ? '#ef4b4b' : '#3fa6ff');
         if (lead) {
+          // estandarte do grupo: mastro com ponta dourada, flâmula ondulante de duas pontas e número num escudo de pergaminho
           const col = KM.pcolor(S, u.owner);
-          const bx = q.x + 16, by = q.y - 26;
-          g.fillStyle = '#3b2a1c'; g.fillRect(bx, by, 2, 24);
-          g.fillStyle = col; g.beginPath(); g.moveTo(bx + 2, by); g.lineTo(bx + 22, by + 5); g.lineTo(bx + 2, by + 11); g.fill();
+          const bx = q.x + 14, by = q.y - 30, wv = this.time * 6 + u.id;
+          g.fillStyle = '#4a3220'; g.fillRect(bx - 1, by - 2, 2.5, 30);
+          g.fillStyle = '#e8c060'; g.beginPath(); g.arc(bx + 0.25, by - 3, 2.6, 0, 7); g.fill();
+          const pts = [];
+          for (let i = 0; i <= 6; i++) { const t = i / 6; pts.push([bx + 1.5 + t * 22, by + Math.sin(wv - t * 3) * 1.8 * t]); }
+          g.beginPath();
+          pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+          const tip = pts[6];
+          g.lineTo(tip[0] - 5, tip[1] + 6.5); g.lineTo(tip[0], tip[1] + 13);
+          for (let i = 6; i >= 0; i--) g.lineTo(pts[i][0], pts[i][1] + 13);
+          g.closePath();
+          g.fillStyle = col; g.fill();
+          g.strokeStyle = 'rgba(20,12,6,0.65)'; g.lineWidth = 1.2; g.stroke();
+          g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(bx + 2, by + 1 + Math.sin(wv) * 0.3, 14, 2);
           if (grp.m.length > 1) {
-            g.font = '700 11px "Alegreya Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-            g.fillStyle = 'rgba(20,14,10,0.85)'; g.beginPath(); g.arc(bx + 10, by - 8, 9, 0, 7); g.fill();
-            g.fillStyle = '#fff'; g.fillText(grp.m.length, bx + 10, by - 7.5);
+            const sx = bx - 9, sy = by + 1;
+            g.beginPath(); g.moveTo(sx - 8, sy - 7); g.lineTo(sx + 8, sy - 7); g.lineTo(sx + 8, sy + 2); g.quadraticCurveTo(sx + 8, sy + 8, sx, sy + 11); g.quadraticCurveTo(sx - 8, sy + 8, sx - 8, sy + 2); g.closePath();
+            g.fillStyle = '#efe0bc'; g.fill(); g.strokeStyle = '#6a4a22'; g.lineWidth = 1.3; g.stroke();
+            g.font = '800 10.5px "Alegreya Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillStyle = '#3a2410'; g.fillText(grp.m.length, sx, sy + 1);
           }
         }
         if (u.hunger < 25 && u.owner === KM.me) { g.font = '14px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText('🍗', q.x, q.y - 16); }
