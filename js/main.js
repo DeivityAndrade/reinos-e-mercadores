@@ -24,6 +24,14 @@
     if (t % 20 === 13) { KM.updateAI(S, 20 * dt); KM.cleanGroups(S); }
     if (t % 40 === 17) KM.checkGoals(S);
     if (t % 600 === 19) KM.recordHist(S);
+    // efeitos visuais envelhecem e somem (escombros duram 40 s)
+    for (const e of S.fx) e.t += dt;
+    if (t % 20 === 9 && S.fx.length) S.fx = S.fx.filter((e) => e.t < e.T);
+    if (S.zones && !S.peaceDone && S.time >= S.peaceEnd) {
+      S.peaceDone = true;
+      KM.notify(S, '🏁 Fim da paz! As fronteiras estão abertas: agora dá para explorar e atacar fora do seu quadrante.', 'warn');
+      KM.sfx && KM.sfx('horn');
+    }
   };
 
   // histórico a cada 30 s de jogo (gráficos da tela final): cidadãos, soldados, casas prontas, recursos guardados

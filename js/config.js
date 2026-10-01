@@ -3,7 +3,7 @@
    Tudo que define economia, casas, profissões e soldados fica aqui. */
 window.KM = window.KM || {};
 (function (KM) {
-  KM.VERSION = '0.6.0';
+  KM.VERSION = '0.7.0';
   KM.TILE = 32;
   KM.MAP_W = 80;
   KM.MAP_H = 80;
@@ -129,6 +129,10 @@ window.KM = window.KM || {};
     tower: { n: 'Torre de vigia', i: '🗼', g: 'Militar', w: 2, h: 2, cost: { wood: 2, stone: 6 }, hp: 600, worker: 'recruit', accepts: ['stone'], roof: '#555', wall: '#a09888', desc: 'Um recruta lá dentro atira pedras em inimigos próximos. Consome pedra.' },
   };
 
+  // Obras mais caras: cada casa pede 50% a mais de material (e cada peça leva mais tempo para ser assentada, ver units.js)
+  KM.BUILD_COST_MULT = 1.5;
+  for (const t in KM.HOUSES) { const c = KM.HOUSES[t].cost; for (const r in c) c[r] = Math.ceil(c[r] * KM.BUILD_COST_MULT); }
+
   // Distribuição (como no menu original): quanto de cada recurso cada tipo de casa pode pedir (0-5)
   KM.DIST = {
     coal: ['ironsmithy', 'goldsmelter', 'weaponsmithy', 'armorsmithy'],
@@ -189,8 +193,9 @@ window.KM = window.KM || {};
   KM.HOUSE_GROUPS = ['Básico', 'Alimentos', 'Indústria', 'Militar'];
 
   KM.DIFF = {
-    easy: { n: 'Fácil', peace: 900, interval: 240, mult: 0.7, def: 6 },
-    normal: { n: 'Normal', peace: 600, interval: 190, mult: 1, def: 8 },
-    hard: { n: 'Difícil', peace: 360, interval: 150, mult: 1.4, def: 11 },
+    // interval: entre ondas; gap: pausa mínima da IA econômica depois de cada ataque (segundos)
+    easy: { n: 'Fácil', peace: 900, interval: 360, gap: 420, mult: 0.7, def: 6 },
+    normal: { n: 'Normal', peace: 600, interval: 300, gap: 330, mult: 1, def: 8 },
+    hard: { n: 'Difícil', peace: 360, interval: 220, gap: 240, mult: 1.4, def: 11 },
   };
 })(window.KM);

@@ -25,6 +25,16 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 | **Multijogador online** | **Salas por código de 5 letras**: um cria a sala e o outro digita o código. A partida roda direto entre os navegadores (WebRTC), em 1 contra 1 ou cooperativo contra a IA, com chat. Também há o modo manual, trocando códigos longos |
 | **Editor de mapas** | Terreno, relevo, árvores, rochas, minérios, até 4 bases e casas prontas. Salva localmente e exporta/importa arquivos |
 
+## 🆕 Novidades da versão 0.7
+- **Começo enxuto:** na Escaramuça e na Conquista o reino começa só com 2 construtores e 2 carregadores. O resto do povo sai da Escola (1 ouro cada; o ouro inicial subiu para 55).
+- **Obras que pesam:** cada construção pede 50% a mais de material, e nivelar o terreno e assentar cada peça leva mais tempo. Ao terminar, a obra comemora com faíscas, poeira e o nome da casa subindo no céu.
+- **Paz territorial:** na Escaramuça e no multijogador o mapa é dividido em 4 quadrantes. Até a paz acabar (10 min no Normal), cada reino só constrói, anda e ataca no próprio quadrante. A divisa aparece como uma cerca de luz no chão e tracejada no minimapa, e o fim da paz é anunciado.
+- **IA menos insistente:** depois de cada ataque, a IA espera mais antes do próximo (cerca de 5½ min no Normal), as ondas ficaram mais espaçadas e os saques só começam depois da paz.
+- **Rota das tropas:** com um grupo selecionado, uma trilha tracejada mostra o caminho até o destino, com marcas onde cada soldado vai parar e um estandarte fincado no ponto final. Ataques mostram uma linha vermelha até o alvo.
+- **Bordas do mapa:** em vez de um corte seco, o mapa continua em colinas, mata fechada e serras que escurecem e somem na névoa.
+- **Personagens refeitos:** cabeça maior, rosto com olhos, sobrancelhas e orelhas, mãos e botas arredondadas, gola, cinto e barra na roupa. Cada pessoa varia em pele, cabelo, barba e porte, e os bonecos estão um pouco maiores.
+- **Escola protegida:** a última Escola do reino não pode ser demolida.
+
 ## 🆕 Novidades da versão 0.6
 - **IA econômica:** mesma cidade inicial na Escaramuça, desbloqueios e fome das tropas iguais aos do jogador, sem concessões periódicas de recursos. Prioriza abastecimento, substitui pedreiras e minas esgotadas e usa o Mercado para comprar pedra ou ouro com madeira excedente. A dificuldade muda ritmo e estratégia, sem acelerar receitas ou gerar recursos.
 - **Combate:** a direção real de cada soldado define frente, lado (+15%) e costas (+30%) nos golpes corpo a corpo. Montanhas e construções bloqueiam tiros, inclusive das torres. O jogo indica flancos atingidos.

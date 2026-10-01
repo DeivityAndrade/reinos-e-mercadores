@@ -8,6 +8,7 @@
       mode: ai.mode || 'none',
       next: ai.peace != null ? ai.peace : D.peace,
       interval: ai.interval || D.interval,
+      gap: ai.gap || D.gap || 330,
       mult: ai.mult || D.mult,
       def: ai.def != null ? ai.def : D.def,
       waveSize: ai.waveSize || 1,
@@ -161,7 +162,7 @@
   }
   // saque: grupo pequeno e rápido contra casas de produção mal defendidas (recua quando apanha)
   function raid(S, o, ai, st) {
-    if (S.time < ai.next - 60 || S.time - (ai.raidT || 0) < 150) return;
+    if (S.time < ai.next - 60 || S.time < (S.peaceEnd || 0) || S.time - (ai.raidT || 0) < (ai.gap || 330)) return;
     const idle = Object.values(S.army).filter((g) => g.owner === o && !g.stage && KM.groupUnits(S, g).every((u) => u.ai !== 'atk'));
     idle.sort((a, b) => (KM.SOLDIERS[b.type].spd - KM.SOLDIERS[a.type].spd) || a.id - b.id);
     const pick = [];
@@ -319,7 +320,8 @@
         if (target && sent) {
           ai.attackN = Math.min((ai.baseAttackN || 12) + ai.wave * 2, Math.round(24 * ai.mult));
           ai.warned = false;
-          ai.next = S.time + Math.round(150 / ai.mult);
+          // pausa entre ataques: dá tempo de reconstruir e reagir (menor nas dificuldades altas)
+          ai.next = S.time + Math.round((ai.gap || 330) / Math.sqrt(ai.mult));
         }
       }
     }

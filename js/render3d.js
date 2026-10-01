@@ -574,6 +574,84 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       skirt.position.set(m.W / 2, BED - 0.62, m.H / 2);
       skirt.userData.own = true;
       this.world.add(skirt);
+      this.buildOuter(S);
+    },
+    // além da borda: terras vizinhas (colinas, mata fechada e serras) que escurecem e somem na névoa,
+    // em vez de o chão terminar num corte seco. Só visual: ninguém anda ou constrói ali.
+    buildOuter(S) {
+      const m = S.map, M = 30, SUB = 2, OW = (m.W + 2 * M) * SUB + 1, OH = (m.H + 2 * M) * SUB + 1;
+      const N = KM.makeNoise(S.seed + 911), biome = KM.biome(m);
+      const tp = this.tGeo.attributes.position.array, TVW = this.tVW;
+      const pos = new Float32Array(OW * OH * 3), col = new Float32Array(OW * OH * 3), idx = [];
+      const sm = (a, b, x) => { const t = KM.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+      const hOut = (fx, fy) => {
+        const cx = KM.clamp(fx, 0, m.W), cy = KM.clamp(fy, 0, m.H), d = Math.hypot(fx - cx, fy - cy);
+        const hb = tp[(Math.round(cy * SUB) * TVW + Math.round(cx * SUB)) * 3 + 1];
+        if (d === 0) return { h: hb, d };
+        // colinas que crescem para longe do mapa; serras no fundo
+        const hill = 0.25 + N(fx / 8, fy / 8, 3) * 1.4 + N(fx / 3, fy / 3, 2) * 0.35 + Math.max(0, d - 8) * 0.07 + Math.pow(Math.max(0, N(fx / 14 + 7, fy / 14, 2) - 0.45), 1.5) * 9 * sm(10, 22, d);
+        const target = Math.max(WL + 0.2, Math.min(hb, 1.6) * 0.6) + hill;
+        return { h: hb + (target - hb) * sm(0, 7, d), d };
+      };
+      for (let vy = 0; vy < OH; vy++) for (let vx = 0; vx < OW; vx++) {
+        const fx = vx / SUB - M, fy = vy / SUB - M, { h, d } = hOut(fx, fy);
+        const o = (vy * OW + vx) * 3;
+        pos[o] = fx; pos[o + 1] = h + (d > 0 ? (KM.hash(vx, vy, 93) - 0.5) * 0.05 : 0); pos[o + 2] = fy;
+        // grama do bioma, rocha nas encostas altas; escurece e esfria com a distância (lê como "fora do reino")
+        const k = N(fx / 6, fy / 6, 3), rock = sm(1.6, 2.8, h);
+        let r = biome.grass2[0] + (biome.grass[0] - biome.grass2[0]) * k, g = biome.grass2[1] + (biome.grass[1] - biome.grass2[1]) * k, b = biome.grass2[2] + (biome.grass[2] - biome.grass2[2]) * k;
+        r += (0.46 - r) * rock; g += (0.43 - g) * rock; b += (0.4 - b) * rock;
+        if (h < WL + 0.12) { r += (0.62 - r) * 0.5; g += (0.55 - g) * 0.5; b += (0.38 - b) * 0.5; }
+        const dim = 1 - sm(0, 5, d) * 0.2 - sm(5, M - 4, d) * 0.36, cool = sm(4, M, d) * 0.25;
+        r *= dim * (1 - cool * 0.3); g *= dim; b *= dim * (1 + cool * 0.25);
+        col[o] = Math.pow(r, 2.2); col[o + 1] = Math.pow(g, 2.2); col[o + 2] = Math.pow(b, 2.2);
+      }
+      const ix0 = M * SUB, ix1 = (M + m.W) * SUB, iy0 = M * SUB, iy1 = (M + m.H) * SUB;
+      for (let y = 0; y < OH - 1; y++) for (let x = 0; x < OW - 1; x++) {
+        if (x >= ix0 && x < ix1 && y >= iy0 && y < iy1) continue; // miolo: é o próprio mapa
+        const a = y * OW + x, b2 = a + 1, c = a + OW, d = c + 1;
+        if ((x + y) % 2) idx.push(a, c, b2, b2, c, d); else idx.push(a, c, d, a, d, b2);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setIndex(idx);
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, this.terrain.material);
+      mesh.receiveShadow = true; mesh.userData.own = true;
+      this.world.add(mesh);
+      // mata fechada e serras espalhadas pelo anel externo (instanciadas)
+      const lists = {}, add = (k, x, z, s, sy) => (lists[k] = lists[k] || []).push([x, z, s, sy || s]);
+      for (let ty = -M + 1; ty < m.H + M - 1; ty++) for (let tx = -M + 1; tx < m.W + M - 1; tx++) {
+        if (tx >= -1 && tx <= m.W && ty >= -1 && ty <= m.H) continue;
+        const cx = tx + 0.5 + (KM.hash(tx, ty, 41) - 0.5) * 0.6, cy = ty + 0.5 + (KM.hash(tx, ty, 42) - 0.5) * 0.6;
+        const { h, d } = hOut(cx, cy);
+        if (h < WL + 0.15) continue;
+        const forest = N(cx / 7 + 3, cy / 7, 2), hk = KM.hash(tx, ty, 43);
+        if (h > 2.6 && hk < 0.25) add('mountain_' + 'ABC'[Math.floor(KM.hash(tx, ty, 44) * 3)], cx, cy, 1 + KM.hash(tx, ty, 45) * 0.8, 0.9 + KM.hash(tx, ty, 46) * 0.9);
+        else if (forest > 0.42 - Math.min(0.15, d * 0.01) && hk < 0.62) {
+          const pine = biome.pine, ht = KM.hash(tx, ty, 47);
+          add(ht > 1 - pine ? 'tree_single_C' : ht < (1 - pine) * 0.57 ? 'tree_single_A' : 'tree_single_B', cx, cy, 0.8 + KM.hash(tx, ty, 48) * 0.35);
+        }
+      }
+      const dummy = new THREE.Object3D(), tint = biome.tint;
+      for (const k in lists) {
+        const src = this.inst[k];
+        if (!src) continue;
+        const L = lists[k], im = new THREE.InstancedMesh(src.geo, src.mat, L.length);
+        L.forEach(([x, z, s, sy], j) => {
+          const { h, d } = hOut(x, z);
+          dummy.position.set(x, h - (k.startsWith('mountain') ? 0.1 : 0), z);
+          dummy.rotation.set(0, KM.hash(j, L.length, 49) * 6.28, 0);
+          dummy.scale.set(s, sy, s);
+          dummy.updateMatrix();
+          im.setMatrixAt(j, dummy.matrix);
+          const dim = 1 - sm(0, 5, d) * 0.18 - sm(5, M - 4, d) * 0.38;
+          im.setColorAt(j, new THREE.Color().setRGB((k.startsWith('tree') ? tint[0] : 1) * dim, (k.startsWith('tree') ? tint[1] : 1) * dim, (k.startsWith('tree') ? tint[2] : 1) * dim));
+        });
+        im.castShadow = true; im.receiveShadow = true;
+        this.world.add(im);
+      }
     },
     updateTerrain(S, x0, y0, x1, y1) {
       const m = S.map, SUB = this.tSub, VW = this.tVW, VH = this.tVH;
@@ -993,7 +1071,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       const root = new THREE.Group();
       const body = this.model(cfg.m);
       const inner = body.userData.inner;
-      const scale = 0.52 / 2.0;
+      const scale = 0.58 / 2.0;
       body.scale.setScalar(scale);
       const vis = { root, body, cfg, mixer: new THREE.AnimationMixer(inner), actions: {}, cur: null, yaw: 0 };
       const team = new THREE.Color(KM.pcolor(S, u.owner));
@@ -1011,7 +1089,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); else if (o.isMesh) extras.push(o); });
       if (this.rig[cfg.m] && parts.length) {
         const p0 = parts[0];
-        const own = new THREE.SkinnedMesh(KM.ART.character(u.type, u.owner, this.rig[cfg.m]), KM.ART.charMat());
+        const own = new THREE.SkinnedMesh(KM.ART.character(u.type, u.owner, this.rig[cfg.m], u.id), KM.ART.charMat());
         own.name = 'body'; own.castShadow = true;
         p0.parent.add(own);
         own.bind(p0.skeleton, p0.bindMatrix);
@@ -1174,6 +1252,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       this.syncProjectiles(S, dt);
       this.syncFx(S, dt);
       this.syncTools(S, ui);
+      this.syncZone(S, dt);
       // água e nuvens animadas
       this.waterNormal.offset.set(this.time * 0.01, this.time * 0.006);
       if (this.windU) this.windU.value = this.time;
@@ -1412,6 +1491,13 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           e._v = 1;
           for (let k = 0; k < 14; k++) this.puff(e.x + 0.5 + (Math.random() - 0.5), this.groundY(e.x + 0.5, e.y + 0.5) + 0.3 + Math.random() * 0.6, e.y + 0.5 + (Math.random() - 0.5), 2.2);
         }
+        // obra concluída: poeira assentando ao redor e faíscas douradas subindo do telhado
+        if (e.k === 'built' && !e._v && this.seen(S, e.x + e.w / 2, e.y + e.h / 2)) {
+          e._v = 1;
+          const cx = e.x + e.w / 2, cz = e.y + e.h / 2, gy = this.groundY(cx, cz), top = (this.houseVis[e.id] && this.houseVis[e.id].userData.top) || 1.2;
+          for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; this.puff(cx + Math.cos(a) * e.w * 0.6, gy + 0.15, cz + Math.sin(a) * e.h * 0.6, 1.4, '#d8c8a8', 1.6 + Math.random() * 0.6, false, 0.5); }
+          for (let k = 0; k < 22; k++) this.puff(cx + (Math.random() - 0.5) * e.w * 0.8, gy + top * (0.6 + Math.random() * 0.6), cz + (Math.random() - 0.5) * e.h * 0.6, 0.35 + Math.random() * 0.3, Math.random() < 0.5 ? '#ffd860' : '#fff2b0', 1.2 + Math.random() * 1.2, true, 0.9);
+        }
         if (e.k === 'rubble' && !e._v) {
           e._v = 1;
           const o = KM.ART.ruin(e.w, e.h);
@@ -1429,6 +1515,67 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         sp.scale.setScalar(u.s * (0.4 + f * 0.9));
         sp.material.opacity = u.o * (1 - f);
         if (f >= 1) { this.world.remove(sp); sp.material.dispose(); this.smoke.splice(i, 1); }
+      }
+    },
+
+    // ---------- fronteira da paz: cortina de luz nas divisas do quadrante do jogador ----------
+    syncZone(S, dt) {
+      const z = KM.zone(S, KM.me), key = z ? [z.x0, z.y0, z.x1, z.y1].join() : '';
+      if (this.zoneMesh && this.zoneMesh.parent !== this.world) this.zoneMesh = null;
+      if (key !== this.zoneKey || (z && !this.zoneMesh)) {
+        this.zoneKey = key;
+        if (this.zoneMesh) { this.world.remove(this.zoneMesh); this.zoneMesh.geometry.dispose(); this.zoneMesh = null; }
+        if (!z) return;
+        if (!this.zoneTex) {
+          const cv = document.createElement('canvas'); cv.width = 32; cv.height = 64;
+          const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
+          gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.75, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0.9)');
+          g.fillStyle = gr; g.fillRect(0, 0, 32, 64);
+          g.clearRect(20, 0, 12, 52); // fenda entre os "painéis": lê como uma cerca de luz
+          this.zoneTex = new THREE.CanvasTexture(cv);
+          this.zoneTex.wrapS = THREE.RepeatWrapping; this.zoneTex.colorSpace = THREE.SRGBColorSpace;
+        }
+        const m = S.map, segs = [];
+        // só as divisas internas: as bordas do mapa já são o limite
+        // [x0, y0, x1, y1, direção para fora do território]
+        if (z.x0 > 0) segs.push([z.x0, z.y0, z.x0, z.y1 + 1, -1, 0]);
+        if (z.x1 < m.W - 1) segs.push([z.x1 + 1, z.y0, z.x1 + 1, z.y1 + 1, 1, 0]);
+        if (z.y0 > 0) segs.push([z.x0, z.y0, z.x1 + 1, z.y0, 0, -1]);
+        if (z.y1 < m.H - 1) segs.push([z.x0, z.y1 + 1, z.x1 + 1, z.y1 + 1, 0, 1]);
+        const pos = [], uv = [], idx = [];
+        const strip = (pts) => {
+          // pts: pares [baixo, cima] por amostra; vira uma tira de quads
+          const base = pos.length / 3;
+          pts.forEach(([a, b, u], i) => {
+            pos.push(...a, ...b); uv.push(u, 0, u, 1); // v=0: forte na divisa, some para v=1
+            if (i < pts.length - 1) { const k = base + i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+          });
+        };
+        for (const [x0, y0, x1, y1, nx, ny] of segs) {
+          const L = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(L * 2), wall = [], ground = [];
+          for (let i = 0; i <= n; i++) {
+            const f = i / n, x = x0 + (x1 - x0) * f, y = y0 + (y1 - y0) * f, gy = Math.max(this.groundY(x, y), WL);
+            const ox = x + nx * 1.2, oy = y + ny * 1.2, go = Math.max(this.groundY(ox, oy), WL);
+            // cortina de luz na divisa e faixa no chão do lado de fora (lida bem de cima)
+            wall.push([[x, gy + 0.02, y], [x, gy + 1.1, y], f * L * 0.5]);
+            ground.push([[x, gy + 0.05, y], [ox, go + 0.05, oy], f * L * 0.5]);
+          }
+          strip(wall); strip(ground);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setIndex(idx);
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        const col = new THREE.Color(KM.pcolor(S, KM.me)).lerp(new THREE.Color('#fff4d0'), 0.45);
+        const mesh = this.zoneMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: this.zoneTex, color: col, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+        mesh.renderOrder = 6;
+        this.world.add(mesh);
+      }
+      if (this.zoneMesh) {
+        this.zoneTex.offset.x -= dt * 0.25;
+        // pisca mais forte no último minuto de paz
+        const left = S.peaceEnd - S.time;
+        this.zoneMesh.material.opacity = left < 60 ? 0.55 + Math.sin(this.time * 6) * 0.35 : 0.85;
       }
     },
 
@@ -1609,6 +1756,23 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         g.fillStyle = 'rgba(28,20,14,0.9)'; g.fillRect(q.x - w / 2, q.y - 32, w, 25);
         g.fillStyle = color; g.fillText(text, q.x, q.y - 19);
       }
+      this.drawRoutes(S, ui);
+      // obra concluída: nome subindo sobre a casa
+      for (const e of S.fx) {
+        if (e.k !== 'built' || e.o !== KM.me || e.t > e.T) continue;
+        const hv = this.houseVis[e.id], h = S.houses[e.id];
+        if (!hv || !hv.visible || !h) continue;
+        const f = e.t / e.T, q = this.toScreen(hv.position.x, hv.position.y + (hv.userData.top || 1.2) + 0.3, hv.position.z);
+        if (q.behind) continue;
+        const txt = `✔ ${KM.def(h).n} concluído!`;
+        g.globalAlpha = f < 0.12 ? f / 0.12 : 1 - Math.max(0, (f - 0.6) / 0.4);
+        g.font = '800 17px "Alegreya Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        const y = q.y - 52 - f * 26, w = g.measureText(txt).width + 26;
+        g.fillStyle = 'rgba(40,26,10,0.88)'; g.beginPath(); g.roundRect(q.x - w / 2, y - 14, w, 28, 8); g.fill();
+        g.strokeStyle = '#e8c56b'; g.lineWidth = 1.5; g.stroke();
+        g.fillStyle = '#ffe9a8'; g.fillText(txt, q.x, y + 1);
+        g.globalAlpha = 1;
+      }
       // ponto de encontro do Quartel selecionado
       const sb = ui.selHouse && S.houses[ui.selHouse];
       if (sb && sb.type === 'barracks' && sb.owner === KM.me && sb.state === 'built') {
@@ -1637,6 +1801,70 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         g.fillStyle = 'rgba(255,224,102,0.12)'; g.strokeStyle = '#ffe066'; g.lineWidth = 1.5;
         const x = Math.min(b.x0, b.x1), y = Math.min(b.y0, b.y1), w = Math.abs(b.x1 - b.x0), hh = Math.abs(b.y1 - b.y0);
         g.fillRect(x, y, w, hh); g.strokeRect(x + 0.5, y + 0.5, w, hh);
+      }
+    },
+
+    // rota das tropas selecionadas (como no KaM): trilha tracejada pelo caminho real, marcas onde cada
+    // soldado vai parar e um estandarte fincado no destino; ataque ordenado ganha linha vermelha até o alvo
+    drawRoutes(S, ui) {
+      const g = this.og;
+      const gp = (x, y, lift) => this.toScreen(x + 0.5, Math.max(this.groundY(x + 0.5, y + 0.5), WL) + (lift || 0.05), y + 0.5);
+      // clique de ordem: anel que se abre no chão
+      for (const e of S.fx) {
+        if (e.k !== 'order' || e.t > e.T) continue;
+        const q = gp(e.x, e.y), f = e.t / e.T, r = 8 + f * 22;
+        if (q.behind) continue;
+        g.strokeStyle = `rgba(255,233,168,${1 - f})`; g.lineWidth = 2.5;
+        g.beginPath(); g.ellipse(q.x, q.y, r, r * 0.45, 0, 0, 7); g.stroke();
+      }
+      const groups = new Map();
+      if (ui.selSet) for (const id of ui.selSet) { const u = S.units[id]; if (u && u.owner === KM.me && u.g && S.army[u.g]) groups.set(u.g, S.army[u.g]); }
+      const col = KM.pcolor(S, KM.me);
+      for (const grp of groups.values()) {
+        const us = KM.groupUnits(S, grp);
+        if (!us.length) continue;
+        const atk = us.find((u) => u.forced && u.target && KM.resolveTarget(S, u.target));
+        if (atk) {
+          const tg = KM.resolveTarget(S, atk.target), c = KM.groupCenter(S, grp);
+          const b = gp(atk.target.k === 'u' ? tg.x : KM.hcx(tg), atk.target.k === 'u' ? tg.y : KM.hcy(tg), 0.08), a = gp(c.x, c.y, 0.08);
+          if (a.behind || b.behind) continue;
+          g.setLineDash([8, 6]); g.lineDashOffset = -this.time * 18; g.strokeStyle = 'rgba(255,80,60,0.9)'; g.lineWidth = 2.4;
+          g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); g.setLineDash([]); g.lineDashOffset = 0;
+          g.lineWidth = 2; g.beginPath(); g.ellipse(b.x, b.y, 16, 7, 0, 0, 7); g.stroke();
+          g.font = '16px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('⚔️', b.x, b.y - 10);
+          continue;
+        }
+        const movers = us.filter((u) => u.order);
+        if (!movers.length) continue;
+        // líder: quem tem o caminho mais longo pela frente
+        const left = (u) => (u.path ? u.path.length - u.pi : 0);
+        const lead = movers.reduce((a, b) => (left(b) > left(a) ? b : a));
+        const pts = [[lead.x, lead.y]];
+        if (lead.path) for (let i = lead.pi; i < lead.path.length; i++) pts.push(lead.path[i]);
+        pts.push([grp.ax, grp.ay]);
+        const sp = pts.map(([x, y]) => gp(x, y, 0.06));
+        if (sp.some((q) => q.behind)) continue;
+        g.lineJoin = 'round'; g.lineCap = 'round';
+        g.beginPath(); sp.forEach((q, i) => (i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)));
+        g.strokeStyle = 'rgba(25,15,6,0.45)'; g.lineWidth = 5; g.stroke();
+        g.setLineDash([2, 9]); g.lineDashOffset = -this.time * 16; g.strokeStyle = '#fff1c4'; g.lineWidth = 3.2; g.stroke();
+        g.setLineDash([]); g.lineDashOffset = 0; g.lineCap = 'butt';
+        // marcas no chão onde cada soldado vai ficar
+        g.fillStyle = 'rgba(255,241,196,0.8)';
+        for (const u of movers) { const q = gp(u.order.x, u.order.y, 0.05); if (!q.behind) { g.beginPath(); g.ellipse(q.x, q.y, 3.2, 1.7, 0, 0, 7); g.fill(); } }
+        // estandarte fincado no destino, na cor do reino
+        const q = gp(grp.ax, grp.ay, 0.05), wv = this.time * 5 + grp.id;
+        const pulse = 1 + Math.sin(this.time * 4) * 0.12;
+        g.fillStyle = 'rgba(20,12,6,0.25)'; g.beginPath(); g.ellipse(q.x, q.y, 15, 6.5, 0, 0, 7); g.fill();
+        g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath(); g.ellipse(q.x, q.y, 15 * pulse, 6.5 * pulse, 0, 0, 7); g.stroke();
+        g.fillStyle = '#4a3220'; g.fillRect(q.x - 1.5, q.y - 40, 3, 40);
+        g.fillStyle = '#e8c060'; g.beginPath(); g.arc(q.x, q.y - 41, 3.2, 0, 7); g.fill();
+        g.beginPath(); g.moveTo(q.x + 1.5, q.y - 38);
+        for (let i = 1; i <= 8; i++) { const t = i / 8; g.lineTo(q.x + 1.5 + t * 26, q.y - 38 + Math.sin(wv - t * 3) * 2.2 * t + t * 4); }
+        g.lineTo(q.x + 21, q.y - 27);
+        for (let i = 8; i >= 0; i--) { const t = i / 8; g.lineTo(q.x + 1.5 + t * 26, q.y - 22 + Math.sin(wv - t * 3) * 2.2 * t - t); }
+        g.closePath(); g.fillStyle = col; g.fill(); g.strokeStyle = 'rgba(20,12,6,0.7)'; g.lineWidth = 1.3; g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(q.x + 3, q.y - 36, 16, 2.5);
       }
     },
 

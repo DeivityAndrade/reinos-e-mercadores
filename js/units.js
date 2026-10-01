@@ -318,7 +318,7 @@
       if (!h || h.state !== 'plan') { u.task = null; return; }
       const g = KM.goTo(S, u, dt, h.ex, h.ey);
       if (g < 0) { KM.releaseTask(S, u); u.wt = 3; return; }
-      if (g === 1) { u.wt = 4; t.onDone = 'levelDone'; }
+      if (g === 1) { u.wt = 7; t.onDone = 'levelDone'; }
     },
     build(S, u, t, dt) {
       const h = S.houses[t.h];
@@ -331,7 +331,7 @@
         if (h.mat[r].have > 0) {
           h.mat[r].have--; h.used++;
           h.hp = Math.max(30, Math.round(h.maxHp * h.used / h.total));
-          u.wt = 2.2; t.onDone = 'buildStep';
+          u.wt = 3.6; t.onDone = 'buildStep';
           return;
         }
       }

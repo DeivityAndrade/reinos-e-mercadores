@@ -378,7 +378,8 @@
       if (d.recipes || d.gather) s += `<button class="mbtn ${h.paused ? 'on' : ''}" data-act2="hset:paused:${h.paused ? 0 : 1}">${h.paused ? '▶️ Retomar' : '⏸️ Pausar'}</button>`;
       if (acc.length) s += `<button class="mbtn ${h.noDeliv ? 'on' : ''}" data-act2="hset:noDeliv:${h.noDeliv ? 0 : 1}">${h.noDeliv ? '🚫 Entregas bloqueadas' : '📥 Entregas liberadas'}</button>`;
       s += `<button class="mbtn ${h.repair ? '' : 'on'}" data-act2="hset:repair:${h.repair ? 0 : 1}" data-tip="Construtores consertam a casa quando danificada">${h.repair ? '🔧 Reparo: sim' : '🔧 Reparo: não'}</button>`;
-      s += `<button class="mbtn danger" data-act2="demolish">❌ Demolir</button></div>`;
+      const onlySchool = h.type === 'school' && !Object.values(S.houses).some((x) => x !== h && x.owner === h.owner && x.type === 'school' && x.state === 'built');
+      s += onlySchool ? `<button class="mbtn off" disabled data-tip="É dela que vem todo o seu povo">🎓 Escola não pode ser demolida</button></div>` : `<button class="mbtn danger" data-act2="demolish">❌ Demolir</button></div>`;
       return s;
     },
     connected(S, comp) {
@@ -518,7 +519,8 @@
       const peace = Math.min(...ais.map((p) => (p.ai.wave === 0 ? p.ai.next - S.time : Infinity)));
       const waves = ais.reduce((a, p) => a + p.ai.wave, 0);
       let threat = '';
-      if (ais.length) threat = isFinite(peace) && peace > 0 ? `<span class="peace" data-tip="Tempo de paz antes do primeiro ataque">🕊️ Paz ${KM.fmtTime(peace)}</span>` : `<span class="muted">Ataques: ${waves}</span>`;
+      if (KM.zone(S, ME())) threat = `<span class="peace" data-tip="Tempo de paz. Até ele acabar, cada reino só constrói, anda e ataca no próprio quadrante do mapa (cerca de luz no chão, tracejado no minimapa)">🕊️ Paz ${KM.fmtTime(S.peaceEnd - S.time)} 🚧</span>`;
+      else if (ais.length) threat = isFinite(peace) && peace > 0 ? `<span class="peace" data-tip="Tempo de paz antes do primeiro ataque">🕊️ Paz ${KM.fmtTime(peace)}</span>` : `<span class="muted">Ataques: ${waves}</span>`;
       // tendência: variação por minuto (janela de ~1 min de jogo)
       const vals = { wood: tot.wood || 0, stone: tot.stone || 0, gold: tot.gold || 0, food };
       if (this.trendS !== S) { this.trendS = S; this.trendBuf = []; }
@@ -592,6 +594,14 @@
       for (const site of S.sites || []) {
         g.strokeStyle = site.contested ? '#ff6050' : site.owner >= 0 ? S.players[site.owner].color : '#ffe066';
         g.lineWidth = 2; g.strokeRect(site.x * sx - 5, site.y * sy - 5, 10, 10);
+      }
+      // paz: cruz tracejada dos quadrantes e o território do jogador destacado
+      const z = KM.zone(S, ME());
+      if (z) {
+        g.setLineDash([4, 3]); g.strokeStyle = 'rgba(255,240,200,0.75)'; g.lineWidth = 1.5;
+        g.beginPath(); g.moveTo((m.W >> 1) * sx, 0); g.lineTo((m.W >> 1) * sx, cv.height); g.moveTo(0, (m.H >> 1) * sy); g.lineTo(cv.width, (m.H >> 1) * sy); g.stroke();
+        g.setLineDash([]); g.strokeStyle = KM.pcolor(S, ME()); g.lineWidth = 2;
+        g.strokeRect(z.x0 * sx + 1, z.y0 * sy + 1, (z.x1 - z.x0 + 1) * sx - 2, (z.y1 - z.y0 + 1) * sy - 2);
       }
       if (poly) {
         g.strokeStyle = '#ffe066'; g.lineWidth = 1.5;
