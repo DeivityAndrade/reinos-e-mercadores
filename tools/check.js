@@ -143,7 +143,7 @@ check('Camponês armado sai do Quartel só com o recruta', () => {
   const S = flat(), bar = KM.addHouse(S, 'barracks', 0, 10, 10, true);
   bar.recruits = 1;
   assert.equal(KM.equip(S, bar, 'levy'), true);
-  assert.deepEqual(KM.TECH.barracks, ['sawmill']);
+  assert.deepEqual([...KM.TECH.barracks], ['sawmill']);
 });
 check('Ordens diretas não atacam aliados', () => {
   const S = flat(), a = KM.addUnit(S, 'militia', 0, 5, 5), friend = KM.addUnit(S, 'militia', 0, 6, 5);
