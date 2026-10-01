@@ -221,6 +221,11 @@
       this.markTool();
       document.body.classList.toggle('placing', !!t);
     },
+    // gira a casa em construção 90° (a escolha vale para as próximas casas também)
+    rotateBuild(dir) {
+      this.buildRot = ((this.buildRot || 0) + dir + 4) & 3;
+      KM.sfx && KM.sfx('click');
+    },
 
     act(a, el) {
       const S = KM.S;
@@ -282,7 +287,10 @@
       if (this.selHouse && S.houses[this.selHouse]) html = this.housePanel(S, S.houses[this.selHouse]);
       else if (this.selGroups.length && this.selectedGroups().length) html = this.groupPanel(S, this.selectedGroups());
       else if (this.selUnits.length && this.selectedUnits().length) html = this.unitPanel(S, this.selectedUnits()[0]);
-      else html = `<div class="hint">🖱️ <b>Clique</b> para selecionar · <b>arraste</b> para selecionar tropas · <b>botão direito</b> para ordenar · <kbd>WASD</kbd> câmera · <kbd>Espaço</kbd> base${S.mp ? ' · <kbd>Enter</kbd> chat' : ''}</div>`;
+      else if (this.tool && this.tool.build) {
+        const d = KM.HOUSES[this.tool.build], rg = d.radius || d.shoot;
+        html = `<div class="hint">${d.i} <b>${d.n}</b> · porta para o <b>${KM.DOOR_DIR[this.buildRot || 0]}</b> <button class="mbtn" data-act2="rotb">⟳ Girar</button> <kbd>R</kbd>${rg ? ` · 📏 alcance <b>${rg}</b>` : ''} · <kbd>Shift</kbd> constrói várias</div>`;
+      } else html = `<div class="hint">🖱️ <b>Clique</b> para selecionar · <b>arraste</b> para selecionar tropas · <b>botão direito</b> para ordenar · <kbd>WASD</kbd> câmera · <kbd>Espaço</kbd> base${S.mp ? ' · <kbd>Enter</kbd> chat' : ''}</div>`;
       if (html !== this.lastPanel) {
         const el = $('#selpanel');
         el.innerHTML = html; this.lastPanel = html;
@@ -296,6 +304,8 @@
       const rel = mine ? states[h.state] : KM.hostile(S, ME(), h.owner) ? `<span class="enemy">Inimigo · ${esc(S.players[h.owner].name)}</span>` : `<span class="good">Aliado · ${esc(S.players[h.owner].name)}</span>`;
       let s = `<div class="ph"><span class="big">${hic(h.type)}</span><div><b>${d.n}</b><br><small>${rel}</small></div></div>`;
       s += `<div class="hp"><i style="width:${(h.hp / h.maxHp) * 100}%" class="${mine ? '' : 'e'}"></i><span>${Math.ceil(h.hp)}/${h.maxHp}</span></div>`;
+      const rg = KM.houseRange(h);
+      if (rg) s += `<div class="row" data-tip="O círculo no chão mostra até onde ${d.shoot ? 'a torre atira' : 'o trabalhador vai buscar'}">📏 ${rg.n}: <b>${rg.r}</b> casas</div>`;
       if (!mine) return s;
       if (h.state !== 'built') {
         s += '<div class="io">';
@@ -370,7 +380,7 @@
           const sd = KM.SOLDIERS[t];
           if (!KM.soldierUnlocked(S, ME(), t)) return `<button class="locked" data-act2="lockeds:${t}" data-tip="<b>🔒 ${sd.n}</b><br>Para liberar, construa: ${esc(KM.reqNames(KM.SOLDIER_REQ[t]))}"><span>${uic(t)}</span><small>${sd.n}</small><em>🔒 bloqueado</em></button>`;
           const ok = h.recruits > 0 && Object.keys(sd.cost).every((r) => (h.inv[r] || 0) >= sd.cost[r]);
-          return `<button data-act2="equip:${t}" class="${ok ? '' : 'off'}" data-tip="<b>${sd.n}</b><br>Vida ${sd.hp} · Ataque ${sd.atk} · Defesa ${sd.def}${sd.range ? ' · Alcance ' + sd.range : ''}${sd.antiCav ? '<br>Forte contra cavalaria' : ''}<br>Custo: 🪖 + ${costStr(sd.cost)}"><span>${uic(t)}</span><small>${sd.n}</small><em>${costStr(sd.cost)}</em></button>`;
+          return `<button data-act2="equip:${t}" class="${ok ? '' : 'off'}" data-tip="<b>${sd.n}</b><br>Vida ${sd.hp} · Ataque ${sd.atk} · Defesa ${sd.def}${sd.range ? ' · Alcance ' + sd.range : ''}${sd.antiCav ? '<br>Forte contra cavalaria' : ''}<br>Custo: 🪖${Object.keys(sd.cost).length ? ' + ' + costStr(sd.cost) : ' (sem arma)'}"><span>${uic(t)}</span><small>${sd.n}</small><em>${costStr(sd.cost) || 'só 🪖'}</em></button>`;
         }).join('')}</div>`;
       }
       if (h.type === 'tower') s += `<div class="row">Munição: ${h.shots} tiros prontos + ${h.inv.stone || 0} 🪨</div>`;
@@ -434,6 +444,7 @@
       if (!b) return;
       const S = KM.S, h = S.houses[this.selHouse];
       const [k, a, bb] = b.dataset.act2.split(':');
+      if (k === 'rotb') { this.rotateBuild(1); return; }
       const gids = this.myGroups().map((g) => g.id);
       if (k === 'demolish' && h) { KM.issue({ c: 'demolish', id: h.id }); KM.sfx && KM.sfx('demolish'); this.clearSel(); }
       if (k === 'hset' && h) KM.issue({ c: 'hset', id: h.id, k: a, v: bb === '1' });

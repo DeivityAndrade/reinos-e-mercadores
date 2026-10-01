@@ -233,7 +233,8 @@
         h.state = 'site'; h.hp = 30; h.leveler = 0;
         const m = S.map;
         for (let y = h.y; y < h.y + h.h; y++) for (let x = h.x; x < h.x + h.w; x++) m.tree[y * m.W + x] = 0;
-        KM.flatten(S, h.x, h.y, h.x + h.w - 1, h.y + h.h);
+        const f = KM.footprint(h.type, h.x, h.y, h.rot);
+        KM.flatten(S, f.x0, f.y0, f.x1, f.y1);
       }
       u.task = null;
     },
