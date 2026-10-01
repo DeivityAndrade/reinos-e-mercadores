@@ -224,6 +224,7 @@
         }
       };
       await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+      await KM.PEOPLE.load(this.loader);
       this.prepare();
       this.ready = true;
       upd();
@@ -303,19 +304,31 @@
       // personagens: soldados e profissões, em pose de descanso (primeiro quadro da animação "Idle")
       for (const t of KM.SOLDIER_ORDER.concat(KM.PROF_ORDER)) {
         const cfg = CHAR[t] || CHAR.serf;
-        if (!this.rig[cfg.m] || !this.gltf[cfg.m]) continue;
-        const body = this.model(cfg.m), inner = body.userData.inner;
-        const parts = [];
-        inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
-        const rm = []; inner.traverse((o) => { if (o.isMesh) rm.push(o); });
-        const own = new THREE.SkinnedMesh(KM.ART.character(t, KM.me || 0, this.rig[cfg.m]), KM.ART.charMat());
-        parts[0].parent.add(own); own.bind(parts[0].skeleton, parts[0].bindMatrix);
-        for (const p of rm) p.parent.remove(p);
-        const mixer = new THREE.AnimationMixer(inner);
-        const clip = this.proto[cfg.m].anims.find((a) => a.name === 'Idle') || this.proto[cfg.m].anims[0];
-        if (clip) { mixer.clipAction(clip).play(); mixer.update(0.4); }
+        let body;
+        if (KM.PEOPLE.ready) {
+          const p = KM.PEOPLE.build(t, KM.me || 0, 7);
+          body = p.obj;
+          const mixer = new THREE.AnimationMixer(p.inner);
+          mixer.clipAction(KM.PEOPLE.clips[KM.SOLDIERS[t] ? 'Sword_Idle' : 'Idle_Loop']).play(); mixer.update(0.4);
+        } else {
+          if (!this.rig[cfg.m] || !this.gltf[cfg.m]) continue;
+          body = this.model(cfg.m);
+          const inner = body.userData.inner, parts = [];
+          inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
+          const rm = []; inner.traverse((o) => { if (o.isMesh) rm.push(o); });
+          const own = new THREE.SkinnedMesh(KM.ART.character(t, KM.me || 0, this.rig[cfg.m]), KM.ART.charMat());
+          parts[0].parent.add(own); own.bind(parts[0].skeleton, parts[0].bindMatrix);
+          for (const p of rm) p.parent.remove(p);
+          const mixer = new THREE.AnimationMixer(inner);
+          const clip = this.proto[cfg.m].anims.find((a) => a.name === 'Idle') || this.proto[cfg.m].anims[0];
+          if (clip) { mixer.clipAction(clip).play(); mixer.update(0.4); }
+        }
         const g = new THREE.Group(); g.add(body);
-        if (cfg.horse) { const hz = this.model('horse'); this.ownAnimal(hz, 'horse', t === 'knight' ? KM.me || 0 : null); const hp = this.proto.horse, hs = (1.2 / Math.max(hp.size.x, hp.size.z)) / 0.26; hz.scale.setScalar(hs); body.position.y = hp.size.y * hs * 0.66; g.add(hz); }
+        if (cfg.horse) {
+          const hz = this.model('horse'); this.ownAnimal(hz, 'horse', t === 'knight' ? KM.me || 0 : null);
+          const hp = this.proto.horse, q = KM.PEOPLE.ready, hs = (1.2 / Math.max(hp.size.x, hp.size.z)) / (q ? 1 : 0.26);
+          hz.scale.setScalar(hs); body.position.y = hp.size.y * hs * (q ? 0.56 : 0.66); if (q) body.scale.multiplyScalar(0.95); g.add(hz);
+        }
         g.rotation.y = 0.5;
         sc.add(g); g.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3()).length();
@@ -1066,7 +1079,38 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       m.bind(p0.skeleton, p0.bindMatrix);
       for (const p of parts) p.parent.remove(p);
     },
+    // pessoa Quaternius (people.js): um esqueleto, animações da Universal Animation Library
+    buildPerson(S, u) {
+      const cfg = CHAR[u.type] || CHAR.serf;
+      const p = KM.PEOPLE.build(u.type, u.owner, u.id);
+      const root = new THREE.Group(), body = p.obj;
+      const vis = { root, body, cfg, q: true, mixer: new THREE.AnimationMixer(p.inner), actions: {}, cur: null, yaw: 0 };
+      for (const k in KM.PEOPLE.clips) vis.actions[k] = vis.mixer.clipAction(KM.PEOPLE.clips[k]);
+      if (cfg.horse) {
+        const horse = this.model('horse');
+        this.ownAnimal(horse, 'horse', u.type === 'knight' ? u.owner : null);
+        const hp = this.proto.horse, hs = 1.2 / Math.max(hp.size.x, hp.size.z);
+        horse.scale.setScalar(hs);
+        root.add(horse);
+        vis.horse = horse;
+        vis.hmixer = new THREE.AnimationMixer(horse.userData.inner);
+        vis.hactions = {};
+        for (const a of hp.anims) vis.hactions[a.name.replace(/^.*\|/, '')] = vis.hmixer.clipAction(a);
+        body.scale.multiplyScalar(0.95);
+        body.position.y = hp.size.y * hs * 0.56; // quadril um pouco acima do dorso do cavalo
+      }
+      root.add(body);
+      if (KM.SOLDIERS[u.type]) {
+        const team = new THREE.Color(KM.pcolor(S, u.owner));
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.17, 0.21, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: team.multiplyScalar(0.8), transparent: true, opacity: 0.32, depthWrite: false }));
+        ring.position.y = 0.03; ring.renderOrder = 2; ring.userData.own = true;
+        root.add(ring);
+      }
+      this.world.add(root);
+      return vis;
+    },
     buildUnit(S, u) {
+      if (KM.PEOPLE.ready) return this.buildPerson(S, u);
       const cfg = CHAR[u.type] || CHAR.serf;
       const root = new THREE.Group();
       const body = this.model(cfg.m);
@@ -1134,6 +1178,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     },
     play(vis, name, opts) {
       opts = opts || {};
+      if (vis.q) name = KM.PEOPLE.anim(name);
       if (vis.cur === name && !opts.restart) { if (opts.ts) vis.actions[name].timeScale = opts.ts; return; }
       const a = vis.actions[name];
       if (!a) return;
@@ -1168,7 +1213,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         return;
       }
       if (u.atkA > 0) return;
-      if (moving) { this.play(vis, sd ? 'Walking_B' : u.carry ? 'Walking_C' : 'Walking_A', { ts: (sd ? sd.spd : 1.6) * 0.62 }); return; }
+      if (moving) { const nm = sd ? 'Walking_B' : u.carry ? 'Walking_C' : 'Walking_A'; this.play(vis, nm, { ts: (sd ? sd.spd : 1.6) * (!vis.q ? 0.62 : nm === 'Walking_C' ? 0.95 : 0.5) }); return; }
       const working = u.work || (t && (t.type === 'build' || t.type === 'repair' || t.type === 'road' || t.type === 'field' || t.type === 'level') && u.wt > 0);
       if (working) {
         let nm = '1H_Melee_Attack_Chop';
@@ -1189,7 +1234,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       const k = res === 'trunk' ? 'logs' : res === 'wood' ? 'planks' : res === 'stone' ? 'stone' : (KM.FOOD[res] || ['corn', 'flour', 'skin', 'leather', 'coal', 'ironore', 'goldore'].includes(res)) ? 'sack' : 'crate';
       const o = KM.ART.carry(k);
       o.scale.setScalar(0.62);
-      o.position.set(0, 0.36, -0.06);
+      if (vis.q) { o.scale.setScalar(0.72); o.position.set(0, 0.62, -0.1); } else o.position.set(0, 0.36, -0.06);
       vis.root.add(o);
       vis.carryObj = o;
     },
@@ -1673,7 +1718,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         const lead = grp && grp.m[0] === u.id;
         const selected = sel && sel.has(u.id);
         if (!(u.hp < u.maxHp || selected || lead || (u.hunger < 25 && u.owner === KM.me))) continue;
-        const top = vis.horse ? 1.05 : 0.8;
+        const top = (vis.horse ? 1.05 : 0.8) + (vis.q ? 0.2 : 0);
         const q = this.toScreen(p.x, p.y + top, p.z);
         if (q.behind || q.x < -50 || q.y < -50 || q.x > this.vw + 50 || q.y > this.vh + 50) continue;
         if (u.hp < u.maxHp || selected) bar(q.x - 14, q.y - 6, 28, u.hp / u.maxHp, u.owner === KM.me ? '#5fd35a' : KM.hostile(S, KM.me, u.owner) ? '#ef4b4b' : '#3fa6ff');
