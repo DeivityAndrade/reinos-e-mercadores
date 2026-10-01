@@ -131,6 +131,20 @@ check('Tiros respeitam montanhas, casas, a origem da torre e a casa-alvo', () =>
   const tower = KM.addHouse(S, 'tower', 0, 9, 9, true);
   assert.equal(KM.hasLineOfSight(S, KM.hcx(tower), KM.hcy(tower), h, 'h'), true);
 });
+check('Casas giradas: pegada, entrada nas 4 direções e porta única', () => {
+  const S = flat();
+  const doors = [0, 1, 2, 3].map((r) => { const h = KM.addHouse(S, 'barracks', 0, 6 + r * 7, 10, true, r); return [h.w, h.h, h.ex - h.x, h.ey - h.y]; });
+  assert.deepEqual(doors, [[3, 2, 1, 2], [2, 3, 2, 1], [3, 2, 1, -1], [2, 3, -1, 1]]);
+  assert.equal(KM.canPlace(S, 'barracks', 6, 13, 0, 2).ok, false); // porta ao norte no mesmo ladrilho da porta ao sul
+  assert.equal(KM.def({ type: 'tower' }).shoot > 0, true);
+  assert.equal(KM.houseRange(KM.addHouse(S, 'quarry', 0, 20, 20, true)).r, KM.HOUSES.quarry.radius);
+});
+check('Camponês armado sai do Quartel só com o recruta', () => {
+  const S = flat(), bar = KM.addHouse(S, 'barracks', 0, 10, 10, true);
+  bar.recruits = 1;
+  assert.equal(KM.equip(S, bar, 'levy'), true);
+  assert.deepEqual(KM.TECH.barracks, ['sawmill']);
+});
 check('Ordens diretas não atacam aliados', () => {
   const S = flat(), a = KM.addUnit(S, 'militia', 0, 5, 5), friend = KM.addUnit(S, 'militia', 0, 6, 5);
   const g = KM.newGroup(S, 0, 'militia', [a]);

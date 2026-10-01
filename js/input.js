@@ -230,10 +230,10 @@
       }
       const tool = ui().tool;
       if (tool && tool.build) {
-        const d = KM.HOUSES[tool.build];
-        const x = t.tx - (d.w >> 1), y = t.ty - (d.h >> 1);
-        const r = KM.canPlace(S, tool.build, x, y, KM.me);
-        if (r.ok) { KM.issue({ c: 'build', t: tool.build, x, y }); KM.sfx && KM.sfx('place'); if (!e.shiftKey) ui().setTool(null); }
+        const rot = ui().buildRot || 0, f = KM.footprint(tool.build, 0, 0, rot);
+        const x = t.tx - (f.w >> 1), y = t.ty - (f.h >> 1);
+        const r = KM.canPlace(S, tool.build, x, y, KM.me, rot);
+        if (r.ok) { KM.issue({ c: 'build', t: tool.build, x, y, r: rot }); KM.sfx && KM.sfx('place'); if (!e.shiftKey) ui().setTool(null); }
         else { ui().toast(r.why, 'warn'); KM.sfx && KM.sfx('error'); }
         return;
       }
@@ -327,6 +327,7 @@
         return;
       }
       if (k === 'm') { ui().toggleMusic(); return; }
+      if (k === 'r' && ui().tool && ui().tool.build) { ui().rotateBuild(e.shiftKey ? -1 : 1); return; }
       if (k === 'r') { ui().setTab('build'); ui().setTool(ui().tool === 'road' ? null : 'road'); return; }
       if (k === 'f' && !e.ctrlKey) { ui().setTab('build'); ui().setTool(ui().tool === 'field' ? null : 'field'); return; }
       if (k === 'v') { ui().setTab('build'); ui().setTool(ui().tool === 'vine' ? null : 'vine'); return; }

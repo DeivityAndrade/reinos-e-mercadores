@@ -21,7 +21,7 @@
     stonemason: { o: 'Peasant', tint: '#a8a49c', tool: 'pick' }, farmer: { o: 'Peasant', tint: '#e0c878', tool: 'sickle', hat: 'straw' }, carpenter: { o: 'Peasant', tint: '#c08a50', tool: 'hammer' },
     miner: { o: 'Peasant', tint: '#7a7a8c', tool: 'pick', hat: 'miner' }, breeder: { o: 'Peasant', tint: '#d09a7a' }, fisher: { o: 'Peasant', tint: '#6a9cc0', tool: 'rod' },
     metallurgist: { o: 'Peasant', tint: '#c07050', tool: 'hammer' }, smith: { o: 'Peasant', tint: '#707070', tool: 'hammer' }, baker: { o: 'Peasant', tint: '#fff4dc', hat: 'chef' },
-    butcher: { o: 'Peasant', tint: '#d07060', tool: 'cleaver' }, recruit: { o: 'Peasant', team: 0.45 }, militia: { o: 'Peasant', team: 0.4, tool: 'axe1' },
+    butcher: { o: 'Peasant', tint: '#d07060', tool: 'cleaver' }, recruit: { o: 'Peasant', team: 0.45 }, levy: { o: 'Peasant', team: 0.35, tool: 'hammer' }, militia: { o: 'Peasant', team: 0.4, tool: 'axe1' },
     axeman: { o: 'Ranger', team: 0.5, helm: 'nasal', tool: 'axe1', shield: 'round' }, swordsman: { o: 'Ranger', team: 0.5, helm: 'great', tool: 'sword', shield: 'kite', male: 1 },
     bowman: { o: 'Ranger', team: 0.4, tool: 'bow', hood: 1 }, crossbowman: { o: 'Ranger', team: 0.5, helm: 'kettle', tool: 'crossbow' },
     lancer: { o: 'Ranger', team: 0.5, helm: 'nasal', tool: 'spear', shield: 'round' }, pikeman: { o: 'Ranger', team: 0.5, helm: 'kettle', tool: 'pike' },

@@ -3,7 +3,7 @@
    Tudo que define economia, casas, profissões e soldados fica aqui. */
 window.KM = window.KM || {};
 (function (KM) {
-  KM.VERSION = '0.7.0';
+  KM.VERSION = '0.8.0';
   KM.TILE = 32;
   KM.MAP_W = 80;
   KM.MAP_H = 80;
@@ -83,6 +83,7 @@ window.KM = window.KM || {};
   KM.PROF_ORDER = Object.keys(KM.PROF);
 
   KM.SOLDIERS = {
+    levy: { n: 'Camponês armado', i: '🔨', hp: 40, atk: 7, def: 0, spd: 1.7, cost: {} },
     militia: { n: 'Miliciano', i: '🪓', hp: 60, atk: 12, def: 1, spd: 1.7, cost: { axe: 1 } },
     axeman: { n: 'Guerreiro de machado', i: '🪓', hp: 90, atk: 14, def: 4, spd: 1.6, cost: { axe: 1, shield: 1, armor: 1 } },
     swordsman: { n: 'Espadachim', i: '🗡️', hp: 130, atk: 19, def: 8, spd: 1.5, iron: true, cost: { sword: 1, ironshield: 1, ironarmor: 1 } },
@@ -125,8 +126,8 @@ window.KM = window.KM || {};
     weaponsmithy: { n: 'Ferraria de armas', i: '🗡️', g: 'Militar', w: 2, h: 2, cost: { wood: 3, stone: 4 }, hp: 450, worker: 'smith', recipes: [{ in: { iron: 1, coal: 1 }, out: { sword: 1 }, t: 16 }, { in: { iron: 1, coal: 1 }, out: { crossbow: 1 }, t: 16 }, { in: { iron: 1, coal: 1 }, out: { pike: 1 }, t: 16 }], roof: '#3f3f46', wall: '#a8a29e', desc: 'Forja espadas, bestas e piques.' },
     armorsmithy: { n: 'Ferraria de armaduras', i: '⛓️', g: 'Militar', w: 2, h: 2, cost: { wood: 3, stone: 4 }, hp: 450, worker: 'smith', recipes: [{ in: { iron: 1, coal: 1 }, out: { ironshield: 1 }, t: 16 }, { in: { iron: 1, coal: 1 }, out: { ironarmor: 1 }, t: 16 }], roof: '#3f3f46', wall: '#a8a29e', desc: 'Forja escudos de ferro e cotas de malha.' },
     stables: { n: 'Estábulo', i: '🐎', g: 'Militar', w: 3, h: 2, cost: { wood: 4, stone: 3 }, hp: 400, worker: 'breeder', recipes: [{ in: { corn: 2 }, out: { horse: 1 }, t: 22 }], roof: '#7a5230', wall: '#d2b48c', desc: 'Cria cavalos para batedores e cavaleiros.' },
-    barracks: { n: 'Quartel', i: '⚔️', g: 'Militar', w: 3, h: 2, cost: { wood: 6, stone: 6 }, hp: 800, accepts: KM.WEAPONS, cap: 30, roof: '#4a4a52', wall: '#b0a590', desc: 'Guarda armas e equipa recrutas (treinados na Escola) como soldados.' },
-    tower: { n: 'Torre de vigia', i: '🗼', g: 'Militar', w: 2, h: 2, cost: { wood: 2, stone: 6 }, hp: 600, worker: 'recruit', accepts: ['stone'], roof: '#555', wall: '#a09888', desc: 'Um recruta lá dentro atira pedras em inimigos próximos. Consome pedra.' },
+    barracks: { n: 'Quartel', i: '⚔️', g: 'Militar', w: 3, h: 2, cost: { wood: 6, stone: 6 }, hp: 800, accepts: KM.WEAPONS, cap: 30, roof: '#4a4a52', wall: '#b0a590', desc: 'Guarda armas e equipa recrutas (treinados na Escola) como soldados. O Camponês armado não precisa de arma.' },
+    tower: { n: 'Torre de vigia', i: '🗼', g: 'Militar', w: 2, h: 2, cost: { wood: 2, stone: 6 }, hp: 600, worker: 'recruit', accepts: ['stone'], shoot: 7.5, roof: '#555', wall: '#a09888', desc: 'Um recruta lá dentro atira pedras em inimigos próximos. Consome pedra.' },
   };
 
   // Obras mais caras: cada casa pede 50% a mais de material (e cada peça leva mais tempo para ser assentada, ver units.js)
@@ -169,7 +170,7 @@ window.KM = window.KM || {};
     goldsmelter: ['goldmine'],
     weaponworkshop: ['inn'],
     armorworkshop: ['tannery'],
-    barracks: ['weaponworkshop'],
+    barracks: ['sawmill'],
     tower: ['barracks'],
     weaponsmithy: ['ironsmithy', 'barracks'],
     armorsmithy: ['ironsmithy', 'barracks'],
@@ -177,7 +178,7 @@ window.KM = window.KM || {};
   };
   // Soldiers exigem uma construção já erguida (além das armas no quartel)
   KM.SOLDIER_REQ = {
-    militia: ['barracks'], axeman: ['barracks', 'armorworkshop'], bowman: ['barracks'], lancer: ['barracks'],
+    levy: ['barracks'], militia: ['barracks'], axeman: ['barracks', 'armorworkshop'], bowman: ['barracks'], lancer: ['barracks'],
     swordsman: ['weaponsmithy', 'armorsmithy'], crossbowman: ['weaponsmithy'], pikeman: ['weaponsmithy'],
     scout: ['stables'], knight: ['stables', 'weaponsmithy', 'armorsmithy'],
   };

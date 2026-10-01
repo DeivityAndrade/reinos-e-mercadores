@@ -25,6 +25,11 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 | **Multijogador online** | **Salas por código de 5 letras**: um cria a sala e o outro digita o código. A partida roda direto entre os navegadores (WebRTC), em 1 contra 1 ou cooperativo contra a IA, com chat. Também há o modo manual, trocando códigos longos |
 | **Editor de mapas** | Terreno, relevo, árvores, rochas, minérios, até 4 bases e casas prontas. Salva localmente e exporta/importa arquivos |
 
+## 🆕 Novidades da versão 0.8
+- **Girar prédios:** ao construir, `R` (ou o botão ⟳ Girar no painel) gira a casa 90°; a porta pode ficar ao sul, leste, norte ou oeste. `Shift`+`R` gira para o outro lado.
+- **Quartel mais cedo:** agora exige só a Serraria. O novo **Camponês armado** (vida 40, ataque 7) sai do Quartel sem arma nenhuma, só com o recruta.
+- **Alcance visível:** ao selecionar Lenhador, Pedreira, Fazenda, Vinícola, Pescador ou Torre aparece um círculo no chão com a área de trabalho (ou de tiro) e o valor no painel.
+
 ## 🆕 Novidades da versão 0.7
 - **Começo enxuto:** na Escaramuça e na Conquista o reino começa só com 2 construtores e 2 carregadores. O resto do povo sai da Escola (1 ouro cada; o ouro inicial subiu para 55).
 - **Obras que pesam:** cada construção pede 50% a mais de material, e nivelar o terreno e assentar cada peça leva mais tempo. Ao terminar, a obra comemora com faíscas, poeira e o nome da casa subindo no céu.
@@ -142,7 +147,7 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 ## 🌳 Progressão
 O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e os profissionais correspondentes (carregador, construtor, lenhador, pedreiro). Cada construção erguida libera novas opções:
 
-`Lenhador → Serraria → Taverna / Fazenda / Oficina de armas → Moinho → Padaria · Criação de porcos → Açougue / Curtume · Minas → Fundições → Ferrarias · Oficina de armas → Quartel → Torre / Estábulo`
+`Lenhador → Serraria → Taverna / Fazenda / Oficina de armas → Moinho → Padaria · Criação de porcos → Açougue / Curtume · Minas → Fundições → Ferrarias · Serraria → Quartel → Torre / Estábulo`
 
 - A aba **Construir** mostra os **Próximos passos** (o que construir para liberar o quê), casas bloqueadas com cadeado e o selo **NOVO** no que acabou de liberar.
 - A **Escola** só treina profissões cujas casas já estão liberadas; o **Recruta** exige um Quartel.

@@ -24,8 +24,9 @@
     if (!S.players[o] || S.players[o].out) return;
     switch (c.c) {
       case 'build': {
-        if (!KM.HOUSES[c.t] || !KM.houseUnlocked(S, o, c.t) || !KM.canPlace(S, c.t, c.x, c.y, o).ok) return;
-        KM.addHouse(S, c.t, o, c.x, c.y, false);
+        const r = (c.r | 0) & 3;
+        if (!KM.HOUSES[c.t] || !KM.houseUnlocked(S, o, c.t) || !KM.canPlace(S, c.t, c.x, c.y, o, r).ok) return;
+        KM.addHouse(S, c.t, o, c.x, c.y, false, r);
         return;
       }
       case 'roads':

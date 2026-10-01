@@ -34,6 +34,7 @@
     baker: { m: 'Rogue', show: [] },
     butcher: { m: 'Rogue', show: ['Knife'] },
     recruit: { m: 'Knight', show: [], hide: ['Knight_Helmet'] },
+    levy: { m: 'Barbarian', show: [] },
     militia: { m: 'Barbarian', show: ['1H_Axe'] },
     axeman: { m: 'Barbarian', show: ['1H_Axe', 'Barbarian_Round_Shield'] },
     swordsman: { m: 'Knight', show: ['1H_Sword', 'Badge_Shield', 'Knight_Helmet'] },
@@ -997,18 +998,21 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       // fundação: laterais de pedra (aparecem em terreno inclinado) e terra batida por cima
       let gmin = 1e9;
       for (let y = h.y; y <= h.y + h.h; y++) for (let x = h.x; x <= h.x + h.w; x++) gmin = Math.min(gmin, KM.hAt(S.map, x, y) * HY);
+      // tudo abaixo é montado na orientação base (porta ao sul) e o grupo inteiro gira junto com a casa
+      const rot = (h.rot | 0) & 3, bw = rot & 1 ? h.h : h.w, bh = rot & 1 ? h.w : h.h;
+      G.rotation.y = rot * Math.PI / 2;
       const st = KM.ART.mat('stone'), di = KM.ART.mat('dirt');
       const pad = new THREE.Mesh(this.padGeo || (this.padGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, -0.48, 0)), this.padMats || (this.padMats = [st, st, di, di, st, st]));
-      pad.scale.set(h.w * 0.8, gy - gmin + 0.12, h.h * 0.74); pad.receiveShadow = true; pad.castShadow = true;
+      pad.scale.set(bw * 0.8, gy - gmin + 0.12, bh * 0.74); pad.receiveShadow = true; pad.castShadow = true;
       G.add(pad);
-      const dx = (h.ex + 0.5) - cx;
+      const dx = (bw >> 1) + 0.5 - bw / 2;
       if (h.state === 'plan') {
-        G.add(KM.ART.plan(h.w, h.h));
+        G.add(KM.ART.plan(bw, bh));
         pad.material = this.planPadMats || (this.planPadMats = [KM.ART.mat('stone'), KM.ART.mat('stone'), KM.ART.mat('dirt'), KM.ART.mat('dirt'), KM.ART.mat('stone'), KM.ART.mat('stone')].map((m) => Object.assign(m.clone(), { transparent: true, opacity: 0.55 })));
       } else if (h.state === 'site') {
         const prog = h.total ? h.used / h.total : 0;
         const stage = prog <= 0 ? 0 : prog < 0.34 ? 1 : prog < 0.67 ? 2 : 3;
-        G.add(KM.ART.site(h.w, h.h, stage));
+        G.add(KM.ART.site(bw, bh, stage));
         // pilhas de material entregue
         let k = 0;
         for (const r in h.mat) {
@@ -1016,18 +1020,19 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           for (let j = 0; j < Math.min(n, 4); j++) {
             const o = KM.ART.carry(r === 'wood' ? 'planks' : 'stone');
             o.scale.setScalar(0.85);
-            o.position.set(-h.w / 2 + 0.3 + k * 0.55, j * 0.09, h.h / 2 - 0.12);
+            o.position.set(-bw / 2 + 0.3 + k * 0.55, j * 0.09, bh / 2 - 0.12);
             G.add(o);
           }
           k++;
         }
       } else {
-        const model = KM.ART.house(h.type, h.w, h.h, h.owner, dx);
+        const model = KM.ART.house(h.type, bw, bh, h.owner, dx);
         model.scale.y = 1.12;
         G.add(model);
         const info = model.userData.info || {};
         G.userData.fan = model.getObjectByName('fan') || null;
-        G.userData.smoke = info.smoke || null;
+        const sm = info.smoke, cs = Math.cos(G.rotation.y), sn = Math.sin(G.rotation.y);
+        G.userData.smoke = sm ? [sm[0] * cs + sm[2] * sn, sm[1], -sm[0] * sn + sm[2] * cs] : null;
         // animais vivos no cercado (porcos, cavalos)
         const pen = info.pen;
         if (pen) {
@@ -1625,6 +1630,17 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     },
 
     // ---------- seleção, fantasma de construção, prévias ----------
+    // anel no chão mostrando o alcance de uma casa (coleta ou tiro)
+    rangeRing(G, r, x, z, gy, color) {
+      const circ = new THREE.Mesh(new THREE.RingGeometry(r - 0.06, r + 0.06, 72).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75, depthWrite: false, depthTest: false }));
+      circ.userData.own = true; circ.renderOrder = 4;
+      circ.position.set(x, gy + 0.08, z);
+      G.add(circ);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(r, 72).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.08, depthWrite: false, depthTest: false }));
+      disc.userData.own = true; disc.renderOrder = 3;
+      disc.position.set(x, gy + 0.06, z);
+      G.add(disc);
+    },
     syncTools(S, ui) {
       if (this.toolGroup) { this.world.remove(this.toolGroup); this.dispose(this.toolGroup); }
       const G = this.toolGroup = new THREE.Group();
@@ -1644,35 +1660,34 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       if (ui.selHouse && S.houses[ui.selHouse]) {
         const h = S.houses[ui.selHouse];
         for (let y = h.y; y < h.y + h.h; y++) for (let x = h.x; x < h.x + h.w; x++) tiles.push({ x, y, c: [1, 0.88, 0.4] });
+        // área de trabalho / alcance de tiro da casa selecionada
+        const rg = KM.houseRange(h);
+        if (rg) this.rangeRing(G, rg.r, rg.x + 0.5, rg.y + 0.5, this.groundY(rg.x + 0.5, rg.y + 0.5), h.type === 'tower' ? '#ff9a6a' : '#ffe066');
       }
       const tool = ui.tool, hov = ui.hover;
       if (tool && hov && hov.tx >= 0) {
         if (tool.build) {
-          const d = KM.HOUSES[tool.build];
-          const x = hov.tx - (d.w >> 1), y = hov.ty - (d.h >> 1);
-          const ok = KM.canPlace(S, tool.build, x, y, KM.me).ok;
+          const d = KM.HOUSES[tool.build], rot = ui.buildRot || 0, f0 = KM.footprint(tool.build, 0, 0, rot);
+          const x = hov.tx - (f0.w >> 1), y = hov.ty - (f0.h >> 1), f = KM.footprint(tool.build, x, y, rot);
+          const ok = KM.canPlace(S, tool.build, x, y, KM.me, rot).ok;
           const c = ok ? [0.45, 0.95, 0.4] : [1, 0.3, 0.3];
-          for (let yy = y; yy < y + d.h; yy++) for (let xx = x; xx < x + d.w; xx++) if (KM.inb(xx, yy)) tiles.push({ x: xx, y: yy, c, fill: true });
-          if (KM.inb(x + (d.w >> 1), y + d.h)) tiles.push({ x: x + (d.w >> 1), y: y + d.h, c: [1, 0.85, 0.2], fill: true });
+          for (let yy = y; yy < y + f.h; yy++) for (let xx = x; xx < x + f.w; xx++) if (KM.inb(xx, yy)) tiles.push({ x: xx, y: yy, c, fill: true });
+          if (KM.inb(f.ex, f.ey)) tiles.push({ x: f.ex, y: f.ey, c: [1, 0.85, 0.2], fill: true });
           // prévia do prédio
-          const ghostKey = tool.build + '|' + KM.me;
+          const ghostKey = tool.build + '|' + KM.me + '|' + rot;
           if (this.ghostKey !== ghostKey) {
             this.ghostKey = ghostKey;
-            const fake = { id: 0, type: tool.build, owner: KM.me, x: 0, y: 0, w: d.w, h: d.h, ex: d.w >> 1, ey: d.h, state: 'built', total: 1, used: 1, mat: {} };
+            const fake = { id: 0, type: tool.build, owner: KM.me, x: 0, y: 0, w: f.w, h: f.h, ex: f0.ex, ey: f0.ey, rot, state: 'built', total: 1, used: 1, mat: {} };
             this.ghost = this.buildHouse(S, fake);
             const fade = (mt) => Object.assign(mt.clone(), { transparent: true, opacity: 0.6 });
             this.ghost.traverse((o) => { if (o.isMesh) { o.material = Array.isArray(o.material) ? o.material.map(fade) : fade(o.material); o.castShadow = false; } });
           }
           let gy = -1e9;
-          for (let yy = y; yy <= y + d.h; yy++) for (let xx = x; xx <= x + d.w; xx++) gy = Math.max(gy, KM.hAt(m, KM.clamp(xx, 0, m.W), KM.clamp(yy, 0, m.H)) * HY);
-          this.ghost.position.set(x + d.w / 2, gy, y + d.h / 2);
+          for (let yy = y; yy <= y + f.h; yy++) for (let xx = x; xx <= x + f.w; xx++) gy = Math.max(gy, KM.hAt(m, KM.clamp(xx, 0, m.W), KM.clamp(yy, 0, m.H)) * HY);
+          this.ghost.position.set(x + f.w / 2, gy, y + f.h / 2);
           G.add(this.ghost);
-          if (d.radius) {
-            const circ = new THREE.Mesh(new THREE.RingGeometry(d.radius - 0.05, d.radius + 0.05, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.5, depthWrite: false }));
-            circ.userData.own = true;
-            circ.position.set(x + (d.w >> 1) + 0.5, gy + 0.08, y + d.h + 0.5);
-            G.add(circ);
-          }
+          if (d.radius) this.rangeRing(G, d.radius, f.ex + 0.5, f.ey + 0.5, gy, '#ffffff');
+          else if (d.shoot) this.rangeRing(G, d.shoot, x + f.w / 2, y + f.h / 2, gy, '#ff9a6a');
         } else if (ui.drag && ui.drag.tiles) {
           for (const [x, y, ok] of ui.drag.tiles) tiles.push({ x, y, c: ok ? (tool === 'road' ? [0.85, 0.65, 0.45] : tool === 'field' ? [1, 0.9, 0.35] : [0.8, 0.4, 0.85]) : [1, 0.3, 0.3], fill: true });
         } else tiles.push({ x: hov.tx, y: hov.ty, c: tool === 'demolish' ? [1, 0.3, 0.3] : [1, 0.9, 0.4] });

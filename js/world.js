@@ -18,6 +18,28 @@
   KM.inZone = (S, o, x, y) => { const z = KM.zone(S, o); return !z || (x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1); };
   KM.ZONE_MSG = '🕊️ Durante a paz seu reino fica no próprio quadrante. A fronteira abre quando a paz acabar.';
 
+  // Pegada da casa girada: rot 0 = porta ao sul, 1 = leste, 2 = norte, 3 = oeste (90° por passo).
+  // Devolve largura/altura no mapa, a entrada e o retângulo casa+entrada (usado para aplainar o terreno).
+  KM.footprint = function (type, x, y, rot) {
+    const d = KM.HOUSES[type], r = (rot | 0) & 3;
+    const w = r & 1 ? d.h : d.w, h = r & 1 ? d.w : d.h;
+    let ex, ey, x0 = x, y0 = y, x1 = x + w - 1, y1 = y + h - 1;
+    if (r === 0) { ex = x + (w >> 1); ey = y + h; y1++; }
+    else if (r === 1) { ex = x + w; ey = y + h - 1 - (h >> 1); x1++; }
+    else if (r === 2) { ex = x + w - 1 - (w >> 1); ey = y - 1; y0--; }
+    else { ex = x - 1; ey = y + (h >> 1); x0--; }
+    return { w, h, ex, ey, x0, y0, x1, y1, rot: r };
+  };
+
+  KM.DOOR_DIR = ['Sul', 'Leste', 'Norte', 'Oeste'];
+  // área de trabalho (coleta, a partir da entrada) ou de tiro (torre, a partir do centro) de uma casa
+  KM.houseRange = function (h) {
+    const d = KM.def(h);
+    if (d.radius) return { r: d.radius, x: h.ex, y: h.ey, n: 'Área de trabalho' };
+    if (d.shoot) return { r: d.shoot, x: KM.hcx(h), y: KM.hcy(h), n: 'Alcance de tiro' };
+    return null;
+  };
+
   KM.houseAccepts = function (h) {
     const d = KM.def(h);
     if (d.market) return h.trade && h.trade.n > 0 ? [h.trade.sell] : [];
@@ -48,11 +70,11 @@
     h.rr = 0;
   }
 
-  KM.addHouse = function (S, type, owner, x, y, built) {
-    const d = KM.HOUSES[type], m = S.map;
+  KM.addHouse = function (S, type, owner, x, y, built, rot) {
+    const d = KM.HOUSES[type], m = S.map, f = KM.footprint(type, x, y, rot);
     const id = S.nid++;
     const h = {
-      id, type, owner, x, y, w: d.w, h: d.h, ex: x + (d.w >> 1), ey: y + d.h,
+      id, type, owner, x, y, w: f.w, h: f.h, ex: f.ex, ey: f.ey, rot: f.rot,
       state: 'plan', hp: 1, maxHp: d.hp,
       mat: {}, used: 0, total: 0, builder: 0, leveler: 0, repairer: 0,
       inv: {}, out: {}, inc: {}, rsv: {},
@@ -60,7 +82,7 @@
       recruits: 0, shots: 0, cd: 0, depleted: false, paused: false, noDeliv: false, repair: true, born: S.time,
     };
     for (const r in d.cost) { h.mat[r] = { need: d.cost[r], got: 0, have: 0, inc: 0 }; h.total += d.cost[r]; }
-    for (let yy = y; yy < y + d.h; yy++) for (let xx = x; xx < x + d.w; xx++) {
+    for (let yy = y; yy < y + f.h; yy++) for (let xx = x; xx < x + f.w; xx++) {
       const i = yy * m.W + xx;
       m.house[i] = id;
       if (built) m.tree[i] = 0;
@@ -72,7 +94,7 @@
       KM.rt.roadsDirty = true; KM.tileChanged(S, h.ex, h.ey);
     }
     S.houses[id] = h;
-    if (built) { KM.flatten(S, x, y, x + d.w - 1, y + d.h); KM.finishHouse(S, h, true); }
+    if (built) { KM.flatten(S, f.x0, f.y0, f.x1, f.y1); KM.finishHouse(S, h, true); }
     return h;
   };
 
@@ -161,11 +183,11 @@
     KM.ui && KM.ui.onRemoved && KM.ui.onRemoved('h', h.id);
   };
 
-  KM.canPlace = function (S, type, x, y, owner) {
-    const d = KM.HOUSES[type], m = S.map;
-    const ex = x + (d.w >> 1), ey = y + d.h;
+  KM.canPlace = function (S, type, x, y, owner, rot) {
+    const d = KM.HOUSES[type], m = S.map, f = KM.footprint(type, x, y, rot);
+    const ex = f.ex, ey = f.ey;
     const hum = KM.human(S, owner);
-    for (let yy = y; yy < y + d.h; yy++) for (let xx = x; xx < x + d.w; xx++) {
+    for (let yy = y; yy < y + f.h; yy++) for (let xx = x; xx < x + f.w; xx++) {
       if (!KM.inb(xx, yy)) return { ok: false, why: 'Fora do mapa' };
       const i = yy * m.W + xx, t = m.terrain[i];
       if (hum && !KM.isExp(S, i, owner)) return { ok: false, why: 'Área inexplorada' };
@@ -177,12 +199,13 @@
       if (m.field[i]) return { ok: false, why: 'Há um campo aqui' };
     }
     if (!KM.walkable(S, ex, ey) || m.field[ey * m.W + ex]) return { ok: false, why: 'A entrada está bloqueada' };
-    if (KM.roughness(m, x, y, x + d.w - 1, y + d.h) > 2.6) return { ok: false, why: 'Terreno íngreme demais' };
+    if (KM.roughness(m, f.x0, f.y0, f.x1, f.y1) > 2.6) return { ok: false, why: 'Terreno íngreme demais' };
     for (const id in S.houses) {
       const o = S.houses[id];
-      if (o.ex >= x && o.ex < x + d.w && o.ey >= y && o.ey < y + d.h) return { ok: false, why: 'Bloqueia a entrada de outra casa' };
+      if (o.ex >= x && o.ex < x + f.w && o.ey >= y && o.ey < y + f.h) return { ok: false, why: 'Bloqueia a entrada de outra casa' };
+      if (o.ex === ex && o.ey === ey) return { ok: false, why: 'A entrada já é usada por outra casa' };
     }
-    if (d.mine && !KM.findOre(S, x + d.w / 2 - 0.5, y + d.h / 2 - 0.5, d.mine, false)) return { ok: false, why: 'Precisa de minério próximo (montanha)' };
+    if (d.mine && !KM.findOre(S, x + f.w / 2 - 0.5, y + f.h / 2 - 0.5, d.mine, false)) return { ok: false, why: 'Precisa de minério próximo (montanha)' };
     if (d.gather === 'fish') {
       let ok = false;
       for (let yy = y - 6; yy <= y + 6 && !ok; yy++) for (let xx = x - 6; xx <= x + 6; xx++) if (KM.inb(xx, yy) && m.terrain[yy * m.W + xx] === KM.T.WATER) { ok = true; break; }

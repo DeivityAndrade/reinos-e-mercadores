@@ -312,7 +312,7 @@
     const eco = KM.eco(S, h.owner);
     if (eco) { const w = h.worker && S.units[h.worker]; if (!w || w.inside !== h.id) { h.cd = 1; return; } }
     const cx = KM.hcx(h), cy = KM.hcy(h);
-    let best = null, bd = 7.5;
+    let best = null, bd = KM.def(h).shoot;
     for (const id in S.units) {
       const u = S.units[id];
       if (!KM.hostile(S, u.owner, h.owner) || u.inside) continue;

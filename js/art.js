@@ -911,6 +911,7 @@
     baker: { tunic: '#efe6d2', pants: '#8a7a60', hat: 'chef', hatC: '#fbf8f0', apron: '#fbf8f0' },
     butcher: { tunic: '#b04a3a', pants: '#4a3c2c', hat: 'none', hair: '#6a3a1a', apron: '#e8e0d0', weapon: 'cleaver' },
     recruit: { tunic: 'team', pants: '#4a4032', hat: 'none', hair: '#5a3a1a' },
+    levy: { tunic: 'team', pants: '#5a4a36', hat: 'straw', hatC: '#c8a860', weapon: 'hammer' },
     militia: { tunic: 'team', pants: '#4a4032', hat: 'cap', hatC: '#6a4a2a', weapon: 'axe1' },
     axeman: { tunic: '#7a5a3a', tabard: 1, pants: '#4a4032', hat: 'nasal', weapon: 'axe1', shield: 'round' },
     swordsman: { tunic: '#9aa0a8', mail: 1, tabard: 1, pants: '#5a5a60', hat: 'greathelm', weapon: 'sword', shield: 'kite' },
