@@ -43,7 +43,7 @@
       const cfg = KM.skirmishConfig({ diff, opponents, aiMode: mode });
       const D = KM.DIFF[diff];
       cfg.players[0] = fair
-        ? { team: 0, name: 'Justo', ai: Object.assign(KM.TOWNS.human(), { mode: 'economy', fair: true, peace: D.peace + 300, mult: 1, def: 8 }) }
+        ? { team: 0, name: 'Justo', ai: Object.assign(KM.TOWNS.human(), { mode: 'economy', fair: true, peace: D.peace, mult: 1, def: 8 }) }
         : { team: 0, name: 'Bot', ai: KM.TOWNS.economy(D) };
       cfg.seed = seed;
       const sk = KM.skirmishConfig, cg = KM.checkGoals;
