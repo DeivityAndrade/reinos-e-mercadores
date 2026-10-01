@@ -34,7 +34,7 @@
       <div class="crest">⚜️</div>
       <div id="loadbar" data-t="Carregando o reino…"></div>
       <h1>Reinos &amp; Mercadores</h1>
-      <p class="sub">Um tributo moderno ao clássico de estratégia econômica medieval.<br>Construa, abasteça, treine e defenda seu reino.</p>
+      <p class="sub">Seu reino cresce onde a estratégia encontra o comércio.<br>Construa, abasteça, treine e conquiste novas terras.</p>
 
       <div class="screen" data-s="main">
         <button class="mbtn primary" data-screen="conquest">👑 Conquista</button>
@@ -48,7 +48,7 @@
         </div>
         <div id="continue"></div>
         <div class="mgrid">
-          <button class="mbtn ghost" data-mission="m1" title="Começa a Missão I com o tutorial guiado">🎓 Tutorial</button>
+          <button class="mbtn ghost" data-mission="t1" title="Guia completo: da primeira estrada ao primeiro soldado, sem ataques">🎓 Tutorial</button>
           <button class="mbtn ghost" data-help="1">❓ Como jogar</button>
         </div>
       </div>
@@ -82,7 +82,7 @@
 
       <div class="screen hidden" data-s="conquest">
         <h3>👑 Conquista</h3>
-        <p class="muted">Como no Knights and Merchants: em toda fase o objetivo é <b>eliminar todos os reinos rivais</b>. A cada fase há mais reinos, e eles ficam mais fortes. Os desafios opcionais valem coroas.</p>
+        <p class="muted">Conquiste novas regiões, recupere vilas e dispute rotas de abastecimento. Cada fase apresenta <b>objetivos e decisões próprios</b>. Novos biomas ficam disponíveis na Escaramuça conforme você avança; desafios opcionais valem coroas.</p>
         <label class="inline">Dificuldade
           <select id="qdiff"><option value="easy">Fácil</option><option value="normal" selected>Normal</option><option value="hard">Difícil</option></select>
         </label>
@@ -110,7 +110,7 @@
           </label>
           <label>Inimigo
             <select id="aimode">
-              <option value="economy" selected>Economia real (como no original)</option>
+              <option value="economy" selected>Economia real (produção e abastecimento)</option>
               <option value="waves">Ondas de ataque (clássico arcade)</option>
             </select>
           </label>
@@ -121,6 +121,9 @@
           <label>Tipo de terreno
             <select id="mtype"><option value="continente">Continente</option><option value="rio">Rio</option><option value="lagos">Lagos</option><option value="cordilheiras">Cordilheiras</option><option value="floresta">Floresta densa</option><option value="planalto">Planalto central</option><option value="surpresa">Surpresa</option></select>
           </label>
+          <label>Bioma <select id="biome"><option value="pradaria">Pradaria</option></select></label>
+          <p class="muted" id="biomehint">Avance na Conquista para descobrir novos biomas.</p>
+          <p class="muted">Na economia real, a IA começa com os mesmos recursos e tropas, segue a progressão e precisa alimentar o exército. A dificuldade muda seu ritmo de decisão e o primeiro ataque. Ondas criam tropas e são um desafio separado.</p>
           <label>Semente do mapa <input id="seed" placeholder="aleatória"></label>
           <label class="chkl"><input type="checkbox" id="ally"> Com aliado (IA)</label>
           <label class="chkl" title="Sem progressão: todas as construções e soldados disponíveis desde o início"><input type="checkbox" id="allun"> Tudo liberado (modo livre)</label>
@@ -128,7 +131,7 @@
         <button class="mbtn primary" data-new="1">⚔️ Começar</button>
         <button class="mbtn ghost" data-screen="main">← Voltar</button>
       </div>
-      <div class="foot">v0.5 · HTML5 · instalável e jogável offline · música e sons procedurais</div>
+      <div class="foot">v0.6 · estratégia econômica medieval · instalável e jogável offline</div>
     </div>
   </div>
 
@@ -165,8 +168,12 @@
             <li>Treine <b>Recrutas</b> 🪖 na Escola: eles vão sozinhos ao Quartel.</li>
             <li>No <b>Quartel</b>, clique no tipo de soldado para equipar. Novos soldados formam <b>grupos</b> com estandarte.</li>
             <li>Os grupos marcham em formação. É possível girar, mudar as colunas, dividir, unir e alimentar.</li>
-            <li>Lanceiros e piqueiros causam dano dobrado contra cavalaria. Atacar pelo flanco causa mais dano.</li>
+            <li>Lanceiros e piqueiros causam dano dobrado contra cavalaria. Golpes corpo a corpo pelo lado causam +15% de dano; pelas costas, +30%. A direção real das tropas define o flanco.</li>
+            <li>Montanhas e construções bloqueiam os tiros de arqueiros, besteiros e torres. Todos os exércitos de economia precisam comer, inclusive a IA.</li>
           </ol>
+          <h3>👑 Conquista e regiões</h3>
+          <p>Leia o briefing: você pode eliminar rivais, controlar passagens, reconstruir uma vila ou preparar uma expedição. Pontos estratégicos aparecem no minimapa e na aba Objetivos. Para controlar um ponto, mantenha 3 soldados sem inimigos próximos; alguns também exigem um Armazém ligado por estrada pronta à sua base. A contagem reinicia se o controle for perdido.</p>
+          <p>Bosques de outono, pântanos e tundra são descobertos ao longo da Conquista. Na tundra, trigo e uvas levam 25% mais tempo para crescer.</p>
           <h3>⌨️ Controles</h3>
           <table>
             <tr><td><kbd>WASD</kbd>/setas/bordas</td><td>Mover câmera</td></tr>

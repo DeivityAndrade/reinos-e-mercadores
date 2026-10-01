@@ -216,7 +216,7 @@
     for (const id in S.units) { const u = S.units[id]; if (u.owner !== owner) continue; if (u.type === 'serf') serfs++; if (u.type === 'laborer') labs++; if (!u.home) KM.add(have, u.type, 1); }
     for (const id in S.houses) { const h = S.houses[id]; if (h.type === 'school' && h.owner === owner) for (const q of h.queue) KM.add(queued, q, 1); }
     for (const p in need) {
-      if (need[p] - (have[p] || 0) - (queued[p] || 0) > 0) { school.queue.push(p); return; }
+      if (KM.profUnlocked(S, owner, p) && need[p] - (have[p] || 0) - (queued[p] || 0) > 0) { school.queue.push(p); return; }
     }
     if (serfs + (queued.serf || 0) < 4 + Math.ceil(nHouses * 0.75)) { school.queue.push('serf'); return; }
     if (!KM.human(S, owner) && labs + (queued.laborer || 0) < 4 + Math.floor(nHouses / 6)) school.queue.push('laborer');
@@ -259,6 +259,7 @@
       if (h.work.t <= 0) {
         const rc = d.recipes[h.work.r];
         for (const k in rc.out) KM.add(h.out, k, rc.out[k]);
+        h.completed = (h.completed || 0) + 1;
         h.work = null;
       }
       return;
@@ -316,7 +317,7 @@
       const u = S.units[id];
       if (!KM.hostile(S, u.owner, h.owner) || u.inside) continue;
       const d = KM.dist(u.x, u.y, cx, cy);
-      if (d < bd) { bd = d; best = u; }
+      if (d < bd && KM.hasLineOfSight(S, cx, cy, u, 'u')) { bd = d; best = u; }
     }
     if (!best) { h.cd = 0.5; return; }
     if (eco) {
@@ -336,7 +337,7 @@
       const f = m.field[i];
       if ((f === 2 || f === 4) && m.fstage[i] > 0 && m.fstage[i] < 4) {
         m.ftimer[i] += dt;
-        if (m.ftimer[i] >= 30) { m.fstage[i]++; m.ftimer[i] = 0; }
+        if (m.ftimer[i] >= 30 / (KM.biome(m).growth || 1)) { m.fstage[i]++; m.ftimer[i] = 0; }
       }
       if (m.terrain[i] === KM.T.WATER && m.fish[i] < 4 && KM.rand() < 0.004 * dt) m.fish[i]++;
     }

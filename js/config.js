@@ -3,7 +3,7 @@
    Tudo que define economia, casas, profissões e soldados fica aqui. */
 window.KM = window.KM || {};
 (function (KM) {
-  KM.VERSION = '0.5.0';
+  KM.VERSION = '0.6.0';
   KM.TILE = 32;
   KM.MAP_W = 80;
   KM.MAP_H = 80;
@@ -21,6 +21,14 @@ window.KM = window.KM || {};
   KM.PLAYER = 0;
   KM.ENEMY = 1;
   KM.COLORS = ['#3b82f6', '#dc2626', '#16a34a', '#eab308'];
+  // Biomas chegam pela Conquista; a semente continua determinística em cada região.
+  KM.BIOMES = {
+    pradaria: { n: 'Pradaria', unlock: 1, growth: 1, water: 0, forest: 0.58, pine: 0.3, tint: [1, 1, 1], grass: [0.44, 0.6, 0.27], grass2: [0.3, 0.47, 0.2], sand: [0.86, 0.76, 0.52], desc: 'Campos férteis, florestas mistas e colheitas no ritmo habitual.' },
+    outono: { n: 'Bosque de outono', unlock: 3, growth: 1, water: 0, forest: 0.5, pine: 0.1, tint: [2.2, 0.7, 0.35], grass: [0.65, 0.56, 0.3], grass2: [0.43, 0.4, 0.22], sand: [0.78, 0.65, 0.43], desc: 'Bosques mais densos: há mais madeira, mas a expansão exige abrir espaço.' },
+    pantano: { n: 'Pântano', unlock: 4, growth: 1, water: 0.04, forest: 0.54, pine: 0.1, tint: [0.8, 1, 0.9], grass: [0.35, 0.5, 0.4], grass2: [0.19, 0.32, 0.27], sand: [0.52, 0.51, 0.35], desc: 'Mais água e menos terreno seco: estradas e postos avançados disputam as passagens.' },
+    tundra: { n: 'Tundra', unlock: 8, growth: 0.8, water: 0, forest: 0.6, pine: 0.85, tint: [0.9, 1.05, 1.25], grass: [0.82, 0.88, 0.9], grass2: [0.59, 0.69, 0.73], sand: [0.69, 0.72, 0.68], desc: 'Solo coberto de neve e pinheiros. Trigo e uvas levam 25% mais tempo para crescer; diversifique a comida.' },
+  };
+  KM.biome = (map) => KM.BIOMES[map && map.biome] || KM.BIOMES.pradaria;
 
   KM.RES = {
     trunk: { n: 'Tronco', i: '🪵' },

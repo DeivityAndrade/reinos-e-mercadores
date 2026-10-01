@@ -486,6 +486,8 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         grass: [0.44, 0.6, 0.27], grass2: [0.3, 0.47, 0.2], sand: [0.86, 0.76, 0.52], rock: [0.5, 0.46, 0.41], rock2: [0.3, 0.28, 0.26],
         bed: [0.24, 0.38, 0.4], dirt: [0.55, 0.42, 0.27],
       };
+      const biome = KM.biome(m);
+      C.grass = biome.grass; C.grass2 = biome.grass2; C.sand = biome.sand;
       const N = KM.makeNoise(S.seed + 5);
       for (let vy = vy0; vy <= vy1; vy++) for (let vx = vx0; vx <= vx1; vx++) {
         const fx = vx / SUB, fy = vy / SUB;
@@ -641,7 +643,8 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (!S.editor && !(m.explored[i] & (1 << KM.me))) continue;
         const cx = tx + 0.5 + (KM.hash(tx, ty, 1) - 0.5) * 0.3, cy = ty + 0.5 + (KM.hash(tx, ty, 2) - 0.5) * 0.3;
         if (m.tree[i]) {
-          const hk = KM.hash(tx, ty, 3), k = hk < 0.4 ? 'tree_single_A' : hk < 0.7 ? 'tree_single_B' : 'tree_single_C';
+          const hk = KM.hash(tx, ty, 3), pine = KM.biome(m).pine;
+          const k = hk > 1 - pine ? 'tree_single_C' : hk < (1 - pine) * 0.57 ? 'tree_single_A' : 'tree_single_B';
           add(k, cx, this.groundY(cx, cy), cy, TS[m.tree[i]] * (0.85 + KM.hash(tx, ty, 4) * 0.3), KM.hash(tx, ty, 5) * 6.28);
         }
         if (m.stone[i]) {
@@ -705,6 +708,10 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           dummy.scale.set(s, sy, s);
           dummy.updateMatrix();
           im.setMatrixAt(j, dummy.matrix);
+          if (k.startsWith('tree_single') || k === 'bush' || k === 'bush2' || k === 'tuft') {
+            const tint = KM.biome(m).tint;
+            im.setColorAt(j, new THREE.Color().setRGB(tint[0], tint[1], tint[2]));
+          }
         });
         im.castShadow = k !== 'sprout' && k !== 'grape' && k !== 'tuft' && k !== 'flower';
         im.receiveShadow = true;
@@ -1224,6 +1231,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         const tg = u.target && KM.resolveTarget(S, u.target);
         if (tg && !u.path) { const tx = u.target.k === 'u' ? tg.x + 0.5 : KM.hcx(tg) + 0.5, tz = u.target.k === 'u' ? tg.y + 0.5 : KM.hcy(tg) + 0.5; ang = Math.atan2(tx - X, tz - Z); }
         if (u.task && u.task.type === 'gather' && u.work) ang = Math.atan2(u.task.x + 0.5 - X, u.task.y + 0.5 - Z);
+        if (ang == null && sd) { const f = KM.DIRS8[u.heading == null ? 0 : u.heading]; ang = Math.atan2(f[0], f[1]); }
         if (ang != null) vis.yaw = ang;
         let dyaw = vis.yaw - vis.root.rotation.y;
         while (dyaw > Math.PI) dyaw -= Math.PI * 2; while (dyaw < -Math.PI) dyaw += Math.PI * 2;
@@ -1430,6 +1438,10 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           }
         }
         if (u.hunger < 25 && u.owner === KM.me) { g.font = '14px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText('🍗', q.x, q.y - 16); }
+        if (u.flankedAt != null && S.time - u.flankedAt < 1.2) {
+          g.font = '700 12px "Alegreya Sans",sans-serif'; g.textAlign = 'center';
+          g.fillStyle = '#ffe066'; g.fillText(u.flankBonus >= 1.3 ? 'Costas +30%' : 'Flanco +15%', q.x, q.y - 28);
+        }
       }
       for (const id in this.houseVis) {
         const hv = this.houseVis[id], h = S.houses[id];
@@ -1444,6 +1456,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (mine && h.prio && h.state !== 'built') { g.font = '16px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText('⭐', q.x + 34, q.y + 5); }
         else if (h.hp < h.maxHp || selected) bar(q.x - 24, q.y, 48, h.hp / h.maxHp, mine ? '#5fd35a' : KM.hostile(S, KM.me, h.owner) ? '#ef4b4b' : '#3fa6ff');
         if (mine && !S.editor) {
+          if ((S.protected || []).includes(h.id)) { g.font = '14px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillStyle = '#ffe066'; g.fillText('🛡️ Proteger', q.x, q.y - 17); }
           // casas sem estrada até o Armazém: o erro mais comum de quem está começando
           if (!this.linkT || this.time - this.linkT > 1) { this.linkT = this.time; this.unlinked = new Set(); for (const hid in S.houses) { const o = S.houses[hid]; if (o.owner === KM.me && !KM.roadLinked(S, o)) this.unlinked.add(o.id); } }
           if (this.unlinked && this.unlinked.has(h.id)) {
@@ -1459,6 +1472,24 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           const badge = needsWorker ? '❗' : h.paused ? '⏸️' : noOrders ? '📋' : null;
           if (badge && Math.floor(this.time * 2) % 2 === 0) { g.font = '18px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText(badge, q.x, q.y - 14); }
         }
+      }
+      // Os objetivos territoriais têm marcadores próprios, visíveis também sem seleção.
+      for (const site of S.sites || []) {
+        const q = this.toScreen(site.x + 0.5, this.groundY(site.x + 0.5, site.y + 0.5) + 0.15, site.y + 0.5);
+        if (q.behind || q.x < 0 || q.y < 0 || q.x > this.vw || q.y > this.vh) continue;
+        const color = site.contested ? '#ff6050' : site.owner >= 0 ? S.players[site.owner].color : '#ffe066';
+        g.beginPath();
+        for (let k = 0; k <= 32; k++) {
+          const a = k / 32 * Math.PI * 2, x = KM.clamp(site.x + 0.5 + Math.cos(a) * site.r, 0, S.map.W - 1), y = KM.clamp(site.y + 0.5 + Math.sin(a) * site.r, 0, S.map.H - 1);
+          const p = this.toScreen(x, this.groundY(x, y) + 0.08, y);
+          if (k) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y);
+        }
+        g.strokeStyle = color; g.lineWidth = 2; g.setLineDash([6, 4]); g.stroke(); g.setLineDash([]);
+        const text = `🚩 ${site.n}${site.outpost ? ' · posto' : ''}${site.contested ? ' · contestado' : ''}`;
+        g.font = '700 14px "Alegreya Sans",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        const w = g.measureText(text).width + 20;
+        g.fillStyle = 'rgba(28,20,14,0.9)'; g.fillRect(q.x - w / 2, q.y - 32, w, 25);
+        g.fillStyle = color; g.fillText(text, q.x, q.y - 19);
       }
       // ponto de encontro do Quartel selecionado
       const sb = ui.selHouse && S.houses[ui.selHouse];

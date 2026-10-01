@@ -1,9 +1,7 @@
 # ⚜️ Reinos & Mercadores
 
-Um jogo de estratégia econômica medieval em tempo real, **inspirado em Knights and Merchants (1998)**, refeito com qualidade de vida de 2026.
-Mundo em **3D estilizado com câmera 2.5D** (Three.js), com modelos feitos por artistas e licença livre (CC0).
-
-> "Knights and Merchants" é marca registrada dos seus donos. Este é um projeto de fã original, com nome e código próprios. Nenhum arquivo do jogo original é usado.
+Um jogo de estratégia econômica medieval em tempo real: construa seu reino, organize a produção e conquiste novas regiões.
+Mundo em **3D estilizado com câmera 2.5D** (Three.js), arte própria e animações com licença livre (CC0).
 
 ## ▶️ Como jogar
 
@@ -20,14 +18,23 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 
 | Modo | Descrição |
 |---|---|
-| **👑 Conquista** (estilo KaM) | 10 fases em que o objetivo é sempre **eliminar todos os reinos rivais**: 1 rival nas fases I a III, 2 nas IV a VI e 3 nas VII a X, mais fortes a cada fase. Rivais com personalidade (equilibrado, agressivo, construtor, fortificado), fases com rivais aliados entre si ou "todos contra todos". Desafios opcionais valem coroas (até 4 por fase) |
+| **🎓 Tutorial** | Missão tranquila com 26 passos, da construção à produção de pão, encomendas, recrutas e comandos militares |
+| **👑 Conquista** | 10 fases com controle de passagens, postos avançados, reconstrução, defesa, preparação de uma expedição e guerras entre reinos. Rivais com personalidade, alianças e desafios opcionais que valem coroas (até 4 por fase). Novos biomas acompanham a progressão |
 | **Campanha "A Reunificação de Aldor"** | 14 missões com briefing, objetivos, aliados e até 3 inimigos simultâneos |
 | **Escaramuça** | Mapa procedural ou feito no editor, 1 a 3 oponentes, aliado opcional, IA com economia real ou em ondas |
 | **Multijogador online** | **Salas por código de 5 letras**: um cria a sala e o outro digita o código. A partida roda direto entre os navegadores (WebRTC), em 1 contra 1 ou cooperativo contra a IA, com chat. Também há o modo manual, trocando códigos longos |
 | **Editor de mapas** | Terreno, relevo, árvores, rochas, minérios, até 4 bases e casas prontas. Salva localmente e exporta/importa arquivos |
 
-## 🆕 Novidades da versão 0.4
-- **Tutorial interativo** (botão 🎓 no menu ou Missão I): 13 passos guiados, com destaque nos botões e uma seta no mapa. Os passos avançam sozinhos quando você faz a ação pedida.
+## 🆕 Novidades da versão 0.6
+- **IA econômica:** mesma cidade inicial na Escaramuça, desbloqueios e fome das tropas iguais aos do jogador, sem concessões periódicas de recursos. Prioriza abastecimento, substitui pedreiras e minas esgotadas e usa o Mercado para comprar pedra ou ouro com madeira excedente. A dificuldade muda ritmo e estratégia, sem acelerar receitas ou gerar recursos.
+- **Combate:** a direção real de cada soldado define frente, lado (+15%) e costas (+30%) nos golpes corpo a corpo. Montanhas e construções bloqueiam tiros, inclusive das torres. O jogo indica flancos atingidos.
+- **Tutorial completo:** 26 passos em uma missão sem inimigos, com acompanhamento de produção, encomendas, recrutas e movimento de tropas. Pode ser reaberto no menu da partida; a Missão I da campanha mantém seu guia básico de 13 passos.
+- **Conquista:** alternativas de vitória, condições iniciais próprias e pontos estratégicos com guarnições. Casas essenciais aparecem marcadas e sua perda pode encerrar a missão.
+- **Biomas:** Pradaria desde o início, Bosque de outono na fase III, Pântano na IV e Tundra na VIII. Ao abrir essas fases, o bioma também fica disponível na Escaramuça. Pântanos têm mais água; na Tundra, os campos levam 25% mais tempo para crescer. O tipo de mapa continua sendo uma escolha independente do bioma.
+- **Identidade:** menus e ajuda apresentam Reinos & Mercadores com seu próprio nome e suas regras.
+
+## 🆕 Recursos das versões anteriores
+- **Tutorial interativo básico:** 13 passos guiados, com destaque nos botões e uma seta no mapa. Os passos avançam sozinhos quando você faz a ação pedida.
 - **Aviso "⚠ sem estrada"** sobre qualquer casa que não esteja ligada ao Armazém, o erro mais comum de quem está começando.
 - **Visual:** chão com textura e variação de tons, sombra nos vales (oclusão), grama alta e flores balançando ao vento, árvores com vento.
 - **Áudio:**
@@ -44,10 +51,14 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 - **Estatísticas da partida** com gráficos (cidadãos, soldados, casas e recursos ao longo do tempo) e uma tabela por jogador, na tela final e na aba Objetivos.
 - **Mensagens recentes** na aba Objetivos, e a tecla `Z` leva até o último aviso.
 - **Conselheiro 🧙:** avisa quando acaba o ouro (e a Escola para), a pedra ou a madeira com obras esperando, ou quando o povo passa fome. Ele também diz o que construir para resolver.
-- **Balanceamento testado:** um "jogador justo" automático (mesma cidade inicial que você, sem bônus, seguindo a árvore de progressão) vence a IA do Normal em cerca de 2 de 3 partidas. Ele chega ao Quartel aos 3 a 4 minutos. O ouro inicial passou para 40, e soldados parados reagem a inimigos a até 9 casas de distância.
+- **Economia inicial:** 40 ouros, além do estoque da Escola. Soldados parados reagem a inimigos próximos.
 - **Instalável e offline (PWA):** no Chrome ou Edge, use "Instalar aplicativo" na barra de endereço. Depois de aberto uma vez, funciona sem internet.
 
 ## 🧪 Ferramenta de balanceamento
+Com Node.js disponível, execute `node tools/check.js` para verificar regras de combate, IA, tutorial, objetivos, inicialização das 25 missões/fases em três dificuldades e continuidade após salvar/carregar. `node tools/check.js --balance` também simula três mapas por até 40 minutos cada. São amostras de diagnóstico, não uma estimativa da taxa de vitória de jogadores humanos.
+
+Para conferir visualmente cada fase sem desbloquear a Conquista, abra `tools/playtest.html` no servidor local. A prévia começa pausada e não faz autosave. Ela permite examinar briefing, mapa e pontos estratégicos.
+
 `tools/sim.js` simula partidas inteiras sem desenhar nada: 40 minutos de jogo rodam em poucos segundos. Com o jogo aberto, cole no console do navegador:
 ```js
 const s = document.createElement('script'); s.src = 'tools/sim.js'; document.body.appendChild(s);
@@ -98,17 +109,19 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
   Na Conquista, o estilo segue a personalidade de cada reino e aparece no briefing.
 
 ## 👑 Modo Conquista
-- A vitória é sempre a mesma: **eliminar todos os reinos rivais**. Um reino cai quando fica sem Armazém, Escola e Quartel prontos e sem nenhum soldado.
+- **I:** eliminar o primeiro rival. **II:** eliminar o rival ou controlar a passagem por 3 minutos.
+- **III:** eliminar o rival ou reparar as seis casas marcadas a 90% e sobreviver por 14 minutos. Perder uma dessas casas causa derrota.
+- **IV:** eliminar os rivais ou manter os dois postos por 2 minutos. **V:** eliminar os rivais ou resistir por 16 minutos, protegendo o Armazém inicial.
+- **VI:** eliminar os rivais ou manter a jazida por 4 minutos e ter uma Fundição de ouro. **VII:** guerra entre quatro reinos sem alianças.
+- **VIII:** guerra na Tundra com cidade e tropas avançadas. **IX:** proteger o Armazém inicial e sobreviver por 20 minutos, reunindo simultaneamente 30 soldados, 40 pães e 30 ouros. **X:** a guerra final contra três aliados.
+- **Controle:** pelo menos 3 soldados no raio indicado e nenhum soldado rival. A contagem reinicia se ficar vazio ou contestado. Postos também exigem um Armazém no raio conectado por estrada pronta ao Armazém inicial.
+- Na vitória por guerra, um reino cai quando fica sem Armazém, Escola e Quartel prontos e sem nenhum soldado.
 - **Desafios opcionais** (construir algo, formar tropas, vencer rápido) valem **coroas**: 1 pela vitória e 1 por desafio, até 4 por fase. As melhores marcas ficam salvas.
-- Você sempre começa do básico, seguindo a árvore de progressão.
+- Cada fase descreve sua cidade, guarnições e condições iniciais. As construções seguintes respeitam a árvore de progressão.
 - A dificuldade (Fácil, Normal ou Difícil) muda a força dos rivais e o tempo de paz.
-- **Testado com o "jogador justo" automático** (sem bônus, seguindo a progressão):
-  - No Normal, ele vence as fases I a III em cerca de 28 minutos.
-  - Nas fases intermediárias, ele derruba parte dos rivais e perde disputas apertadas.
-  - A fase X o derrota. A curva de dificuldade sobe como deve.
 - Os testes mostraram que as minas se esgotavam em minutos (só 10 minérios). Agora cada veio tem de 14 a 35 minérios por ladrilho, e a mina alcança 5 casas.
 
-## 🌳 Progressão (como no original)
+## 🌳 Progressão
 O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e os profissionais correspondentes (carregador, construtor, lenhador, pedreiro). Cada construção erguida libera novas opções:
 
 `Lenhador → Serraria → Taverna / Fazenda / Oficina de armas → Moinho → Padaria · Criação de porcos → Açougue / Curtume · Minas → Fundições → Ferrarias · Oficina de armas → Quartel → Torre / Estábulo`
@@ -120,11 +133,11 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 - Na Escaramuça há a opção **"Tudo liberado (modo livre)"** para jogar sem progressão.
 - As regras ficam em `KM.TECH` e `KM.SOLDIER_REQ` no `js/config.js`.
 
-## 🏰 Mecânicas do original
+## 🏰 Mecânicas
 
 - **Logística por estradas:** carregadores só entregam entre casas ligadas ao mesmo Armazém. Cada trecho de estrada custa 1 pedra.
 - **Construção em etapas:** terreno de terra → nivelamento → fundação → andaime → casa pronta. Construtores também reparam casas danificadas.
-- **27 recursos e 26 construções**, com todas as cadeias de produção do original.
+- **28 recursos e 27 construções**, com cadeias de alimentos, mineração, armas e armaduras.
 - **Escola, 14 profissões e recrutas.** O treino automático é opcional.
 - **Encomendas** nas oficinas e ferrarias, **distribuição** de carvão, ferro, trigo e madeira, **bloqueio** de recursos no Armazém, casas pausáveis.
 - **Fome:** cidadãos comem na Taverna. Soldados recebem comida levada pelos carregadores e morrem se passarem fome.
@@ -134,7 +147,7 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 
 ## 🎨 Direção de arte própria: "vila medieval ilustrada"
 - **Personagens próprios:** 23 tipos (carregador, construtor, lenhador, padeiro com chapéu de cozinheiro, ferreiro de avental, soldados de tabardo na cor do reino, espadachins de cota de malha, cavaleiros de elmo com pluma…), com as armas de cada ofício e escudos. Cada personagem é **uma única malha** facetada, com 1 desenho por unidade. Os cavalos também são próprios, e os dos cavaleiros levam manta na cor do reino.
-- **Construções feitas pelo próprio jogo** (`js/art.js`), sem modelos prontos: são 26 projetos com silhueta própria.
+- **Construções feitas pelo próprio jogo** (`js/art.js`), sem modelos prontos: são 27 projetos com silhueta própria.
   - Materiais: enxaimel com reboco caiado, tábuas, toras, pedra de cantaria; telhados de palha, telha ou ardósia.
   - Exemplos: moinho de vento com pás girando, taverna com andar avançado, escola com torre do sino, quartel com ameias, mina escorada em madeira, fornalhas com brasa, chiqueiro e estábulo com animais vivos.
   - A cor do reino aparece em portas, venezianas e estandartes que tremulam.
@@ -181,9 +194,9 @@ js/economy.js     carregadores, construtores, reparo, produção, escola, torres
 js/units.js       movimento e tarefas dos cidadãos
 js/military.js    grupos, formações, combate, fome dos soldados, projéteis
 js/ai.js          IA (economia real / ondas / posto avançado), uma por jogador
-js/campaign.js    14 missões, objetivos, derrota/vitória, progresso
+js/campaign.js    tutorial, 14 missões, 10 fases de Conquista, objetivos e progresso
 js/cmd.js         comandos: toda ação do jogador (base do multijogador)
-js/tutorial.js    tutorial interativo da Missão I
+js/tutorial.js    tutorial completo e guia básico da Missão I
 js/art.js         arte própria: texturas pintadas, materiais, construções, obras, natureza
 js/render3d.js    motor 3D: terreno, água, névoa, instâncias, personagens, câmera, pós-processamento ilustrado
 js/ui.js          painéis, abas, minimapa, briefing, menus
@@ -193,12 +206,11 @@ js/net.js         multijogador WebRTC com lockstep
 js/audio.js       sons, música e vozes procedurais (Web Audio)
 js/main.js        laço de 20 ticks/s, lockstep, salvar/carregar, histórico para os gráficos
 tools/sim.js      simulador de partidas para balanceamento
+tools/check.js    regressões da simulação, sem dependências externas
+tools/playtest.html  prévia pausada de fases para inspeção visual
 sw.js, manifest.webmanifest, icon.svg   modo offline e instalação como aplicativo
 ```
 
 **Determinismo:** a simulação usa um RNG próprio guardado no estado do jogo e roda em ticks fixos. Todas as ações dos jogadores passam por `js/cmd.js`. Com isso, dois computadores com a mesma semente e os mesmos comandos chegam exatamente ao mesmo estado.
 
-## ⚖️ Diferenças em relação ao original
-- A arte é própria (vila medieval ilustrada, gerada por código), não os sprites do KaM, que são protegidos por direitos autorais.
-- As missões e o roteiro são novos, não a campanha original.
-- O multijogador é para 2 humanos (mais IAs). O original suportava até 8 jogadores via LAN.
+O multijogador comporta 2 humanos e até 2 IAs. Ambos os participantes devem usar a mesma versão do jogo.

@@ -43,9 +43,10 @@
 
   // soma de verificação para detectar dessincronização no multijogador
   KM.checksum = function (S) {
-    let h = S.nid * 31 + S.tick;
-    for (const id in S.units) { const u = S.units[id]; h = (h * 33 + ((u.x * 100) | 0) + ((u.y * 100) | 0) * 7 + (u.hp | 0)) | 0; }
+    let h = (S.nid * 31 + S.tick + S.rs) | 0;
+    for (const id in S.units) { const u = S.units[id]; h = (h * 33 + ((u.x * 100) | 0) + ((u.y * 100) | 0) * 7 + (u.hp | 0) + (u.heading || 0) * 31 + ((u.hunger * 100) | 0)) | 0; }
     for (const id in S.houses) { const b = S.houses[id]; h = (h * 17 + b.id + (b.hp | 0)) | 0; }
+    for (const site of S.sites || []) { h = (h * 17 + site.owner) | 0; for (const held of site.held) h = (h * 33 + ((held * 100) | 0)) | 0; }
     return h;
   };
 
@@ -115,8 +116,8 @@
     const S = KM.newState(opts);
     KM.afterLoad(S);
     KM.music && KM.music.start();
-    let tutDone = false; try { tutDone = localStorage.getItem('rm_tut_done') === '1'; } catch (e) { /* ok */ }
-    if ((S.mission === 'm1' || (S.mission === 'c1' && !tutDone)) && !opts.noTutorial) KM.tutorial.start(S);
+    let tutDone = false; try { tutDone = localStorage.getItem('rm_tut_full_done') === '1' || localStorage.getItem('rm_tut_full_dismissed') === '1'; } catch (e) { /* ok */ }
+    if ((S.mission === 't1' || S.mission === 'm1' || (S.mission === 'c1' && !tutDone)) && !opts.noTutorial) KM.tutorial.start(S, S.mission !== 'm1');
     if (S.mission) { S.paused = true; KM.ui.showBriefing(S); return; }
     if (S.mp) { KM.ui.toast(`🌐 Partida multijogador iniciada. Você é ${S.players[KM.me].name}. Enter abre o chat.`, 'ok'); return; }
     KM.ui.toast('👑 Bem-vindo, senhor! Construa sua economia e prepare-se para a guerra.', 'info');
@@ -155,6 +156,7 @@
       const S = JSON.parse(raw);
       if ((S.v || 1) < KM.SAVE_V) { KM.ui.toast('Esse jogo salvo é de uma versão antiga e não é compatível.', 'warn'); return false; }
       S.fx = []; S.paused = false; S.cmdq = [];
+      for (const u of Object.values(S.units)) if (KM.isSoldier(u.type) && u.heading == null) u.heading = S.army[u.g] ? S.army[u.g].dir : 0;
       // saves antigos: reconstrói a progressão a partir das casas existentes
       S.players.forEach((p, o) => {
         if (p.built) return;

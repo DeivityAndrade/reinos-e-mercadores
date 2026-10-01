@@ -12,8 +12,9 @@
       def: ai.def != null ? ai.def : D.def,
       waveSize: ai.waveSize || 1,
       wave: 0, defT: 30, warned: false,
-      buildT: 3 + o, cheatT: 45, fieldT: 5 + o, equipT: 4,
+      buildT: 3 + o, fieldT: 5 + o, equipT: 4,
       attackN: ai.attackN || Math.round(12 * D.mult), fail: {},
+      baseAttackN: ai.attackN || Math.round(12 * D.mult),
       strat: ai.strat || ['assalto', 'pinca', 'cerco', 'saque', 'equilibrado'][Math.floor(KM.hash(o, (S.seed | 0) % 9973, 17) * 5)], // estilo de ataque
       fair: !!ai.fair, // fair: sem recursos extras e seguindo a árvore de progressão (usado para testar o equilíbrio)
     };
@@ -25,8 +26,24 @@
   }
   function count(S, o, type) {
     let n = 0;
-    for (const id in S.houses) { const h = S.houses[id]; if (h.owner === o && h.type === type) n++; }
+    for (const id in S.houses) { const h = S.houses[id]; if (h.owner === o && h.type === type && (h.state !== 'built' || !exhausted(S, h))) n++; }
     return n;
+  }
+  function exhausted(S, h) {
+    const d = KM.def(h), m = S.map;
+    if (d.mine) return !KM.findOre(S, KM.hcx(h), KM.hcy(h), d.mine, false);
+    if (d.gather !== 'stone') return false;
+    for (let y = h.ey - d.radius; y <= h.ey + d.radius; y++) for (let x = h.ex - d.radius; x <= h.ex + d.radius; x++) {
+      if (KM.inb(x, y) && Math.hypot(x - h.ex, y - h.ey) <= d.radius && m.stone[y * m.W + x] > 0) return false;
+    }
+    return true;
+  }
+  function useMarket(S, o, st) {
+    const h = find(S, o, 'market');
+    if (!h || h.tradeT > 0 || (h.trade && h.trade.n > 0)) return;
+    const wood = (st.inv.wood || 0) + (h.inv.wood || 0);
+    if ((st.inv.stone || 0) < 12 && wood > 24) h.trade = { sell: 'wood', buy: 'stone', n: 4 };
+    else if ((st.inv.gold || 0) < 8 && wood > 36) h.trade = { sell: 'wood', buy: 'gold', n: 2 };
   }
   function nearestHostileHouse(S, o, x, y) {
     let best = null, bd = 1e9;
@@ -64,6 +81,10 @@
     return best;
   }
   const warnMe = (S, o, msg, pos) => { if (KM.hostile(S, o, KM.me)) KM.notify(S, msg, 'danger', pos); };
+  function strategicTarget(S, o) {
+    const site = (S.sites || []).find((s) => s.owner >= 0 && KM.hostile(S, o, s.owner));
+    return site ? { id: 0, ex: site.x, ey: site.y, site: site.id } : null;
+  }
 
   KM.updateAI = function (S, dt) {
     S.players.forEach((p, o) => {
@@ -113,9 +134,9 @@
     const k = KM.clamp((dl - 11) / dl, 0, 0.7);
     const px = -dy / dl, py = dx / dl, off = (side || 0) * 9;
     const p = KM.nearestWalkable(S, Math.round(from.x + dx * k + px * off), Math.round(from.y + dy * k + py * off), 7) || [target.ex, target.ey + 1];
-    for (const g of groups) { g.stage = 1; g.size0 = g.m.length; }
+    for (const g of groups) { g.stage = 1; g.size0 = g.m.length; g.objective = target.site || null; }
     KM.orderGroups(S, groups, p[0], p[1], true);
-    ai.assaults.push({ g: groups.map((g) => g.id), x: p[0], y: p[1], t: S.time, target: target.id, pair: side ? ai.wave + 1 : 0 });
+    ai.assaults.push({ g: groups.map((g) => g.id), x: p[0], y: p[1], t: S.time, target: target.id, site: target.site, pair: side ? ai.wave + 1 : 0 });
   }
   function updateAssault(S, o, ai) {
     if (ai.assault) { (ai.assaults = ai.assaults || []).push(ai.assault); ai.assault = null; }
@@ -130,7 +151,9 @@
       const partner = a.pair ? list.find((b) => b !== a && b.pair === a.pair) : null;
       if (!a.ready || (partner && !partner.ready && S.time - a.t < 70)) continue;
       let tg = S.houses[a.target];
-      if (!tg || !KM.hostile(S, o, tg.owner) || S.players[tg.owner].out) tg = nearestHostileHouse(S, o, a.x, a.y);
+      const site = (S.sites || []).find((s) => s.id === a.site);
+      if (site) tg = { ex: site.x, ey: site.y, owner: site.owner };
+      if (!site && (!tg || !KM.hostile(S, o, tg.owner) || S.players[tg.owner].out)) tg = nearestHostileHouse(S, o, a.x, a.y);
       for (const g of gs) g.stage = 0;
       if (tg) KM.orderGroups(S, gs, tg.ex, tg.ey + 1, true);
       list.splice(i, 1);
@@ -198,27 +221,23 @@
   }
 
   // ---------- economia real ----------
-  const WANT = [
-    ['school', 1], ['inn', 1], ['woodcutter', 2], ['sawmill', 1], ['quarry', 1], ['farm', 2], ['mill', 1], ['bakery', 1],
-    ['barracks', 1], ['weaponworkshop', 1], ['armorworkshop', 1], ['swine', 1], ['butcher', 1], ['tannery', 1],
-    ['coalmine', 1], ['ironmine', 1], ['ironsmithy', 1], ['weaponsmithy', 1], ['armorsmithy', 1],
-    ['goldmine', 1], ['goldsmelter', 1], ['coalmine', 2], ['farm', 3], ['stables', 1], ['woodcutter', 3],
-    ['fisher', 1], ['tower', 3], ['inn', 2], ['swine', 2], ['farm', 4], ['tower', 5],
-  ];
 
   function economyAI(S, o, ai, bar, dt) {
     const st = find(S, o, 'storehouse');
     if (!st) return;
-    ai.cheatT -= dt;
-    if (ai.cheatT <= 0 && !ai.fair) {
-      ai.cheatT = 60;
-      const k = ai.mult;
-      KM.add(st.inv, 'wood', Math.round(2 * k)); KM.add(st.inv, 'stone', Math.round(2 * k)); KM.add(st.inv, 'gold', Math.round(1.5 * k));
-      KM.add(st.inv, 'bread', Math.round(2 * k));
-      if (k >= 1.3) { KM.add(st.inv, 'coal', 1); KM.add(st.inv, 'iron', 1); }
-    }
+    // Protege o ouro da Escola quando o tesouro está baixo; depois restaura a distribuição.
+    const scarceGold = (st.inv.gold || 0) < 12;
+    const dist = S.players[o].dist.coal;
+    dist.goldsmelter = 5; dist.ironsmithy = scarceGold ? 2 : 5;
+    dist.weaponsmithy = dist.armorsmithy = scarceGold ? 1 : 5;
     ai.buildT -= dt;
-    if (ai.buildT <= 0) { ai.buildT = 4; planBuild(S, o, ai, st); }
+    if (ai.buildT <= 0) {
+      ai.buildT = 5 / ai.mult; useMarket(S, o, st); planBuild(S, o, ai, st);
+      const scarceFood = Object.keys(KM.FOOD).reduce((n, r) => n + (st.inv[r] || 0), 0) < 25;
+      S.players[o].dist.corn.mill = 5;
+      S.players[o].dist.corn.swine = scarceFood ? 2 : 5;
+      S.players[o].dist.corn.stables = scarceFood ? 0 : 5;
+    }
     ai.fieldT -= dt;
     if (ai.fieldT <= 0) {
       ai.fieldT = 20;
@@ -236,7 +255,7 @@
     if (ai.equipT <= 0 && bar && army < 6 + 24 * ai.mult + ai.wave * 4 * ai.mult) {
       ai.equipT = 8 / ai.mult;
       const ORDER = ['knight', 'swordsman', 'crossbowman', 'pikeman', 'scout', 'axeman', 'bowman', 'lancer', 'militia'];
-      for (const t of ORDER) { if (ai.fair && !KM.SOLDIER_REQ[t].every((r) => S.players[o].built[r])) continue; while (KM.equip(S, bar, t)); }
+      for (const t of ORDER) { if (!KM.soldierUnlocked(S, o, t)) continue; while (KM.equip(S, bar, t)); }
       // estoque de armas (quartel + armazém)
       const have = {};
       for (const r of KM.WEAPONS) have[r] = (bar.inv[r] || 0) + (st.inv[r] || 0);
@@ -251,11 +270,12 @@
       let feasible = 0;
       const inv = Object.assign({}, have);
       for (const t of ORDER) {
+        if (!KM.soldierUnlocked(S, o, t)) continue;
         const c = KM.SOLDIERS[t].cost;
         while (Object.keys(c).every((r) => (inv[r] || 0) >= c[r])) { for (const r in c) inv[r] -= c[r]; feasible++; if (feasible > 40) break; }
       }
       const school = find(S, o, 'school');
-      if (school && school.queue.length < 5) {
+      if (school && school.queue.length < 3 && (st.inv.gold || 0) + (school.inv.gold || 0) > 3) {
         let rec = bar.recruits;
         for (const id in S.units) { const u = S.units[id]; if (u.owner === o && u.type === 'recruit' && !u.home) rec++; }
         for (const q of school.queue) if (q === 'recruit') rec++;
@@ -264,21 +284,28 @@
     }
     if (ai.strat === 'saque') raid(S, o, ai, st);
     if (S.time >= ai.next) {
-      const groups = Object.values(S.army).filter((g) => g.owner === o);
+      // Só conta tropas disponíveis, bem alimentadas e que não estão em outro ataque.
+      const groups = Object.values(S.army).filter((g) => g.owner === o && !g.stage && KM.groupUnits(S, g).every((u) => u.ai !== 'atk' && u.hunger > 40));
       let n = 0;
       for (const g of groups) n += g.m.length;
-      if (!ai.warned && n >= ai.attackN - 3) { ai.warned = true; if (KM.hostile(S, o, KM.me)) KM.notify(S, `👁️ Batedores relatam o exército de ${S.players[o].name} se reunindo...`, 'warn'); }
-      if (n >= ai.attackN) {
-        const def = groups.filter((g) => KM.groupUnits(S, g).every((u) => u.ai !== 'atk'));
+      const wanted = Math.min(ai.attackN, Math.round(24 * ai.mult));
+      const reserve = Math.min(Math.max(0, n - 4), Math.round(2 + ai.mult * 2));
+      const available = n - reserve;
+      const threshold = S.time - ai.next > 180 ? Math.max(4, Math.ceil(wanted * 0.65)) : wanted;
+      if (!ai.warned && available >= threshold - 3) { ai.warned = true; if (KM.hostile(S, o, KM.me)) KM.notify(S, `👁️ Batedores relatam o exército de ${S.players[o].name} se reunindo...`, 'warn'); }
+      if (available >= threshold) {
+        const def = groups;
         def.sort((a, b) => b.m.length - a.m.length || a.id - b.id);
         // envia os maiores grupos até somar o tamanho do ataque; o resto fica defendendo
         const send = []; let cnt = 0;
-        for (const g of def) { if (cnt >= ai.attackN * 1.15) break; send.push(g); cnt += g.m.length; }
+        for (const g of def) { if (cnt >= wanted || cnt + g.m.length > available) continue; send.push(g); cnt += g.m.length; }
+        // Um único grupo grande pode atacar; a reserva não deve impedir todas as ordens.
+        if (!send.length && def.length === 1) send.push(def[0]);
         let sent = 0;
         for (const g of send) for (const u of KM.groupUnits(S, g)) { u.ai = 'atk'; sent++; }
         // estratégia do reino: assalto, pinça (dois lados), cerco (torres primeiro) ou saque (com assalto principal)
         const strat = ai.strat === 'equilibrado' ? (ai.wave % 2 ? 'pinca' : 'assalto') : ai.strat || 'assalto';
-        const target = bestTarget(S, o, st.ex, st.ey, strat === 'cerco' ? 'siege' : null);
+        const target = strategicTarget(S, o) || bestTarget(S, o, st.ex, st.ey, strat === 'cerco' ? 'siege' : null);
         if (target && sent) {
           if (strat === 'pinca' && send.length >= 2) {
             launchAssault(S, o, ai, send.filter((g, i) => i % 2 === 0), { x: st.ex, y: st.ey }, target, 1);
@@ -289,8 +316,11 @@
           warnMe(S, o, `🚩 ${S.players[o].name} enviou ${sent} soldados para a batalha!`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
           if (target.owner === KM.me) KM.sfx && KM.sfx('horn');
         }
-        ai.attackN += 4; ai.warned = false;
-        ai.next = S.time + 90;
+        if (target && sent) {
+          ai.attackN = Math.min((ai.baseAttackN || 12) + ai.wave * 2, Math.round(24 * ai.mult));
+          ai.warned = false;
+          ai.next = S.time + Math.round(150 / ai.mult);
+        }
       }
     }
   }
@@ -298,7 +328,7 @@
   // ordem de um jogador humano competente, respeitando a árvore de progressão
   const WANT_FAIR = [
     ['woodcutter', 1], ['quarry', 1], ['sawmill', 1], ['woodcutter', 2], ['quarry', 2], ['inn', 1], ['farm', 1], ['farm', 2], ['mill', 1], ['bakery', 1],
-    ['weaponworkshop', 1], ['barracks', 1], ['coalmine', 1], ['goldmine', 1], ['goldsmelter', 1], ['quarry', 3], ['swine', 1], ['butcher', 1], ['tannery', 1], ['armorworkshop', 1],
+    ['market', 1], ['weaponworkshop', 1], ['barracks', 1], ['coalmine', 1], ['goldmine', 1], ['goldsmelter', 1], ['quarry', 3], ['swine', 1], ['butcher', 1], ['tannery', 1], ['armorworkshop', 1],
     ['farm', 3], ['woodcutter', 3], ['tower', 2], ['fisher', 1], ['ironmine', 1], ['ironsmithy', 1], ['weaponsmithy', 1], ['armorsmithy', 1], ['coalmine', 2],
     ['farm', 4], ['inn', 2], ['stables', 1], ['tower', 4], ['swine', 2], ['farm', 5],
   ];
@@ -306,16 +336,34 @@
   function planBuild(S, o, ai, st) {
     let sites = 0;
     for (const id in S.houses) { const h = S.houses[id]; if (h.owner === o && h.state !== 'built') sites++; }
-    if (sites >= (ai.mult >= 1.4 ? 3 : 2)) return;
+    const limit = ai.mult >= 1.4 ? 3 : 2;
+    if (sites > limit) return;
     const foe = nearestHostileHouse(S, o, st.ex, st.ey);
     const cx = KM.hcx(st), cy = KM.hcy(st);
-    for (const [t, n] of ai.fair ? WANT_FAIR : WANT) {
+    // Comida e reposição de ouro vêm antes da expansão militar, sem recursos gratuitos.
+    const priorities = [];
+    const food = Object.keys(KM.FOOD).reduce((n, r) => n + (st.inv[r] || 0), 0);
+    const citizens = Object.values(S.units).filter((u) => u.owner === o && !KM.isSoldier(u.type)).length;
+    if ((st.inv.stone || 0) < 18 || (st.inv.gold || 0) < 12) priorities.push(['market', 1]);
+    if ((st.inv.wood || 0) < 10) priorities.push(['woodcutter', Math.max(2, Math.ceil(citizens / 24))], ['sawmill', citizens > 40 ? 2 : 1]);
+    if ((st.inv.stone || 0) < 18) priorities.push(['quarry', Math.max(2, Math.ceil(citizens / 20))]);
+    const emergency = priorities.length;
+    if (food < 25) {
+      const farms = Math.max(2, Math.ceil(citizens / 14)), mills = Math.ceil(farms / 2);
+      priorities.push(['inn', Math.max(1, Math.ceil(citizens / 35))], ['farm', farms], ['mill', mills], ['bakery', mills], ['fisher', 1], ['vineyard', 1]);
+    }
+    if ((st.inv.gold || 0) < 16) priorities.push(['coalmine', 1], ['goldmine', 1], ['goldsmelter', 1]);
+    const plans = priorities.concat(WANT_FAIR);
+    for (let i = 0; i < plans.length; i++) {
+      if (sites >= limit && i >= emergency) break;
+      const [t, n] = plans[i];
       if (count(S, o, t) >= n) continue;
       if ((ai.fail[t + n] || 0) > S.time) continue;
-      if (ai.fair && KM.TECH[t] && !KM.TECH[t].every((r) => S.players[o].built[r])) continue;
+      if (!KM.houseUnlocked(S, o, t)) continue;
       let score = KM.spotScore(S, t);
       let R = 16;
       if (KM.HOUSES[t].mine) R = 24;
+      if (t === 'quarry') R = 28;
       if (t === 'tower' && foe) {
         const dl = Math.hypot(foe.ex - cx, foe.ey - cy) || 1;
         const tx = cx + ((foe.ex - cx) / dl) * 8, ty = cy + ((foe.ey - cy) / dl) * 8;
@@ -324,6 +372,7 @@
       const p = KM.findSpot(S, t, o, cx, cy, R, score);
       if (!p) { ai.fail[t + n] = S.time + 120; continue; }
       const h = KM.addHouse(S, t, o, p.x, p.y, false);
+      if (i < emergency) h.prio = true;
       KM.connectRoad(S, h, false);
       return;
     }
@@ -345,6 +394,9 @@
       }
       if (us.some((u) => u.order || u.target || u.path)) continue;
       const c = KM.groupCenter(S, g);
+      const site = (S.sites || []).find((s) => s.id === g.objective);
+      if (site && site.owner !== o && Math.hypot(c.x - site.x, c.y - site.y) > 2) { KM.orderGroups(S, [g], site.x, site.y, true); continue; }
+      if (site && site.owner === o) { for (const u of us) u.ai = 'def'; g.objective = null; continue; }
       const h = nearestHostileHouse(S, o, c.x, c.y);
       if (h) { KM.orderGroups(S, [g], h.ex, h.ey + 1, true); continue; }
       let best = null, bd = 1e9;

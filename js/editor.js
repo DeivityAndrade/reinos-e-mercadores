@@ -186,7 +186,7 @@
     mapData(S) {
       const m = S.map;
       return {
-        v: 1, W: m.W, H: m.H, terrain: m.terrain.slice(), hv: m.hv.map((h) => Math.round(h * 100) / 100), tree: m.tree.slice(), stone: m.stone.slice(), ore: m.ore.slice(), oreAmt: m.oreAmt.slice(),
+        v: 1, W: m.W, H: m.H, biome: m.biome || 'pradaria', terrain: m.terrain.slice(), hv: m.hv.map((h) => Math.round(h * 100) / 100), tree: m.tree.slice(), stone: m.stone.slice(), ore: m.ore.slice(), oreAmt: m.oreAmt.slice(),
         starts: S.edStarts.map((s) => ({ x: s.x, y: s.y })),
         houses: Object.values(S.houses).map((h) => ({ type: h.type, owner: h.owner, x: h.x, y: h.y })),
       };

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<title>Reinos & Mercadores · inspeção de fases</title>
+<style>
+  body { margin: 0; background: #231b15; color: #f3e3bf; font: 15px system-ui; }
+  header { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 16px; }
+  select, button { padding: 6px 10px; background: #483622; color: #ffe5a1; border: 1px solid #9a7952; border-radius: 5px; }
+  iframe { display: block; border: 0; width: 100vw; height: calc(100vh - 52px); }
+  small { opacity: .8; }
+</style>
+<header>
+  <b>Inspeção de fases</b>
+  <select id="phase" aria-label="Fase"><option value="t1">Tutorial completo</option></select>
+  <button id="load">Carregar fase</button>
+  <button id="map">Mostrar mapa</button>
+  <button id="site">Ir ao ponto estratégico</button>
+  <button id="play" disabled>Jogar esta fase</button>
+  <small>Prévia pausada · não avança a Conquista</small>
+</header>
+<iframe id="game" title="Prévia do jogo" src="../index.html"></iframe>
+<script>
+  const frame = document.querySelector('#game'), select = document.querySelector('#phase');
+  let KM, save;
+  frame.addEventListener('load', () => {
+    KM = frame.contentWindow.KM;
+    save = KM.save;
+    // Esta ferramenta só inspeciona estados iniciais. Evita autosaves durante a inspeção.
+    KM.save = () => {};
+    for (const m of KM.conquestList('normal')) { const opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.n + ' · ' + KM.BIOMES[m.biome].n; select.appendChild(opt); }
+    const chosen = new URLSearchParams(location.search).get('phase');
+    if (chosen && [...select.options].some((o) => o.value === chosen)) select.value = chosen;
+    load();
+    document.querySelector('#play').disabled = false;
+  });
+  function load() { KM.startGame({ mission: select.value, diff: 'normal', noTutorial: true }); KM.S.paused = true; }
+  document.querySelector('#load').addEventListener('click', load);
+  document.querySelector('#map').addEventListener('click', () => { frame.contentDocument.querySelector('#brief').classList.add('hidden'); KM.S.paused = true; KM.ui.setTab('goals'); });
+  document.querySelector('#site').addEventListener('click', () => { const s = KM.S.sites[0]; if (s) KM.R.centerOn(s.x, s.y); });
+  document.querySelector('#play').addEventListener('click', () => {
+    KM.save = save;
+    load();
+    document.title = 'Reinos & Mercadores · ' + KM.findMission(select.value, 'normal').n;
+    document.querySelector('header').hidden = true;
+    document.querySelector('header').style.display = 'none';
+    frame.style.height = '100vh';
+    frame.title = 'Jogo';
+  });
+</script>
+</html>
