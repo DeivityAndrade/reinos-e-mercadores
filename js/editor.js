@@ -42,6 +42,8 @@
         const d = name && this.loadMapData(name);
         if (!name) { KM.ui.toast('Escolha um mapa salvo.', 'warn'); return; }
         if (!d) return;
+        const result = KM.validateMapData(d);
+        if (!result.ok) { KM.ui.toast(`Mapa salvo "${name}" inválido: ${result.error}`, 'danger'); return; }
         S = this.blankState(d.W, d.H, 0);
         const { m } = KM.mapFromData(d, 7);
         m.explored.fill(15);

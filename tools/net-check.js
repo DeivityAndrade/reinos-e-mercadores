@@ -4,7 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const src = fs.readFileSync(path.resolve(__dirname, '..', 'js', 'net.js'), 'utf8');
+// net.js valida partida e comandos com KM.DIFF (config.js) e KM.validCommand (cmd.js), como no navegador
+const load = (f) => ({ f, src: fs.readFileSync(path.resolve(__dirname, '..', 'js', f), 'utf8') });
+const libs = [load('config.js'), load('cmd.js')], netSrc = load('net.js');
 
 class FakePC {
   constructor() { this.iceGatheringState = 'complete'; this.localDescription = { sdp: 'x' }; }
@@ -17,10 +19,12 @@ class FakePC {
 }
 // um "navegador": contexto isolado com seu próprio KM e sua própria instância de net
 function client(me) {
-  const KM = { me, ui: { toast() {} }, esc: (s) => s, COLORS: [], started: null, startGame(o) { KM.started = o; } };
+  const KM = {};
   const ctx = { window: { KM }, document: { querySelector: () => null }, performance, setInterval: () => 1, clearInterval() {}, setTimeout, RTCPeerConnection: FakePC, console, JSON, Math, Object, Number, String, Array };
   vm.createContext(ctx);
-  vm.runInContext(src, ctx, { filename: 'net.js' });
+  for (const l of libs) vm.runInContext(l.src, ctx, { filename: l.f });
+  Object.assign(KM, { me, ui: { toast() {} }, esc: (s) => s, COLORS: [], started: null, startGame(o) { KM.started = o; } });
+  vm.runInContext(netSrc.src, ctx, { filename: netSrc.f });
   const net = KM.net;
   net.got = [];
   const on = net.onMsg.bind(net);
@@ -39,7 +43,7 @@ function room(n) {
     g.net.peers[0] = { id: 'h', o: 0, dc: channel(host, s), ping: 0 };
     guests.push(g);
   }
-  const opts = { mp: true, humans: n, teams: 'versus' };
+  const opts = { mp: true, humans: n, teams: 'versus', diff: 'normal', opponents: 0, aiMode: 'economy', seed: 12345 };
   host.net.begin(opts, 0);
   guests.forEach((g, i) => g.net.begin(opts, i + 1));
   return { host, guests, all: [host, ...guests] };
@@ -48,7 +52,7 @@ function room(n) {
 function run(c, upTo) {
   while (c.t <= upTo && c.net.ready(c.t)) {
     c.log[c.t] = JSON.stringify(c.net.take(c.t));
-    c.net.queue({ c: 'move', t: c.t });
+    assert.equal(c.net.queue({ c: 'move', g: [1], x: c.t % 10, y: 1, o: c.KM.me }), true);
     c.net.send(c.t);
     c.t++;
   }
