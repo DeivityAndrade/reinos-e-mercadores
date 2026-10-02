@@ -3,7 +3,9 @@
 # Arquivos grandes (músicas) vão em pedaços de até 1 MB (Range/206), para o servidor nunca ficar preso
 # enviando um arquivo inteiro enquanto o navegador pede outras coisas.
 param([int]$Port = 8080)
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = [IO.Path]::GetFullPath((Split-Path -Parent $MyInvocation.MyCommand.Path))
+$root = $root.TrimEnd([char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar))
+$rootPrefix = $root + [IO.Path]::DirectorySeparatorChar
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Start()
@@ -16,7 +18,10 @@ while ($listener.IsListening) {
     $path = [Uri]::UnescapeDataString($ctx.Request.Url.AbsolutePath.TrimStart('/'))
     if ($path -eq '') { $path = 'index.html' }
     $full = [IO.Path]::GetFullPath((Join-Path $root $path))
-    if ($full.StartsWith($root) -and (Test-Path $full -PathType Leaf)) {
+    # O separador evita que um diretório irmão como "${root}-externo" passe no prefixo.
+    $insideRoot = $full.Equals($root, [StringComparison]::OrdinalIgnoreCase) -or
+      $full.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)
+    if ($insideRoot -and (Test-Path $full -PathType Leaf)) {
       $ext = [IO.Path]::GetExtension($full).ToLower()
       $res = $ctx.Response
       $res.ContentType = if ($types[$ext]) { $types[$ext] } else { 'application/octet-stream' }
