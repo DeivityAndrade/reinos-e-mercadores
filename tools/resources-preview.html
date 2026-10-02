@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pedras e minérios · prévia no jogo</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #f4e8ce; background: #241f19; font: 15px system-ui; }
+  header { min-height: 78px; padding: 14px 24px; display: flex; gap: 24px; align-items: center; justify-content: space-between; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 0; color: #c0b59f; font-size: 13px; }
+  nav { display: flex; gap: 8px; }
+  button { background: #443b2e; color: #f4e8ce; border: 1px solid #8a7757; border-radius: 5px; padding: 9px 15px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  iframe { display: block; border: 0; width: 100%; height: calc(100vh - 78px); }
+  #status { position: fixed; bottom: 18px; left: 24px; padding: 10px 14px; border: 1px solid #887856; border-radius: 5px; background: #241f19e8; font-size: 13px; }
+  @media(max-width: 700px) { header { padding: 10px; gap: 8px; } h1 { font-size: 16px; } p { display: none; } button { padding: 8px; } }
+</style>
+<header>
+  <div><h1>Pedras e minérios — formas naturais</h1><p>Cena de avaliação no motor do jogo · terreno, sombras e material do jogo · partida pausada</p></div>
+  <nav aria-label="Câmera"><button id="close" disabled>Ver de perto</button><button id="wide" disabled>Vista do jogo</button></nav>
+</header>
+<iframe id="game" title="Recursos no cenário de Reinos e Mercadores" src="../index.html"></iframe>
+<output id="status" data-state="loading">Carregando o cenário…</output>
+<script>
+  const frame = document.querySelector('#game'), status = document.querySelector('#status');
+  const buttons = [...document.querySelectorAll('button')];
+  let KM;
+  const fail = error => { status.dataset.state = 'error'; status.textContent = 'Falha na prévia: ' + error.message; console.error(error); };
+  frame.addEventListener('load', () => {
+    KM = frame.contentWindow.KM;
+    if (!KM) return fail(new Error('O jogo não inicializou'));
+    // Changes apply to this disposable iframe session only; no saves/progress.
+    KM.save = () => {};
+    KM.input.update = () => {};
+    const deadline = Date.now() + 90000;
+    const ready = setInterval(() => {
+      if (KM.R.ready) { clearInterval(ready); build().catch(fail); }
+      else if (Date.now() > deadline) { clearInterval(ready); fail(new Error('Tempo de carregamento esgotado')); }
+    }, 100);
+  });
+  async function build() {
+    const T = frame.contentWindow.THREE, R = KM.R;
+    const keys = Object.keys(R.resourceModels), names = Object.values(R.resourceModels);
+    for (const key of keys) if (!R.gltf[key] || !R.inst[key].geo.getAttribute('color')) throw new Error(R.resourceModels[key] + ': asset indisponível');
+    KM.startGame({ seed: 4, opponents: 1, diff: 'normal', noTutorial: true, allUnlocked: true });
+    const S = KM.S, m = S.map;
+    S.paused = true;
+    for (let y = 52; y <= 65; y++) for (let x = 19; x <= 32; x++) {
+      const i = y * m.W + x;
+      if (m.house[i]) continue;
+      m.terrain[i] = 0; m.tree[i] = 0; m.stone[i] = 0; m.ore[i] = 0; m.oreAmt[i] = 0; m.field[i] = 0;
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) m.hv[(y + dy) * (m.W + 1) + x + dx] = 1.3;
+    }
+    KM.addHouse(S, 'quarry', 0, 21, 54, true);
+    KM.addHouse(S, 'woodcutter', 0, 28, 54, true);
+    for (let x = 21; x <= 30; x++) { const i = 57 * m.W + x; if (!m.house[i]) { m.road[i] = 2; m.rown[i] = 0; m.rmat[i] = 2; } }
+    for (const [x, y, amount] of [[21, 61, 7], [22, 61, 6], [22, 60, 5], [23, 61, 3], [21, 60, 4]]) m.stone[y * m.W + x] = amount;
+    for (let ore = 1; ore <= 3; ore++) {
+      const x = 23 + ore * 2;
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, -1]]) { const i = (61 + dy) * m.W + x + dx; m.terrain[i] = 2; m.ore[i] = ore; m.oreAmt[i] = 20; }
+    }
+    for (const [x, y] of [[19, 55], [19, 54], [31, 55], [32, 53], [29, 52]]) m.tree[y * m.W + x] = 4;
+    m.explored.fill(255);
+    R.buildBase(S);
+    R.fogDirty = true; R.objDirty = true; R.decalDirty = true;
+    const doc = frame.contentDocument;
+    const style = doc.createElement('style');
+    style.textContent = '#hud,#menu,#brief,#endscreen,#overlay,#rotatehint,#tutor,.toast {display:none!important}';
+    doc.head.appendChild(style);
+    camera(new URLSearchParams(location.search).get('view') !== 'wide');
+    for (let i = 0; i < 3; i++) R.frame(S, .016, KM.ui);
+    const resourceMeshes = [];
+    R.objGroup.traverse(o => { if (o.isInstancedMesh && Object.values(R.inst).some(src => src.geo === o.geometry) && keys.some(key => R.inst[key].geo === o.geometry)) resourceMeshes.push(o); });
+    const triangles = resourceMeshes.reduce((sum, o) => sum + o.count * o.geometry.index.count / 3, 0);
+    if (!resourceMeshes.length || !R.renderer.info.render.calls) throw new Error('Os recursos não foram desenhados');
+    status.dataset.state = 'ready';
+    status.dataset.models = names.length;
+    status.dataset.triangles = triangles;
+    status.dataset.drawCalls = R.renderer.info.render.calls;
+    status.textContent = 'Da esquerda para a direita: pedras · carvão · ferro · ouro';
+    buttons.forEach(button => button.disabled = false);
+  }
+  function camera(close) {
+    KM.R.focus.x = close ? 25.2 : 24.5;
+    KM.R.focus.y = close ? 60.1 : 58.5;
+    KM.R.dist = close ? 13 : 20;
+    KM.R.pitch = close ? .73 : .88;
+    KM.R.yaw = .10;
+    KM.R.fy = null;
+    status.dataset.view = close ? 'close' : 'wide';
+  }
+  document.querySelector('#close').addEventListener('click', () => camera(true));
+  document.querySelector('#wide').addEventListener('click', () => camera(false));
+</script>
+</html>
