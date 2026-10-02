@@ -186,6 +186,7 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
   - Tudo isso é um pós-processamento próprio.
 - **Natureza facetada:**
   - Carvalhos, pinheiros, arbustos floridos, capim, rochas com musgo e minério aparente.
+  - Pedras, carvão, ferro e ouro usam assets próprios feitos no Blender (`assets/own/resources`), com fraturas e cores minerais. O renderer mantém instâncias e material toon, com alternativa procedural se um arquivo não carregar.
   - Montanhas rochosas com estratos e fendas, e trigo balançando ao vento.
   - Chão com pinceladas e manchas de capim seco e relva fresca.
   - Água pintada: turquesa na margem, azul-profundo no meio, espuma batendo na costa.

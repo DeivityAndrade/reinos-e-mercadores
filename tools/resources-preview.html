@@ -41,18 +41,8 @@
   });
   async function build() {
     const T = frame.contentWindow.THREE, R = KM.R;
-    const names = ['stone_A', 'stone_B', 'stone_C', 'stone_D', 'stone_E', 'coal', 'ironore', 'goldore'];
-    const keys = ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E', 'ore1', 'ore2', 'ore3'];
-    await Promise.all(names.map(async (name, i) => {
-      const revision = name === 'coal' ? 'coal-fractured-3' : 'natural-2';
-      const gltf = await R.loader.loadAsync('../assets/own/resources/' + name + '.glb?v=' + revision);
-      gltf.scene.updateMatrixWorld(true);
-      const meshes = [];
-      gltf.scene.traverse(o => { if (o.isMesh) meshes.push(o); });
-      if (meshes.length !== 1 || !meshes[0].geometry.getAttribute('color')) throw new Error(name + ': malha ou cores ausentes');
-      const mesh = meshes[0], geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
-      R.inst[keys[i]] = { geo: geometry, mat: KM.ART.toonify(mesh.material) };
-    }));
+    const keys = Object.keys(R.resourceModels), names = Object.values(R.resourceModels);
+    for (const key of keys) if (!R.gltf[key] || !R.inst[key].geo.getAttribute('color')) throw new Error(R.resourceModels[key] + ': asset indisponível');
     KM.startGame({ seed: 4, opponents: 1, diff: 'normal', noTutorial: true, allUnlocked: true });
     const S = KM.S, m = S.map;
     S.paused = true;

@@ -52,6 +52,7 @@
     ready: false, progress: 0, S: null, showGrid: false, sprites: {}, vis: { x0: 0, x1: 0, y0: 0, y1: 0 },
     focus: { x: 40, y: 40 }, dist: 20, yaw: 0, pitch: 0.9, time: 0,
     gltf: {}, proto: {},
+    resourceModels: { rock_single_A: 'stone_A', rock_single_B: 'stone_B', rock_single_C: 'stone_C', rock_single_D: 'stone_D', rock_single_E: 'stone_E', ore1: 'coal', ore2: 'ironore', ore3: 'goldore' },
 
     // ================= inicialização =================
     init(canvas) {
@@ -207,8 +208,9 @@
     // ================= carregamento dos modelos =================
     async loadAll() {
       const list = [];
-      // construções, árvores, rochas e montanhas são arte própria (art.js); daqui vêm só personagens, animais e itens carregados
+      // Construções e vegetação vêm de art.js; pedras e minérios são assets próprios do Blender.
       for (const n of ['cloud_big', 'cloud_small']) list.push([n, `${AS}decoration/nature/${n}.gltf`]);
+      for (const [key, name] of Object.entries(this.resourceModels)) list.push([key, `assets/own/resources/${name}.glb?v=blender-resources-1`]);
 
       for (const n of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded']) list.push([n, `assets/kaykit/chars/${n}.glb`]);
       list.push(['horse', 'assets/quaternius/horse.glb'], ['pig', 'assets/quaternius/pig.glb']);
@@ -261,6 +263,7 @@
         ore1: { geo: N.ore1, mat: rockM }, ore2: { geo: N.ore2, mat: rockM }, ore3: { geo: N.ore3, mat: rockM },
         grain: { geo: N.grain, mat: wheatWind }, grainG: { geo: N.grainG, mat: wheatWind },
       };
+      this.prepareResources();
       // esqueleto de referência (posição de cada osso na pose de ligação) para os personagens próprios
       this.rig = {};
       for (const k of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded', 'horse', 'pig']) {
@@ -277,6 +280,20 @@
       this.charH = this.proto.Knight ? this.proto.Knight.size.y : 2.4;
       this.makeTextures();
       try { this.makeHouseIcons(); } catch (e) { console.warn("ícones", e); }
+    },
+    prepareResources() {
+      for (const key in this.resourceModels) {
+        const gltf = this.gltf[key];
+        if (!gltf) continue; // O modelo procedural permanece se o asset não carregar.
+        const meshes = [];
+        gltf.scene.traverse((o) => { if (o.isMesh) meshes.push(o); });
+        if (meshes.length !== 1 || !meshes[0].geometry.getAttribute('color') || Array.isArray(meshes[0].material)) {
+          console.warn('Asset de recurso inválido; usando modelo procedural', this.resourceModels[key]);
+          continue;
+        }
+        const mesh = meshes[0];
+        this.inst[key] = { geo: mesh.geometry.clone().applyMatrix4(mesh.matrixWorld), mat: mesh.material };
+      }
     },
     // miniaturas das construções (renderizadas das próprias casas 3D) para os ícones da interface
     makeHouseIcons() {
