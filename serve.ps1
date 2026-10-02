@@ -4,8 +4,11 @@
 # enviando um arquivo inteiro enquanto o navegador pede outras coisas.
 param([int]$Port = 8080)
 $root = [IO.Path]::GetFullPath((Split-Path -Parent $MyInvocation.MyCommand.Path))
-$root = $root.TrimEnd([char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar))
-$rootPrefix = $root + [IO.Path]::DirectorySeparatorChar
+$rootPrefix = if ($root.EndsWith([IO.Path]::DirectorySeparatorChar) -or $root.EndsWith([IO.Path]::AltDirectorySeparatorChar)) {
+  $root
+} else {
+  $root + [IO.Path]::DirectorySeparatorChar
+}
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Start()
