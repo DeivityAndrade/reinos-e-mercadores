@@ -44,7 +44,8 @@
     const names = ['stone_A', 'stone_B', 'stone_C', 'stone_D', 'stone_E', 'coal', 'ironore', 'goldore'];
     const keys = ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E', 'ore1', 'ore2', 'ore3'];
     await Promise.all(names.map(async (name, i) => {
-      const gltf = await R.loader.loadAsync('../assets/own/resources/' + name + '.glb?v=natural-2');
+      const revision = name === 'coal' ? 'coal-fractured-3' : 'natural-2';
+      const gltf = await R.loader.loadAsync('../assets/own/resources/' + name + '.glb?v=' + revision);
       gltf.scene.updateMatrixWorld(true);
       const meshes = [];
       gltf.scene.traverse(o => { if (o.isMesh) meshes.push(o); });

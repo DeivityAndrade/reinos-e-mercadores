@@ -1,6 +1,7 @@
 """Original weathered resources. Run with Blender --background --python this_file.
 
 Arguments after --: --only stone_A goldore (optional representative build).
+Use --update-coal to replace only coal inside the existing approved pack.
 """
 import argparse
 import json
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Vector, Euler
 from mathutils import noise
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,7 @@ OUT = ROOT / "assets" / "own" / "resources"
 OUT.mkdir(parents=True, exist_ok=True)
 parser = argparse.ArgumentParser()
 parser.add_argument("--only", nargs="+")
+parser.add_argument("--update-coal", action="store_true")
 args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
 bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.delete(use_global=False)
@@ -88,7 +90,78 @@ def rock_shape(seed, width, depth, height):
     return mesh
 
 
+def make_coal(seed, dimensions):
+    vertices, faces = [], []
+    # Five closed chunks with broad cleavage planes, chipped edges and deep
+    # gaps: coal reads from its silhouette and whole dark mass at game scale.
+    chunks = [
+        ((-.067, .020, .066), (.180, .155, .125), (-.10, .15, .22)),
+        ((.068, .018, .086), (.125, .140, .165), (.12, -.15, -.32)),
+        ((.014, -.077, .036), (.130, .095, .072), (.05, .18, .48)),
+        ((-.025, .035, .128), (.095, .095, .075), (-.12, .25, -.18)),
+        ((-.104, -.059, .025), (.075, .070, .050), (.10, -.05, -.48)),
+    ]
+    for index, (position, scale, rotation) in enumerate(chunks):
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1)
+        bmesh.ops.bevel(bm, geom=list(bm.edges), offset=.06 + index * .006,
+                       segments=1, profile=.5, affect="EDGES", clamp_overlap=True)
+        normal = Vector((.24 + index * .07, -.31, 1)).normalized()
+        bmesh.ops.bisect_plane(bm, geom=list(bm.verts) + list(bm.edges) + list(bm.faces),
+                               plane_co=normal * .41, plane_no=normal, dist=1e-6, clear_outer=True)
+        boundary = [edge for edge in bm.edges if edge.is_boundary]
+        if boundary:
+            bmesh.ops.holes_fill(bm, edges=boundary, sides=0)
+        bmesh.ops.triangulate(bm, faces=list(bm.faces))
+        bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+        assert all(edge.is_manifold for edge in bm.edges)
+        bm.verts.index_update()
+        transform = Euler(rotation).to_matrix()
+        offset = len(vertices)
+        for vertex in bm.verts:
+            p = transform @ Vector(tuple(vertex.co[i] * scale[i] for i in range(3))) + Vector(position)
+            vertices.append(tuple(p))
+        faces.extend(tuple(offset + vertex.index for vertex in face.verts) for face in bm.faces)
+        bm.free()
+    low = [min(p[i] for p in vertices) for i in range(3)]
+    high = [max(p[i] for p in vertices) for i in range(3)]
+    vertices = [tuple((p[i] - (low[i] if i == 2 else (low[i] + high[i]) / 2))
+                      / (high[i] - low[i]) * dimensions[i] for i in range(3)) for p in vertices]
+    mesh = bpy.data.meshes.new("coal_mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    assert not mesh.validate()
+    colors = mesh.color_attributes.new(name="Color", type="FLOAT_COLOR", domain="CORNER")
+    for face in mesh.polygons:
+        # Narrow chips catch light; large fracture planes remain charcoal.
+        bevel = max(abs(value) for value in face.normal) < .91
+        rgb = linear("#333639" if bevel else "#232629" if face.normal.z > .2 else "#15181b")
+        for loop in face.loop_indices:
+            p = mesh.vertices[mesh.loops[loop].vertex_index].co
+            layer = math.sin((p.z + p.x * .11) * 230)
+            shade = .89 + field(p, 125, seed) * .10 + layer * .07
+            colors.data[loop].color = (*(value * shade for value in rgb), 1)
+    coal_material = bpy.data.materials.new("Coal_Fractured_Anthracite")
+    coal_material.use_nodes = True
+    shader = next(node for node in coal_material.node_tree.nodes if node.type == "BSDF_PRINCIPLED")
+    shader.inputs["Roughness"].default_value = .48
+    shader.inputs["Specular IOR Level"].default_value = .38
+    attribute = coal_material.node_tree.nodes.new("ShaderNodeVertexColor")
+    attribute.layer_name = "Color"
+    coal_material.node_tree.links.new(attribute.outputs["Color"], shader.inputs["Base Color"])
+    mesh.materials.append(coal_material)
+    obj = bpy.data.objects.new("coal", mesh)
+    bpy.context.collection.objects.link(obj)
+    obj["resource"] = "coal"
+    obj["authoring"] = "Original / Blender / Reinos & Mercadores"
+    obj["pivot"] = "ground center; Blender Z-up, exported glTF Y-up"
+    obj["design"] = "Five fractured charcoal chunks; no grey host rock"
+    return obj
+
+
 def make_asset(name, seed, dimensions, ore=None):
+    if ore == "coal":
+        return make_coal(seed, dimensions)
     mesh = rock_shape(seed, *dimensions)
     mesh.name = name + "_mesh"
     obj = bpy.data.objects.new(name, mesh)
@@ -130,8 +203,7 @@ def make_asset(name, seed, dimensions, ore=None):
                 # Continuous geological fields across shared vertices: mineral
                 # seams stay embedded instead of becoming triangular decals.
                 band = abs(p.z + .34 * p.x + coarse * .08 - .57)
-                mineral = (band < .12 if ore == "coal" else
-                           coarse > .05 and p.z > .22 if ore == "ironore" else
+                mineral = (coarse > .05 and p.z > .22 if ore == "ironore" else
                            band < .035 or abs(p.x - .26 * p.z + coarse * .05 + .06) < .025)
                 if mineral:
                     base = ORE[ore][0 if grain < .12 else 1]
@@ -154,12 +226,8 @@ SPECS = [
     ("ironore", 22, (.32, .25, .22), "ironore"),
     ("goldore", 23, (.30, .27, .22), "goldore"),
 ]
-assets, manifest = [], []
-for name, seed, dimensions, ore in SPECS:
-    if args.only and name not in args.only:
-        continue
-    obj = make_asset(name, seed, dimensions, ore)
-    assets.append(obj)
+def export_asset(obj):
+    name = obj.name
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
@@ -171,9 +239,58 @@ for name, seed, dimensions, ore in SPECS:
                                Vector([max(v.co[i] for v in obj.data.vertices) for i in range(3)]))]
     assert abs(bounds[0][2]) < 1e-6 and all(math.isfinite(x) for b in bounds for x in b)
     assert len(obj.data.loop_triangles) < 1800
-    manifest.append({"name": name, "file": name + ".glb", "resource": ore or "stone",
+    return {"name": name, "file": name + ".glb", "resource": obj["resource"],
                      "vertices": len(obj.data.vertices), "triangles": len(obj.data.loop_triangles),
-                     "bounds_blender": bounds, "bytes": (OUT / (name + ".glb")).stat().st_size})
+                     "bounds_blender": bounds, "bytes": (OUT / (name + ".glb")).stat().st_size}
+
+
+def render_coal_preview():
+    scene = bpy.context.scene
+    camera = scene.camera
+    original = (camera.location.copy(), camera.rotation_euler.copy(), camera.data.ortho_scale)
+    hidden = [(obj, obj.hide_render) for obj in scene.objects
+              if obj.get("resource") and obj.name != "coal" or obj.type == "FONT" and obj.name != "Label_coal"]
+    for obj, _ in hidden:
+        obj.hide_render = True
+    obj = bpy.data.objects["coal"]
+    camera.location = obj.location + Vector((.50, -.70, .54))
+    camera.rotation_euler = (obj.location + Vector((0, -.035, .06)) - camera.location).to_track_quat("-Z", "Y").to_euler()
+    camera.data.ortho_scale = .64
+    scene.render.filepath = str(OUT / "coal-preview.png")
+    bpy.ops.render.render(write_still=True)
+    for obj, value in hidden:
+        obj.hide_render = value
+    camera.location, camera.rotation_euler, camera.data.ortho_scale = original
+
+
+if args.update_coal:
+    bpy.ops.wm.open_mainfile(filepath=str(OUT / "resources.blend"))
+    bpy.context.preferences.filepaths.save_version = 0
+    old = bpy.data.objects["coal"]
+    location, rotation, scale = old.location.copy(), old.rotation_euler.copy(), old.scale.copy()
+    old_mesh = old.data
+    bpy.data.objects.remove(old, do_unlink=True)
+    bpy.data.meshes.remove(old_mesh)
+    obj = make_coal(21, (.31, .27, .19))
+    record = export_asset(obj)
+    obj.location, obj.rotation_euler, obj.scale = location, rotation, scale
+    manifest = json.loads((OUT / "manifest.json").read_text(encoding="utf-8"))
+    manifest["assets"] = [record if asset["name"] == "coal" else asset for asset in manifest["assets"]]
+    (OUT / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+    bpy.ops.wm.save_as_mainfile(filepath=str(OUT / "resources.blend"))
+    bpy.context.scene.render.filepath = str(OUT / "resources-preview.png")
+    bpy.ops.render.render(write_still=True)
+    render_coal_preview()
+    print("COAL_UPDATE_CHECK", json.dumps(record))
+    sys.exit(0)
+
+assets, manifest = [], []
+for name, seed, dimensions, ore in SPECS:
+    if args.only and name not in args.only:
+        continue
+    obj = make_asset(name, seed, dimensions, ore)
+    assets.append(obj)
+    manifest.append(export_asset(obj))
 
 # Presentation objects stay in a separate collection and never enter exports.
 presentation = bpy.data.collections.new("Presentation_only")
@@ -254,3 +371,5 @@ bpy.ops.render.render(write_still=True)
     "coordinate_system": "GLB: Y up; pivot at ground; dimensions in game units",
     "assets": manifest}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 print("RESOURCE_CHECK", json.dumps(manifest))
+if any(obj.name == "coal" for obj in assets):
+    render_coal_preview()

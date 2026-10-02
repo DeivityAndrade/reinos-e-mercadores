@@ -50,6 +50,16 @@ for (const asset of manifest.assets) {
   assert(positions.flat().every(Number.isFinite));
   assert(colors.flat().every(Number.isFinite));
   assert(new Set(colors.map(c => c.join(','))).size >= 3, 'palette lost');
+  if (asset.name === 'coal') {
+    const accessor = gltf.accessors[p.attributes.COLOR_0];
+    const divisor = accessor.normalized ? (accessor.componentType === 5121 ? 255 : 65535) : 1;
+    const luminance = colors.map(c => (.2126 * c[0] + .7152 * c[1] + .0722 * c[2]) / divisor);
+    assert(luminance.reduce((sum, value) => sum + value, 0) / luminance.length < .03, 'coal became a pale host rock');
+    assert(luminance.filter(value => value < .06).length / luminance.length > .95, 'coal must read as a dark mass');
+    assert(colors.every(c => (Math.max(...c.slice(0, 3)) - Math.min(...c.slice(0, 3))) / divisor < .025), 'coal palette must remain near neutral');
+    const material = gltf.materials[p.material];
+    assert(material.pbrMetallicRoughness.roughnessFactor >= .4 && material.pbrMetallicRoughness.roughnessFactor < .65, 'coal should have restrained sheen');
+  }
   assert(Math.abs(Math.min(...positions.map(p => p[1]))) < 1e-6, 'Y-up ground pivot');
   assert(Math.max(...positions.map(p => p[1])) > .1);
   for (const n of normals) assert(Math.abs(Math.hypot(...n) - 1) < .0001);
@@ -67,6 +77,10 @@ assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
 assert.equal(png.readUInt32BE(16), 1600);
 assert.equal(png.readUInt32BE(20), 1000);
 assert(fs.statSync(path.join(dir, 'resources.blend')).size > 10000);
+const coalPreview = fs.readFileSync(path.join(dir, 'coal-preview.png'));
+assert.equal(coalPreview.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+assert.equal(coalPreview.readUInt32BE(16), 1600);
+assert.equal(coalPreview.readUInt32BE(20), 1000);
 const screenshotPath = path.join(dir, 'resources-in-game-close.png');
 if (fs.existsSync(screenshotPath)) {
   const screenshot = fs.readFileSync(screenshotPath);

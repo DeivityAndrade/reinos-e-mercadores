@@ -6,12 +6,14 @@ Este pacote está em avaliação; ainda não substitui os modelos do jogo.
 
 - `resources.blend`: conjunto editável, com cores por vértice e cena de apresentação.
 - `stone_A.glb` a `stone_E.glb`: cinco silhuetas, de lajes baixas a rochas verticais, com musgo discreto.
-- `coal.glb`: carvão escuro em uma camada contínua na rocha.
+- `coal.glb`: cinco blocos de carvão negro com faces de fratura, arestas
+  lascadas e fissuras entre os blocos; toda a massa é carvão, sem rocha cinza.
+- `coal-preview.png`: aproximação do carvão revisado, renderizada no Blender.
 - `ironore.glb`: depósitos irregulares em tons de ferrugem.
 - `goldore.glb`: veios dourados cruzando a superfície.
 - `resources-preview.png`: apresentação renderizada, 1600 × 1000 pixels.
 - `manifest.json`: contagens e dimensões reais de cada exportação.
-- `resources-in-game-close.png`: captura gerada da página de avaliação,
+- `resources-in-game-close.png`: captura anterior à revisão do carvão, gerada da página de avaliação,
   carregando o motor real do jogo. A imagem não foi aberta para inspeção
   visual, conforme solicitado pelo usuário.
 
@@ -56,6 +58,15 @@ triângulos por asset. O verificador lê os buffers reais dos GLBs e confere
 dependências externas e estrutura dos arquivos de entrega. Esta revisão
 tem aproximadamente 1140–1192 triângulos por recurso: mais detalhes que
 a versão inicial. Ainda não houve benchmark de uma partida completa.
+
+O carvão revisado tem 252 triângulos e material com brilho discreto. Sua
+paleta escura e faces mais claras também funcionam na conversão toon da
+prévia. Os sete GLBs já aprovados foram preservados. Para atualizar apenas
+o carvão no conjunto existente, sem reconstruir os outros recursos:
+
+```powershell
+& 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe' --background --factory-startup --python-exit-code 1 --python tools/create-resources.py -- --update-coal
+```
 
 O teste da página usa o GLTFLoader, a simulação e InstancedMesh reais,
 com DOM e chamadas WebGL simulados. Verifica oito modelos, cena pausada,
