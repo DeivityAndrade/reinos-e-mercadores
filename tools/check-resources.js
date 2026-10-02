@@ -45,7 +45,7 @@ for (const asset of manifest.assets) {
   const positions = read(p.attributes.POSITION), colors = read(p.attributes.COLOR_0), normals = read(p.attributes.NORMAL);
   const indices = read(p.indices).flat();
   assert.equal(indices.length / 3, asset.triangles);
-  assert(asset.triangles < 400);
+  assert(asset.triangles < 1800);
   assert.equal(colors.length, positions.length);
   assert(positions.flat().every(Number.isFinite));
   assert(colors.flat().every(Number.isFinite));
@@ -67,4 +67,12 @@ assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
 assert.equal(png.readUInt32BE(16), 1600);
 assert.equal(png.readUInt32BE(20), 1000);
 assert(fs.statSync(path.join(dir, 'resources.blend')).size > 10000);
+const screenshotPath = path.join(dir, 'resources-in-game-close.png');
+if (fs.existsSync(screenshotPath)) {
+  const screenshot = fs.readFileSync(screenshotPath);
+  assert.equal(screenshot.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(screenshot.readUInt32BE(16), 1600);
+  assert.equal(screenshot.readUInt32BE(20), 1000);
+  console.log('Screenshot PNG: 1600 x 1000 (file structure only; no visual inspection)');
+}
 console.log('PASS: exports and preview file structure');

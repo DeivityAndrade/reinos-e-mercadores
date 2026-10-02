@@ -1,17 +1,17 @@
-"""Original faceted resources. Run with Blender --background --python this_file.
+"""Original weathered resources. Run with Blender --background --python this_file.
 
 Arguments after --: --only stone_A goldore (optional representative build).
 """
 import argparse
 import json
 import math
-import random
 import sys
 from pathlib import Path
 
 import bmesh
 import bpy
 from mathutils import Vector
+from mathutils import noise
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets" / "own" / "resources"
@@ -45,67 +45,63 @@ color_node.layer_name = "Color"
 material.node_tree.links.new(color_node.outputs["Color"], shader.inputs["Base Color"])
 
 
-def rock_shape(seed, width, depth, height, sides=7):
-    rng = random.Random(seed)
-    vertices, faces = [], []
-    radii = [rng.uniform(0.86, 1.13) for _ in range(sides)]
-    # Offset stratified rings form chipped shoulders and a broad, irregular crown.
-    for level, (z, radius, twist) in enumerate([(0, .78, 0), (.26, 1, .04), (.73, .91, -.07), (1, .56, .13)]):
-        for i in range(sides):
-            a = i * math.tau / sides + twist
-            r = radius * radii[i] * rng.uniform(.92, 1.07)
-            vertices.append((math.cos(a) * width * .5 * r + level * width * .025,
-                             math.sin(a) * depth * .5 * r,
-                             height * (z + (rng.uniform(-.07, .06) if level else 0))))
-    faces.append(tuple(reversed(range(sides))))
-    for level in range(3):
-        for i in range(sides):
-            a, b = level * sides + i, level * sides + (i + 1) % sides
-            c, d = b + sides, a + sides
-            faces.extend([(a, b, c), (a, c, d)])
-    vertices.append((width * .08, -depth * .04, height * 1.04))
-    for i in range(sides):
-        faces.append((3 * sides + i, 3 * sides + (i + 1) % sides, len(vertices) - 1))
-    return vertices, faces
+def field(p, frequency, seed):
+    return noise.noise_vector(p * frequency + Vector((seed * .73, seed * 1.17, seed * .41)))[0]
+
+
+def rock_shape(seed, width, depth, height):
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=5, radius=1)
+    for vertex in bm.verts:
+        p = vertex.co.copy()
+        # Broad asymmetric masses, chipped ridges, and shallow weathering.
+        boxiness = max(abs(p.x), abs(p.y), abs(p.z)) ** -.28
+        broad = field(p, 1.6, seed)
+        fine = field(p, 8, seed)
+        fissure = abs(p.x * .78 + p.y * .35 + p.z * .31 + .12 + field(p, 2.4, seed) * .1)
+        notch = max(0, 1 - fissure / .035) * .055
+        vertex.co = p * (boxiness * (1 + broad * .19 + fine * .028) - notch)
+        vertex.co.x += p.z * .12 + p.y * .04
+    # True cut planes produce broad fracture surfaces instead of regular rings.
+    for normal, distance in [(Vector((0, 0, -1)), .58),
+                             (Vector((.83, .25, .43)).normalized(), .98),
+                             (Vector((-.22, -.93, .29)).normalized(), .99)]:
+        bmesh.ops.bisect_plane(bm, geom=list(bm.verts) + list(bm.edges) + list(bm.faces),
+                               plane_co=normal * distance, plane_no=normal,
+                               dist=1e-6, clear_outer=True)
+        boundary = [edge for edge in bm.edges if edge.is_boundary]
+        if boundary:
+            bmesh.ops.holes_fill(bm, edges=boundary, sides=0)
+    bmesh.ops.triangulate(bm, faces=list(bm.faces))
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+    assert all(edge.is_manifold for edge in bm.edges), "rock must remain closed"
+    low = Vector([min(v.co[i] for v in bm.verts) for i in range(3)])
+    high = Vector([max(v.co[i] for v in bm.verts) for i in range(3)])
+    for vertex in bm.verts:
+        p = vertex.co
+        vertex.co = Vector(((p.x - (low.x + high.x) / 2) / (high.x - low.x) * width,
+                            (p.y - (low.y + high.y) / 2) / (high.y - low.y) * depth,
+                            (p.z - low.z) / (high.z - low.z) * height))
+    mesh = bpy.data.meshes.new("weathered_rock")
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
 
 
 def make_asset(name, seed, dimensions, ore=None):
-    rng = random.Random(seed + 300)
-    vertices, faces = rock_shape(seed, *dimensions)
-    colors = []
-    additions = []
-    height = dimensions[2]
-    for face in faces:
-        points = [Vector(vertices[i]) for i in face]
-        center = sum(points, Vector()) / len(points)
-        palette = MOSS if not ore and center.z > height * .65 and rng.random() < .27 else ROCK
-        colors.append(rng.choice(palette))
-        if not ore or len(face) != 3 or center.z < height * .28:
-            continue
-        # Mineral patches follow the surface; they are shallow closed prisms,
-        # not hovering crystals. Coal uses broad seams, iron broken deposits,
-        # gold narrow branching veins across the upper facets.
-        if rng.random() > {"coal": .56, "ironore": .52, "goldore": .65}[ore]:
-            continue
-        normal = (points[1] - points[0]).cross(points[2] - points[0]).normalized()
-        if ore == "goldore":
-            p, q = points[0].lerp(points[1], .25), points[0].lerp(points[2], .72)
-            mid = (p + q) * .5
-            outline = [p.lerp(center, .06), q.lerp(center, .06), mid.lerp(center, .34)]
-        else:
-            coverage = .85 if ore == "coal" else .67
-            outline = [center.lerp(p, coverage) for p in points]
-        lower = [p + normal * .0004 for p in outline]
-        upper = [p + normal * (.004 if ore == "goldore" else .008) for p in outline]
-        additions.append((lower + upper, [(2, 1, 0), (3, 4, 5), (0, 1, 4, 3), (1, 2, 5, 4), (2, 0, 3, 5)]))
-    for patch_vertices, patch_faces in additions:
-        offset = len(vertices)
-        vertices.extend(tuple(p) for p in patch_vertices)
-        for face in patch_faces:
-            faces.append(tuple(offset + i for i in face))
-            colors.append(rng.choice(ORE[ore]))
-    mesh = bpy.data.meshes.new(name + "_mesh")
-    mesh.from_pydata(vertices, [], faces)
+    mesh = rock_shape(seed, *dimensions)
+    mesh.name = name + "_mesh"
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    modifier = obj.modifiers.new("Preserve_fractures", "DECIMATE")
+    modifier.ratio = .28
+    bpy.ops.object.modifier_apply(modifier=modifier.name)
+    mesh = obj.data
+    floor = min(v.co.z for v in mesh.vertices)
+    for vertex in mesh.vertices:
+        vertex.co.z -= floor
     mesh.update()
     assert not mesh.validate(), name + ": invalid mesh repaired"
     bm = bmesh.new()
@@ -115,12 +111,33 @@ def make_asset(name, seed, dimensions, ore=None):
     bm.to_mesh(mesh)
     bm.free()
     color = mesh.color_attributes.new(name="Color", type="FLOAT_COLOR", domain="CORNER")
-    for face, rgb in zip(mesh.polygons, colors):
+    for face in mesh.polygons:
+        face.use_smooth = False
         for loop in face.loop_indices:
+            co = mesh.vertices[mesh.loops[loop].vertex_index].co
+            p = Vector((co.x / dimensions[0], co.y / dimensions[1], co.z / dimensions[2]))
+            coarse, grain = field(p, 5, seed), field(p, 42, seed)
+            strata = math.sin((p.z + .23 * p.x + .08 * coarse) * 48)
+            brightness = .91 + coarse * .13 + grain * .08 + strata * .025
+            rgb = tuple(v * brightness for v in ROCK[seed % 3])
+            fracture = abs(p.x * .78 + p.y * .35 + p.z * .31 - .04 + coarse * .06)
+            if fracture < .012:
+                rgb = tuple(v * .61 for v in rgb)
+            if not ore and p.z > .38 and face.normal.z > .18 and coarse > .13:
+                amount = min(.65, (coarse - .13) * 2)
+                rgb = tuple(a * (1 - amount) + b * amount for a, b in zip(rgb, MOSS[seed % 2]))
+            if ore:
+                # Continuous geological fields across shared vertices: mineral
+                # seams stay embedded instead of becoming triangular decals.
+                band = abs(p.z + .34 * p.x + coarse * .08 - .57)
+                mineral = (band < .12 if ore == "coal" else
+                           coarse > .05 and p.z > .22 if ore == "ironore" else
+                           band < .035 or abs(p.x - .26 * p.z + coarse * .05 + .06) < .025)
+                if mineral:
+                    base = ORE[ore][0 if grain < .12 else 1]
+                    rgb = tuple(v * (1 + grain * .15) for v in base)
             color.data[loop].color = (*rgb, 1)
     mesh.materials.append(material)
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
     obj["resource"] = ore or "stone"
     obj["authoring"] = "Original / Blender / Reinos & Mercadores"
     obj["pivot"] = "ground center; Blender Z-up, exported glTF Y-up"
@@ -153,7 +170,7 @@ for name, seed, dimensions, ore in SPECS:
     bounds = [list(v) for v in (Vector([min(v.co[i] for v in obj.data.vertices) for i in range(3)]),
                                Vector([max(v.co[i] for v in obj.data.vertices) for i in range(3)]))]
     assert abs(bounds[0][2]) < 1e-6 and all(math.isfinite(x) for b in bounds for x in b)
-    assert len(obj.data.loop_triangles) < 400
+    assert len(obj.data.loop_triangles) < 1800
     manifest.append({"name": name, "file": name + ".glb", "resource": ore or "stone",
                      "vertices": len(obj.data.vertices), "triangles": len(obj.data.loop_triangles),
                      "bounds_blender": bounds, "bytes": (OUT / (name + ".glb")).stat().st_size})
@@ -235,5 +252,5 @@ bpy.ops.wm.save_as_mainfile(filepath=str(OUT / "resources.blend"))
 bpy.ops.render.render(write_still=True)
 (OUT / "manifest.json").write_text(json.dumps({"generator": "Blender " + bpy.app.version_string,
     "coordinate_system": "GLB: Y up; pivot at ground; dimensions in game units",
-    "assets": manifest}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    "assets": manifest}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 print("RESOURCE_CHECK", json.dumps(manifest))
