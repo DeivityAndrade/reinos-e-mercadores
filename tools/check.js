@@ -150,6 +150,12 @@ check('Ordens diretas não atacam aliados', () => {
   const g = KM.newGroup(S, 0, 'militia', [a]);
   KM.exec(S, { o: 0, c: 'attack', g: [g.id], k: 'u', id: friend.id }); assert.equal(a.target, null);
 });
+check('KM.exec ignora comandos malformados e valores nao finitos', () => {
+  const S = flat(), road = Array.from(S.map.road);
+  assert.doesNotThrow(() => KM.exec(S, { o: 0, c: 'roads', tiles: null }));
+  assert.doesNotThrow(() => KM.exec(S, { o: 0, c: 'move', g: [], x: Infinity, y: 0 }));
+  assert.deepEqual(Array.from(S.map.road), road);
+});
 check('Controle territorial vence e reinicia ao ficar contestado ou vazio', () => {
   const S = flat();
   S.sites = [{ id: 'vau', n: 'Vau', x: 20, y: 20, r: 6, owner: -1, held: [0, 0] }];
@@ -268,6 +274,14 @@ check('Mapa, combate e objetivos reproduzem o mesmo estado e sobrevivem a salvar
   KM.simS = a; KM.rt = { comp: null, roadsDirty: true }; KM.computeRoadComps(a);
   for (let i = 0; i < 40; i++) KM.step(a, KM.DT);
   assert.equal(JSON.stringify(a), JSON.stringify(copy));
+});
+check('Checksum detecta estoques diferentes e permanece igual em uma copia do mesmo estado', () => {
+  const a = KM.newState({ seed: 17, diff: 'normal' }), b = JSON.parse(JSON.stringify(a));
+  const storeA = Object.values(a.houses).find((h) => h.owner === 0 && h.type === 'storehouse');
+  const storeB = b.houses[storeA.id];
+  assert.equal(KM.checksum(a), KM.checksum(b));
+  storeB.inv.gold += 100;
+  assert.notEqual(KM.checksum(a), KM.checksum(b));
 });
 check('Multijogador monta times para 2 a 4 humanos', () => {
   const teams = (cfg) => cfg.players.map((p) => p.team);

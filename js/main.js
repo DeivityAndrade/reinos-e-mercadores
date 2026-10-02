@@ -71,7 +71,7 @@
         b.paused, b.noDeliv, b.repair, b.prio, b.depleted]);
       for (const key of ['mat', 'inv', 'out', 'inc', 'rsv', 'orders', 'block']) add(b[key] || null);
     }
-    for (const p of S.players) add([p.team, p.human, p.eco, p.out, p.autoTrain, p.dist, p.built]);
+    for (const p of S.players) add([p.team, p.human, p.eco, p.out, p.autoTrain, p.dist, p.built, p.ai]);
     for (const site of S.sites || []) add([site.id, site.owner, site.contested, site.held]);
     for (const key of ['tree', 'stone', 'road', 'rown', 'rmat', 'field', 'fown', 'fstage']) {
       const a = S.map[key] || []; add(key); add(a.length);

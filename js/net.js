@@ -258,7 +258,7 @@
     validStart(opts, me) {
       return isRecord(opts) && only(opts, ['mp', 'humans', 'teams', 'diff', 'opponents', 'aiMode', 'seed']) &&
         opts.mp === true && int(opts.humans, 2, MAXP) && Object.prototype.hasOwnProperty.call(MODES, opts.teams) &&
-        !!(KM.DIFF && KM.DIFF[opts.diff]) && int(opts.opponents, 0, MAXP - opts.humans) && opts.aiMode === 'economy' &&
+        !!(KM.DIFF && own(KM.DIFF, opts.diff)) && int(opts.opponents, 0, MAXP - opts.humans) && opts.aiMode === 'economy' &&
         int(opts.seed, -0x80000000, 0x7fffffff) && int(me, 0, opts.humans - 1);
     },
     turnInWindow(n) { return int(n, this.DELAY, Number.MAX_SAFE_INTEGER) && n > this.turn && n <= Math.max(this.DELAY, this.turn + 2 * this.DELAY); },

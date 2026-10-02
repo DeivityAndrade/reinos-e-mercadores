@@ -10,6 +10,7 @@
   };
 
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const has = (o, k) => o && own(o, k);
   const record = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
   const int = (v, min, max) => Number.isSafeInteger(v) && v >= min && v <= max;
   const tile = (v, axis, S) => {
@@ -46,7 +47,7 @@
     if (!fields(c, req, optional, !!requireOwner)) return false;
     const id = (v) => int(v, 1, 0x7fffffff);
     switch (c.c) {
-      case 'build': return typeof c.t === 'string' && !!KM.HOUSES[c.t] && xy(c, S) && (!own(c, 'r') || int(c.r, 0, 3));
+      case 'build': return typeof c.t === 'string' && has(KM.HOUSES, c.t) && xy(c, S) && (!own(c, 'r') || int(c.r, 0, 3));
       case 'roads':
         return Array.isArray(c.tiles) && c.tiles.length > 0 && c.tiles.length <= 256 && c.tiles.every((p) => Array.isArray(p) && p.length === 2 && tile(p[0], 'W', S) && tile(p[1], 'H', S));
       case 'fields':
@@ -54,14 +55,14 @@
       case 'demolishAt': case 'rally': return (!own(c, 'id') || id(c.id)) && xy(c, S);
       case 'demolish': return id(c.id);
       case 'hset': return id(c.id) && ['paused', 'noDeliv', 'repair', 'prio'].includes(c.k) && typeof c.v === 'boolean';
-      case 'block': return id(c.id) && typeof c.r === 'string' && !!KM.RES[c.r];
+      case 'block': return id(c.id) && typeof c.r === 'string' && has(KM.RES, c.r);
       case 'order': return id(c.id) && int(c.i, 0, 32) && int(c.v, 0, KM.INF);
-      case 'train': return id(c.id) && typeof c.p === 'string' && !!KM.PROF[c.p];
+      case 'train': return id(c.id) && typeof c.p === 'string' && has(KM.PROF, c.p);
       case 'unq': return id(c.id) && int(c.i, 0, 9);
-      case 'equip': return id(c.id) && typeof c.t === 'string' && !!KM.SOLDIERS[c.t] && (!own(c, 'n') || int(c.n, 1, 5));
-      case 'trade': return id(c.id) && typeof c.sell === 'string' && typeof c.buy === 'string' && !!KM.RES[c.sell] && !!KM.RES[c.buy] && c.sell !== c.buy && int(c.n, 0, KM.INF);
+      case 'equip': return id(c.id) && typeof c.t === 'string' && has(KM.SOLDIERS, c.t) && (!own(c, 'n') || int(c.n, 1, 5));
+      case 'trade': return id(c.id) && typeof c.sell === 'string' && typeof c.buy === 'string' && has(KM.RES, c.sell) && has(KM.RES, c.buy) && c.sell !== c.buy && int(c.n, 0, KM.INF);
       case 'auto': return typeof c.v === 'boolean';
-      case 'dist': return typeof c.r === 'string' && typeof c.t === 'string' && !!(KM.DIST[c.r] && KM.DIST[c.r].includes(c.t)) && int(c.v, 0, 5);
+      case 'dist': return typeof c.r === 'string' && typeof c.t === 'string' && has(KM.DIST, c.r) && KM.DIST[c.r].includes(c.t) && int(c.v, 0, 5);
       case 'move': return groupList(c.g) && xy(c, S) && (!own(c, 'am') || typeof c.am === 'boolean');
       case 'attack': return groupList(c.g) && (c.k === 'u' || c.k === 'h') && id(c.id);
       case 'stop': case 'split': case 'link': case 'feed': return groupList(c.g);

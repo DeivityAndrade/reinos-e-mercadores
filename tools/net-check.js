@@ -28,7 +28,7 @@ function client(me) {
   const net = KM.net;
   net.got = [];
   const on = net.onMsg.bind(net);
-  net.onMsg = (m, slot) => { net.got.push(m); on(m, slot); };
+  net.onMsg = (m, slot) => { net.got.push(m); return on(m, slot); };
   return { KM, net, t: 0, log: [] };
 }
 const queue = [];
@@ -124,6 +124,41 @@ function check(name, fn) { return Promise.resolve(fn()).then(() => { passed++; c
     assert.equal(g.net.active, false);
     assert.equal(JSON.stringify(execs), JSON.stringify([{ o: 0, c: 'leave' }]));
     assert.ok(host.net.active);
+  });
+
+  await check('Pacotes de turno malformados, fora da janela ou grandes demais sao rejeitados sem travar', () => {
+    const { host } = room(2);
+    assert.equal(host.net.onMsg({ t: 'turn', n: 3, c: [{ c: 'roads', tiles: null }] }, 1), false);
+    assert.equal(host.net.onMsg({ t: 'turn', n: Infinity, c: [] }, 1), false);
+    assert.equal(host.net.onMsg({ t: 'turn', n: 9999, c: [] }, 1), false);
+    assert.equal(host.net.onMsg({ t: 'turn', n: 3, c: Array.from({ length: 129 }, () => ({ c: 'stop', g: [1] })) }, 1), false);
+    assert.equal(Object.keys(host.net.inbox).length, 0);
+    assert.equal(host.net.active, true);
+    assert.equal(host.net.onMsg({ t: 'turn', n: 3, o: 0, c: [{ c: 'move', o: 0, g: [1], x: 2, y: 3 }] }, 1), true);
+    assert.equal(host.net.inbox[3][1][0].o, 1, 'a vaga conectada define o dono do comando');
+    assert.equal(host.net.store(3, 1, []), false, 'pacote duplicado nao sobrescreve o turno');
+    assert.equal(JSON.stringify(host.net.take(3)), JSON.stringify([{ c: 'move', o: 1, g: [1], x: 2, y: 3 }]));
+    host.net.inbox[4] = { 1: [{ c: 'roads', tiles: null }] };
+    assert.equal(host.net.take(4).length, 0, 'take tambem protege contra caixa adulterada');
+  });
+
+  await check('O hash remoto que chega primeiro e comparado quando o hash local chega', () => {
+    const { host } = room(2);
+    assert.equal(host.net.onMsg({ t: 'hash', n: 0, h: 123 }, 1), true);
+    assert.equal(host.net.desync, false);
+    assert.equal(host.net.sendHash(0, 124), true);
+    assert.equal(host.net.desync, true);
+  });
+
+  await check('DataChannel ignora JSON invalido e pacotes acima do limite', () => {
+    const g = client(1); g.net.role = 'guest';
+    g.net.peers[0] = { id: 'h', o: 0, dc: null, ping: 0 };
+    const dc = { readyState: 'open', close() {} };
+    g.net.bind(0, dc);
+    assert.doesNotThrow(() => dc.onmessage({ data: '{' }));
+    assert.doesNotThrow(() => dc.onmessage({ data: ' '.repeat(65537) }));
+    assert.equal(g.net.rejected, 2);
+    assert.equal(g.net.active, false);
   });
   console.log(`${passed} grupos de regressão do multijogador passaram.`);
 })().catch((e) => { console.error(e); process.exit(1); });
