@@ -32,9 +32,10 @@
   };
 
   KM.DOOR_DIR = ['Sul', 'Leste', 'Norte', 'Oeste'];
-  // área de trabalho (coleta, a partir da entrada) ou de tiro (torre, a partir do centro) de uma casa
+  // coleta a partir da entrada; mineração e tiro a partir do centro da casa
   KM.houseRange = function (h) {
     const d = KM.def(h);
+    if (d.mine) return { r: KM.MINE_RADIUS, x: KM.hcx(h), y: KM.hcy(h), n: 'Área de mineração' };
     if (d.radius) return { r: d.radius, x: h.ex, y: h.ey, n: 'Área de trabalho' };
     if (d.shoot) return { r: d.shoot, x: KM.hcx(h), y: KM.hcy(h), n: 'Alcance de tiro' };
     return null;
@@ -254,14 +255,14 @@
   };
 
   KM.findOre = function (S, cx, cy, type, consume) {
-    const m = S.map, R = 5;
+    const m = S.map, R = KM.MINE_RADIUS - 0.5;
     let best = -1, bd = 1e9;
     for (let y = Math.floor(cy - R); y <= cy + R; y++) for (let x = Math.floor(cx - R); x <= cx + R; x++) {
       if (!KM.inb(x, y)) continue;
       const i = y * m.W + x;
       if (m.ore[i] !== type || m.oreAmt[i] <= 0) continue;
       const d = Math.hypot(x - cx, y - cy);
-      if (d <= R + 0.5 && d < bd) { bd = d; best = i; }
+      if (d <= KM.MINE_RADIUS && d < bd) { bd = d; best = i; }
     }
     if (best < 0) return false;
     if (consume) {

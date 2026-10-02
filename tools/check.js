@@ -14,7 +14,7 @@ const context = { console, performance, Math, setInterval: () => 0, requestAnima
 };
 vm.createContext(context);
 for (const file of fs.readdirSync(path.join(root, 'js')).filter((f) => f.endsWith('.js'))) new vm.Script(fs.readFileSync(path.join(root, 'js', file), 'utf8'), { filename: file });
-for (const file of ['config', 'util', 'map', 'world', 'economy', 'units', 'military', 'ai', 'campaign', 'cmd', 'tutorial', 'main']) vm.runInContext(fs.readFileSync(path.join(root, 'js', file + '.js'), 'utf8'), context, { filename: file });
+for (const file of ['config', 'util', 'map', 'world', 'economy', 'units', 'military', 'ai', 'campaign', 'cmd', 'tutorial', 'main', 'ui', 'input']) vm.runInContext(fs.readFileSync(path.join(root, 'js', file + '.js'), 'utf8'), context, { filename: file });
 vm.runInContext(fs.readFileSync(path.join(root, 'tools/sim.js'), 'utf8'), context);
 const KM = context.window.KM;
 let passed = 0;
@@ -138,6 +138,53 @@ check('Casas giradas: pegada, entrada nas 4 direções e porta única', () => {
   assert.equal(KM.canPlace(S, 'barracks', 6, 13, 0, 2).ok, false); // porta ao norte no mesmo ladrilho da porta ao sul
   assert.equal(KM.def({ type: 'tower' }).shoot > 0, true);
   assert.equal(KM.houseRange(KM.addHouse(S, 'quarry', 0, 20, 20, true)).r, KM.HOUSES.quarry.radius);
+});
+check('WASD move a câmera sem perder tropas; Shift+A/S mantém as ordens militares', () => {
+  const S = flat(), keepS = KM.S, keepR = KM.R, keepIssue = KM.issue, keepToast = KM.ui.toast;
+  const u = KM.addUnit(S, 'militia', 0, 10, 10), group = KM.newGroup(S, 0, 'militia', [u]);
+  const orders = [], pans = [];
+  const key = (k, down, shiftKey = false, target) => KM.input.key({ key: k, code: '', shiftKey, target }, down);
+  KM.S = S; KM.R = { dist: 10, panWorld: (x, y) => pans.push([x, y]), pickTile: () => ({ tx: 15, ty: 15 }), unitScreen: () => ({ x: -100, y: -100 }), pickHouse: () => 0 };
+  KM.issue = cmd => orders.push(cmd); KM.ui.toast = () => {};
+  try {
+    KM.ui.selectGroups([group.id]); KM.ui.attackMove = false;
+    for (const [k, dx, dy] of [['a', -1, 0], ['d', 1, 0], ['w', 0, -1], ['s', 0, 1], ['ArrowLeft', -1, 0], ['ArrowDown', 0, 1]]) {
+      key(k, true); KM.input.update(0.1); key(k, false);
+      const p = pans.pop(); assert.ok(p); assert.equal(Math.sign(p[0]), dx); assert.equal(Math.sign(p[1]), dy);
+      assert.deepEqual([...KM.ui.selGroups], [group.id]); assert.ok(KM.ui.selSet.has(u.id));
+      assert.equal(KM.ui.attackMove, false); assert.equal(orders.length, 0);
+    }
+    key('a', true, false, { tagName: 'INPUT' }); KM.input.update(0.1); assert.equal(pans.length, 0);
+    key('A', true, true); KM.input.update(0.1); key('A', false, true); key('Shift', false);
+    assert.equal(KM.ui.attackMove, true); assert.equal(pans.length, 0);
+    KM.input.down({ button: 2, clientX: 200, clientY: 200 }); KM.input.up({ button: 2 });
+    assert.equal(orders[0].c, 'move'); assert.equal(orders[0].am, true); assert.equal(KM.ui.attackMove, false);
+    key('S', true, true); KM.input.update(0.1); key('S', false, true); key('Shift', false);
+    assert.equal(orders[1].c, 'stop'); assert.equal(pans.length, 0); assert.deepEqual([...KM.ui.selGroups], [group.id]);
+    KM.ui.clearSel(); key('a', true); KM.input.update(0.1); key('a', false); assert.ok(pans.pop()[0] < 0);
+  } finally {
+    for (const k of ['a', 's', 'Shift']) key(k, false);
+    KM.mouse.down = false; KM.ui.clearSel(); KM.ui.attackMove = false;
+    KM.S = keepS; KM.R = keepR; KM.issue = keepIssue; KM.ui.toast = keepToast;
+  }
+});
+check('Minas mostram alcance do centro igual à extração; pedreira mantém alcance da porta', () => {
+  for (const type of ['coalmine', 'ironmine', 'goldmine', 'quarry']) for (let rot = 0; rot < 4; rot++) {
+    const S = flat(), f = KM.footprint(type, 20, 20, rot), h = { type, x: 20, y: 20, ...f };
+    const d = KM.def(h), rg = KM.houseRange(h);
+    assert.ok(rg); assert.equal(rg.r, d.mine ? KM.MINE_RADIUS : d.radius);
+    assert.equal(rg.x, d.mine ? KM.hcx(h) : h.ex); assert.equal(rg.y, d.mine ? KM.hcy(h) : h.ey);
+    if (!d.mine) continue;
+    const inside = 23 * S.map.W + 25, outside = 25 * S.map.W + 25;
+    S.map.terrain[inside] = S.map.terrain[outside] = KM.T.MOUNTAIN;
+    S.map.ore[inside] = S.map.ore[outside] = d.mine; S.map.oreAmt[inside] = S.map.oreAmt[outside] = 2;
+    assert.equal(KM.canPlace(S, type, h.x, h.y, 0, rot).ok, true);
+    assert.equal(KM.findOre(S, rg.x, rg.y, d.mine, false), true); assert.equal(S.map.oreAmt[inside], 2);
+    assert.equal(KM.findOre(S, rg.x, rg.y, d.mine, true), true); assert.equal(S.map.oreAmt[inside], 1);
+    assert.equal(KM.findOre(S, rg.x, rg.y, d.mine, true), true);
+    assert.equal(KM.findOre(S, rg.x, rg.y, d.mine, true), false); assert.equal(S.map.oreAmt[outside], 2);
+    assert.equal(KM.canPlace(S, type, h.x, h.y, 0, rot).ok, false);
+  }
 });
 check('Camponês armado sai do Quartel só com o recruta', () => {
   const S = flat(), bar = KM.addHouse(S, 'barracks', 0, 10, 10, true);

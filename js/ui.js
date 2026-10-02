@@ -288,7 +288,7 @@
       else if (this.selGroups.length && this.selectedGroups().length) html = this.groupPanel(S, this.selectedGroups());
       else if (this.selUnits.length && this.selectedUnits().length) html = this.unitPanel(S, this.selectedUnits()[0]);
       else if (this.tool && this.tool.build) {
-        const d = KM.HOUSES[this.tool.build], rg = d.radius || d.shoot;
+        const d = KM.HOUSES[this.tool.build], rg = d.radius || (d.mine && KM.MINE_RADIUS) || d.shoot;
         html = `<div class="hint">${d.i} <b>${d.n}</b> · porta para o <b>${KM.DOOR_DIR[this.buildRot || 0]}</b> <button class="mbtn" data-act2="rotb">⟳ Girar</button> <kbd>R</kbd>${rg ? ` · 📏 alcance <b>${rg}</b>` : ''} · <kbd>Shift</kbd> constrói várias</div>`;
       } else html = `<div class="hint">🖱️ <b>Clique</b> para selecionar · <b>arraste</b> para selecionar tropas · <b>botão direito</b> para ordenar · <kbd>WASD</kbd> câmera · <kbd>Espaço</kbd> base${S.mp ? ' · <kbd>Enter</kbd> chat' : ''}</div>`;
       if (html !== this.lastPanel) {
@@ -305,7 +305,7 @@
       let s = `<div class="ph"><span class="big">${hic(h.type)}</span><div><b>${d.n}</b><br><small>${rel}</small></div></div>`;
       s += `<div class="hp"><i style="width:${(h.hp / h.maxHp) * 100}%" class="${mine ? '' : 'e'}"></i><span>${Math.ceil(h.hp)}/${h.maxHp}</span></div>`;
       const rg = KM.houseRange(h);
-      if (rg) s += `<div class="row" data-tip="O círculo no chão mostra até onde ${d.shoot ? 'a torre atira' : 'o trabalhador vai buscar'}">📏 ${rg.n}: <b>${rg.r}</b> casas</div>`;
+      if (rg) s += `<div class="row" data-tip="O círculo no chão mostra até onde ${d.shoot ? 'a torre atira' : d.mine ? 'a mina extrai minério' : 'o trabalhador vai buscar'}">📏 ${rg.n}: <b>${rg.r}</b> casas</div>`;
       if (!mine) return s;
       if (h.state !== 'built') {
         s += '<div class="io">';
@@ -420,7 +420,7 @@
       if (!mine) return s;
       s += `<div class="meter"><span>🍖 Comida</span><div class="mbar"><i style="width:${hun / n}%"></i></div></div>`;
       s += `<div class="cmds">
-        <button data-act2="stop" data-tip="Parar <kbd>S</kbd>">✋</button>
+        <button data-act2="stop" data-tip="Parar <kbd>Shift</kbd>+<kbd>S</kbd>">✋</button>
         <button data-act2="turn:-1" data-tip="Girar à esquerda <kbd>Q</kbd>">↺</button>
         <button data-act2="turn:1" data-tip="Girar à direita <kbd>E</kbd>">↻</button>
         <button data-act2="cols:-1" data-tip="Menos colunas <kbd>[</kbd>">⇤</button>
@@ -428,7 +428,7 @@
         <button data-act2="split" data-tip="Dividir grupo ao meio <kbd>T</kbd>">✂️</button>
         <button data-act2="link" data-tip="Unir grupos selecionados do mesmo tipo <kbd>L</kbd>" ${groups.length > 1 ? '' : 'disabled'}>🔗</button>
         <button data-act2="feed" data-tip="Chamar carregadores com comida <kbd>H</kbd>">🍖</button>
-        <button data-act2="amove" data-tip="Atacar-mover <kbd>A</kbd>">⚔️</button>
+        <button data-act2="amove" data-tip="Atacar-mover <kbd>Shift</kbd>+<kbd>A</kbd>">⚔️</button>
       </div><div class="muted">Colunas: ${groups[0].cols} · <kbd>Ctrl</kbd>+<kbd>1-9</kbd> cria atalho</div>`;
       return s;
     },
