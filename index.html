@@ -18,7 +18,7 @@
     <div id="topbar"></div>
     <button id="sbtoggle" title="Menu">☰</button>
     <aside id="sidebar">
-      <div class="brand">⚜️ Reinos &amp; Mercadores</div>
+      <div class="brand"><i class=ui-icon data-icon=crest aria-hidden=true></i> Reinos &amp; Mercadores</div>
       <canvas id="minimap" width="264" height="264"></canvas>
       <nav id="tabs"></nav>
       <div id="tabcontent"></div>
@@ -27,29 +27,29 @@
     <div id="toasts"></div>
   </div>
   <div id="tooltip"></div>
-  <div id="rotatehint">📱↻<br>Gire o celular para jogar na horizontal</div>
+  <div id="rotatehint"><i class=ui-icon data-icon=screen aria-hidden=true></i>↻<br>Gire o celular para jogar na horizontal</div>
 
   <div id="menu">
     <div class="card hero">
-      <div class="crest">⚜️</div>
+      <div class="crest"><i class=ui-icon data-icon=crest aria-hidden=true></i></div>
       <div id="loadbar" data-t="Carregando o reino…"></div>
       <h1>Reinos &amp; Mercadores</h1>
       <p class="sub">Seu reino cresce onde a estratégia encontra o comércio.<br>Construa, abasteça, treine e conquiste novas terras.</p>
 
       <div class="screen" data-s="main">
-        <button class="mbtn primary" data-screen="conquest">👑 Conquista</button>
+        <button class="mbtn primary" data-screen="conquest"><i class=ui-icon data-icon=crown aria-hidden=true></i> Conquista</button>
         <div class="mgrid">
-          <button class="mbtn primary alt" data-screen="campaign">📜 Campanha</button>
-          <button class="mbtn primary alt" data-screen="skirmish">⚔️ Escaramuça</button>
+          <button class="mbtn primary alt" data-screen="campaign"><i class=ui-icon data-icon=scroll aria-hidden=true></i> Campanha</button>
+          <button class="mbtn primary alt" data-screen="skirmish"><i class=ui-icon data-icon=sword aria-hidden=true></i> Escaramuça</button>
         </div>
         <div class="mgrid">
-          <button class="mbtn" data-screen="mp">🌐 Multijogador</button>
-          <button class="mbtn" data-screen="editor">🗺️ Editor de mapas</button>
+          <button class="mbtn" data-screen="mp"><i class=ui-icon data-icon=globe aria-hidden=true></i> Multijogador</button>
+          <button class="mbtn" data-screen="editor"><i class=ui-icon data-icon=map aria-hidden=true></i> Editor de mapas</button>
         </div>
         <div id="continue"></div>
         <div class="mgrid">
-          <button class="mbtn ghost" data-mission="t1" title="Guia completo: da primeira estrada ao primeiro soldado, sem ataques">🎓 Tutorial</button>
-          <button class="mbtn ghost" data-help="1">❓ Como jogar</button>
+          <button class="mbtn ghost" data-mission="t1" title="Guia completo: da primeira estrada ao primeiro soldado, sem ataques"><i class=ui-icon data-icon=book aria-hidden=true></i> Tutorial</button>
+          <button class="mbtn ghost" data-help="1"><i class=ui-icon data-icon=help aria-hidden=true></i> Como jogar</button>
         </div>
       </div>
 
@@ -57,8 +57,8 @@
         <h3>Multijogador online (P2P)</h3>
         <p class="muted">Crie uma sala e passe o <b>código de 5 letras</b> para até 3 amigos (até 4 jogadores). A partida roda direto entre os navegadores.</p>
         <div class="mgrid">
-          <button class="mbtn primary" data-net="room">👑 Criar sala</button>
-          <button class="mbtn primary alt" data-net="enter">🤝 Entrar com código</button>
+          <button class="mbtn primary" data-net="room"><i class=ui-icon data-icon=crown aria-hidden=true></i> Criar sala</button>
+          <button class="mbtn primary alt" data-net="enter"><i class=ui-icon data-icon=link aria-hidden=true></i> Entrar com código</button>
         </div>
         <button class="mbtn ghost small" data-net="manual">Modo manual (sem servidor de salas)</button>
         <div id="mpbox"></div>
@@ -69,19 +69,19 @@
         <h3>Editor de mapas</h3>
         <label class="inline">Tamanho <select id="edsize"><option value="64">64×64</option><option value="80" selected>80×80</option><option value="96">96×96</option><option value="112">112×112</option></select></label>
         <div class="mgrid">
-          <button class="mbtn primary" data-editor="new">📄 Mapa vazio</button>
-          <button class="mbtn primary alt" data-editor="gen">🎲 Gerar e editar</button>
+          <button class="mbtn primary" data-editor="new"><i class=ui-icon data-icon=file aria-hidden=true></i> Mapa vazio</button>
+          <button class="mbtn primary alt" data-editor="gen"><i class=ui-icon data-icon=dice aria-hidden=true></i> Gerar e editar</button>
         </div>
         <label class="inline">Mapas salvos <select id="edmap"></select></label>
         <div class="mgrid">
-          <button class="mbtn" data-editor="load">📂 Abrir</button>
-          <button class="mbtn" data-editor="import">📥 Importar arquivo</button>
+          <button class="mbtn" data-editor="load"><i class=ui-icon data-icon=folder aria-hidden=true></i> Abrir</button>
+          <button class="mbtn" data-editor="import"><i class=ui-icon data-icon=delivery aria-hidden=true></i> Importar arquivo</button>
         </div>
         <button class="mbtn ghost" data-screen="main">← Voltar</button>
       </div>
 
       <div class="screen hidden" data-s="conquest">
-        <h3>👑 Conquista</h3>
+        <h3>Conquista</h3>
         <p class="muted">Conquiste novas regiões, recupere vilas e dispute rotas de abastecimento. Cada fase apresenta <b>objetivos e decisões próprios</b>. Novos biomas ficam disponíveis na Escaramuça conforme você avança; desafios opcionais valem coroas.</p>
         <label class="inline">Dificuldade
           <select id="qdiff"><option value="easy">Fácil</option><option value="normal" selected>Normal</option><option value="hard">Difícil</option></select>
@@ -128,7 +128,7 @@
           <label class="chkl"><input type="checkbox" id="ally"> Com aliado (IA)</label>
           <label class="chkl" title="Sem progressão: todas as construções e soldados disponíveis desde o início"><input type="checkbox" id="allun"> Tudo liberado (modo livre)</label>
         </div>
-        <button class="mbtn primary" data-new="1">⚔️ Começar</button>
+        <button class="mbtn primary" data-new="1"><i class=ui-icon data-icon=sword aria-hidden=true></i> Começar</button>
         <button class="mbtn ghost" data-screen="main">← Voltar</button>
       </div>
       <div class="foot">v0.6 · estratégia econômica medieval · instalável e jogável offline</div>
@@ -143,38 +143,38 @@
       <h2>Como jogar</h2>
       <div class="cols">
         <div>
-          <h3>🏰 Economia</h3>
+          <h3>Economia</h3>
           <ol>
-            <li><b>Estradas são tudo.</b> Carregadores 🧺 só entregam entre casas ligadas por estrada ao mesmo Armazém. Cada trecho de estrada custa 1 🪨.</li>
-            <li>Construtores 🔨 nivelam o terreno e erguem a casa com 🪜 madeira e 🪨 pedra trazidas pelos carregadores. Eles também consertam casas danificadas.</li>
-            <li>Cada casa precisa de um trabalhador. A <b>Escola</b> treina cidadãos por 1 🪙 ouro cada. Torres precisam de um recruta.</li>
+            <li><b>Estradas são tudo.</b> Carregadores só entregam entre casas ligadas por estrada ao mesmo Armazém. Cada trecho de estrada custa 1 pedra.</li>
+            <li>Construtores nivelam o terreno e erguem a casa com madeira e pedra trazidas pelos carregadores. Eles também consertam casas danificadas.</li>
+            <li>Cada casa precisa de um trabalhador. A <b>Escola</b> treina cidadãos por 1 ouro cada. Torres precisam de um recruta.</li>
             <li><b>Progressão:</b> no início só o básico está disponível. Cada construção erguida libera novas casas, profissões e soldados. Veja os <b>Próximos passos</b> na aba Construir e a <b>Árvore de progresso</b> na aba Objetivos.</li>
-            <li>Cidadãos comem na <b>Taverna</b> 🍞 🌭 🍷 🐟. Soldados recebem comida dos carregadores. Sem comida, cidadãos trabalham pela metade e soldados morrem.</li>
-            <li>Oficinas de armas e armaduras só produzem <b>por encomenda</b> (📋 no painel da casa).</li>
-            <li>Na aba 📦, a <b>Distribuição</b> decide quem recebe carvão, ferro, trigo e madeira. No painel do Armazém dá para bloquear recursos.</li>
+            <li>Cidadãos comem pão, salsicha, vinho e peixe na <b>Taverna</b>. Soldados recebem comida dos carregadores. Sem comida, cidadãos trabalham pela metade e soldados morrem.</li>
+            <li>Oficinas de armas e armaduras só produzem <b>por encomenda</b> (no painel da casa).</li>
+            <li>Na aba Estoque, a <b>Distribuição</b> decide quem recebe carvão, ferro, trigo e madeira. No painel do Armazém dá para bloquear recursos.</li>
           </ol>
-          <h3>⛓️ Cadeias de produção</h3>
+          <h3>Cadeias de produção</h3>
           <ul class="chains">
-            <li>🪓 Lenhador → 🪵 → 🪚 Serraria → 🪜</li>
-            <li>🌾 Fazenda (+campos) → 🌀 Moinho → 🥣 → 🍞 Padaria</li>
-            <li>🌾 → 🐖 Porcos → 🔪 Açougue → 🌭 · 🐾 → 🧳 Curtume → couro</li>
-            <li>⚫ Carvão + 🟤 Ferro → 🔩 → 🗡️⛓️ Ferrarias</li>
-            <li>⚫ Carvão + 🟡 Ouro → 🪙 (paga a Escola!)</li>
+            <li>Lenhador → troncos → Serraria → madeira</li>
+            <li>Fazenda + campos → trigo → Moinho → farinha → Padaria → pão</li>
+            <li>Trigo → porcos → Açougue → salsicha · peles → Curtume → couro</li>
+            <li>Carvão + minério de ferro → ferro → Ferrarias → armas e armaduras</li>
+            <li>Carvão + minério de ouro → ouro (paga a Escola!)</li>
           </ul>
         </div>
         <div>
-          <h3>⚔️ Exército</h3>
+          <h3>Exército</h3>
           <ol>
-            <li>Treine <b>Recrutas</b> 🪖 na Escola: eles vão sozinhos ao Quartel.</li>
+            <li>Treine <b>Recrutas</b> na Escola: eles vão sozinhos ao Quartel.</li>
             <li>No <b>Quartel</b>, clique no tipo de soldado para equipar. Novos soldados formam <b>grupos</b> com estandarte.</li>
             <li>Os grupos marcham em formação. É possível girar, mudar as colunas, dividir, unir e alimentar.</li>
             <li>Lanceiros e piqueiros causam dano dobrado contra cavalaria. Golpes corpo a corpo pelo lado causam +15% de dano; pelas costas, +30%. A direção real das tropas define o flanco.</li>
             <li>Montanhas e construções bloqueiam os tiros de arqueiros, besteiros e torres. Todos os exércitos de economia precisam comer, inclusive a IA.</li>
           </ol>
-          <h3>👑 Conquista e regiões</h3>
+          <h3>Conquista e regiões</h3>
           <p>Leia o briefing: você pode eliminar rivais, controlar passagens, reconstruir uma vila ou preparar uma expedição. Pontos estratégicos aparecem no minimapa e na aba Objetivos. Para controlar um ponto, mantenha 3 soldados sem inimigos próximos; alguns também exigem um Armazém ligado por estrada pronta à sua base. A contagem reinicia se o controle for perdido.</p>
           <p>Bosques de outono, pântanos e tundra são descobertos ao longo da Conquista. Na tundra, trigo e uvas levam 25% mais tempo para crescer.</p>
-          <h3>⌨️ Controles</h3>
+          <h3>Controles</h3>
           <table>
             <tr><td><kbd>WASD</kbd>/setas/bordas</td><td>Mover câmera</td></tr>
             <tr><td>Botão do meio + arrastar</td><td>Girar e inclinar a câmera (<kbd>,</kbd> <kbd>.</kbd> também giram)</td></tr>
@@ -193,7 +193,7 @@
             <tr><td><kbd>F5</kbd>/<kbd>F9</kbd></td><td>Salvar/carregar rápido</td></tr>
             <tr><td><kbd>Enter</kbd></td><td>Chat (multijogador)</td></tr>
           </table>
-          <h3>🌐 Multijogador e 🗺️ Editor</h3>
+          <h3>Multijogador e Editor</h3>
           <ul>
             <li><b>Multijogador:</b> o anfitrião cria a sala e passa o código de 5 letras; até 4 jogadores entram. Modos: todos contra todos, cooperativo contra a IA ou 2 contra 2, com IA nas vagas livres. Quem cai é substituído pela IA; se o anfitrião cair, cada um continua a partida sozinho. O modo manual (códigos longos) é só para 2 jogadores.</li>
             <li><b>Editor:</b> pinte terreno, relevo, árvores, rochas e minérios, posicione até 4 bases e casas prontas. Os mapas salvos aparecem na Escaramuça e podem ser exportados como arquivo.</li>
@@ -214,6 +214,7 @@
     window.THREE = Object.assign({}, T, { GLTFLoader, SkeletonUtils, BufferGeometryUtils });
     window.dispatchEvent(new Event("three-ready"));
   </script>
+  <script src="js/icons.js"></script>
   <script src="js/config.js"></script>
   <script src="js/util.js"></script>
   <script src="js/map.js"></script>

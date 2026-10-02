@@ -223,7 +223,7 @@
       if (e.button === 2) {
         if (ui().tool) { ui().setTool(null); return; }
         const sh = ui().selHouse && S.houses[ui().selHouse];
-        if (sh && sh.owner === KM.me && sh.type === 'barracks' && !ui().myGroups().length && KM.inb(t.tx, t.ty)) { KM.issue({ c: 'rally', id: sh.id, x: t.tx, y: t.ty }); KM.sfx && KM.sfx('order'); S.fx.push({ k: 'order', x: t.tx, y: t.ty, t: 0, T: 0.6 }); ui().toast('🚩 Ponto de encontro definido: novos soldados vão se reunir ali.', 'ok'); return; }
+        if (sh && sh.owner === KM.me && sh.type === 'barracks' && !ui().myGroups().length && KM.inb(t.tx, t.ty)) { KM.issue({ c: 'rally', id: sh.id, x: t.tx, y: t.ty }); KM.sfx && KM.sfx('order'); S.fx.push({ k: 'order', x: t.tx, y: t.ty, t: 0, T: 0.6 }); ui().toast('Ponto de encontro definido: novos soldados vão se reunir ali.', 'ok'); return; }
         const am = ui().attackMove; ui().attackMove = false;
         if (!command(S, e.clientX, e.clientY, am)) mouse.pan = { x: e.clientX, y: e.clientY };
         return;
@@ -308,7 +308,7 @@
       if (!down || !S) return;
       if (S.editor) { KM.editor.key(k, e); return; }
       if (k === 'enter' && S.mp) { KM.net.chatPrompt(); return; }
-      if (k === 'f5') { e.preventDefault(); if (!S.mp) { KM.save(0); ui().toast('💾 Salvamento rápido', 'ok'); } return; }
+      if (k === 'f5') { e.preventDefault(); if (!S.mp) { KM.save(0); ui().toast('Salvamento rápido', 'ok'); } return; }
       if (k === 'f9') { e.preventDefault(); if (!S.mp) KM.load(0); return; }
       if (k === 'f1') { e.preventDefault(); ui().showHelp(true); return; }
       if (k === 'escape') { ui().setTool(null); ui().clearSel(); ui().showHelp(false); ui().attackMove = false; return; }
@@ -350,7 +350,7 @@
         if (k === '[' || k === ']') { KM.issue({ c: 'cols', g, d: k === '[' ? -1 : 1 }); return; }
         if (k === 't') { KM.issue({ c: 'split', g }); return; }
         if (k === 'l') { KM.issue({ c: 'link', g }); return; }
-        if (k === 'h') { KM.issue({ c: 'feed', g }); ui().toast('🍖 Carregadores levarão comida às tropas.', 'info'); return; }
+        if (k === 'h') { KM.issue({ c: 'feed', g }); ui().toast('Carregadores levarão comida às tropas.', 'info'); return; }
       }
       if (/^Digit[1-9]$/.test(e.code)) {
         const n = e.code.slice(5);

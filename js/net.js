@@ -89,12 +89,12 @@
       if (action === 'room') this.roomHost();
       if (action === 'enter') {
         box.innerHTML = `<p class="muted">Digite o <b>código da sala</b> que seu amigo passou:</p><input id="mpcode" maxlength="5" placeholder="EX: K7Q2M" class="codein">
-          <button class="mbtn primary" data-net="enterok">🤝 Entrar</button>`;
+          <button class="mbtn primary" data-net="enterok">Entrar</button>`;
         setTimeout(() => { const i = $('#mpcode'); if (i) i.focus(); }, 50);
       }
       if (action === 'enterok') this.roomJoin($('#mpcode').value);
       if (action === 'copycode') { navigator.clipboard && navigator.clipboard.writeText(this.code); KM.ui.toast('Código copiado!', 'ok'); }
-      if (action === 'manual') box.innerHTML = `<p class="muted">Modo manual: troquem os códigos longos por mensagem (não usa servidor de salas, só 2 jogadores).</p><div class="mgrid"><button class="mbtn" data-net="host">👑 Criar (manual)</button><button class="mbtn" data-net="join">🤝 Entrar (manual)</button></div>`;
+      if (action === 'manual') box.innerHTML = `<p class="muted">Modo manual: troquem os códigos longos por mensagem (não usa servidor de salas, só 2 jogadores).</p><div class="mgrid"><button class="mbtn" data-net="host">Criar (manual)</button><button class="mbtn" data-net="join">Entrar (manual)</button></div>`;
       if (action === 'host') this.host();
       if (action === 'join') {
         box.innerHTML = `<p class="muted">Cole aqui o <b>código do anfitrião</b>:</p><textarea id="mpin" rows="4"></textarea>
@@ -108,8 +108,8 @@
     status(html) { $('#mpbox').innerHTML = html; },
     showCode(code, next) {
       this.status(`<p class="muted">${next}</p><textarea id="mpout" rows="4" readonly>${code}</textarea>
-        <button class="mbtn" data-net="copy">📋 Copiar código</button>
-        ${this.role === 'host' ? `<p class="muted">Depois cole o <b>código de resposta</b> do seu amigo:</p><textarea id="mpin" rows="3"></textarea><button class="mbtn primary" data-net="accept">🔗 Conectar</button>` : '<p class="muted">Aguardando o anfitrião conectar...</p>'}`);
+        <button class="mbtn" data-net="copy">Copiar código</button>
+        ${this.role === 'host' ? `<p class="muted">Depois cole o <b>código de resposta</b> do seu amigo:</p><textarea id="mpin" rows="3"></textarea><button class="mbtn primary" data-net="accept">Conectar</button>` : '<p class="muted">Aguardando o anfitrião conectar...</p>'}`);
     },
 
     // ---------- sala de espera do anfitrião ----------
@@ -120,7 +120,7 @@
       if (!$('#mpslots')) {
         const diffs = [['easy', 'Fácil'], ['normal', 'Normal'], ['hard', 'Difícil']];
         this.status(`${this.code ? `<p class="muted">Passe este código para até 3 amigos:</p><div class="roomcode">${this.code}</div>
-          <button class="mbtn" data-net="copycode">📋 Copiar código</button>` : ''}
+          <button class="mbtn" data-net="copycode">Copiar código</button>` : ''}
           <div id="mpslots" class="mpslots"></div>
           <div class="form">
             <label>Modo<select id="mpteams">${Object.entries(MODES).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label>
@@ -129,14 +129,14 @@
             <label>Semente<input id="mpseed" placeholder="aleatória"></label>
           </div>
           <p id="mpnote" class="muted"></p>
-          <button class="mbtn primary" id="mpstart" data-net="start">⚔️ Começar partida</button>`);
+          <button class="mbtn primary" id="mpstart" data-net="start">Começar partida</button>`);
         const t = $('#mpteams'); if (t) t.onchange = () => this.renderLobby();
       }
       const n = 1 + this.guests().length;
       const rows = [];
       for (let s = 0; s < MAXP; s++) {
         const p = this.peers[s];
-        const st = s === 0 ? 'você (anfitrião)' : this.isOpen(s) ? '✅ conectado' : p ? '⏳ conectando...' : 'vaga livre';
+        const st = s === 0 ? 'você (anfitrião)' : this.isOpen(s) ? 'conectado' : p ? 'conectando...' : 'vaga livre';
         rows.push(`<div class="mpslot${s === 0 || this.isOpen(s) ? ' on' : ''}"><span class="dot" style="background:${KM.COLORS ? KM.COLORS[s] : '#999'}"></span> Vaga ${s + 1}: ${st}</div>`);
       }
       $('#mpslots').innerHTML = rows.join('');
@@ -153,7 +153,7 @@
       this.sendRaw({ t: 'lobby', n });
     },
     lobbyBlock(n, mode) {
-      if (n < 2) return '⏳ Aguardando pelo menos 1 jogador entrar na sala...';
+      if (n < 2) return 'Aguardando pelo menos 1 jogador entrar na sala...';
       if (mode === 'coop' && n >= MAXP) return 'No cooperativo precisa sobrar uma vaga para a IA inimiga: use Todos contra todos ou 2 contra 2.';
       return '';
     },
@@ -209,7 +209,7 @@
         this.connected = true;
         if (!this.pingTimer) this.pingTimer = setInterval(() => this.sendRaw({ t: 'ping', ts: performance.now() }), 2000);
         if (this.role === 'host') this.renderLobby();
-        else this.status('<div class="good">✅ Conectado! Aguardando o anfitrião começar a partida...</div><p id="mpcount" class="muted"></p>');
+        else this.status('<div class="good">Conectado! Aguardando o anfitrião começar a partida...</div><p id="mpcount" class="muted"></p>');
       };
       dc.onmessage = (e) => { if (this.peers[slot] === peer) this.onMsg(JSON.parse(e.data), slot); };
       dc.onclose = () => this.peerLost(slot, peer.pc);
@@ -274,7 +274,7 @@
     },
     stalled(el) {
       this.waitT += el; this.lag = this.waitT;
-      if (this.waitT > 3 && !this.warned) { this.warned = true; KM.ui.toast(this.humans > 2 ? '⏳ Aguardando os outros jogadores...' : '⏳ Aguardando o outro jogador...', 'warn'); }
+      if (this.waitT > 3 && !this.warned) { this.warned = true; KM.ui.toast(this.humans > 2 ? 'Aguardando os outros jogadores...' : 'Aguardando o outro jogador...', 'warn'); }
     },
     sendHash(turn, h) { this.hashes[turn] = h; this.sendRaw({ t: 'hash', n: turn, h }); },
     sendTo(slot, o) { const p = this.peers[slot]; try { if (p && p.dc && p.dc.readyState === 'open') p.dc.send(JSON.stringify(o)); } catch (e) { /* ok */ } },
@@ -302,9 +302,9 @@
       else if (m.t === 'hash') {
         if (host) this.sendRaw(m, slot);
         const mine = this.hashes[m.n];
-        if (mine != null && mine !== m.h && !this.desync) { this.desync = true; KM.ui.toast('⚠️ Dessincronização detectada entre os jogadores.', 'danger'); }
+        if (mine != null && mine !== m.h && !this.desync) { this.desync = true; KM.ui.toast('Dessincronização detectada entre os jogadores.', 'danger'); }
       }
-      else if (m.t === 'chat') { if (host) this.sendRaw(m, slot); KM.ui.toast(`💬 ${KM.esc(String(m.name))}: ${KM.esc(String(m.m))}`, 'info'); }
+      else if (m.t === 'chat') { if (host) this.sendRaw(m, slot); KM.ui.toast(`${KM.esc(String(m.name))}: ${KM.esc(String(m.m))}`, 'info'); }
       else if (m.t === 'bye') this.peerLost(slot);
     },
     chatPrompt() {
@@ -312,7 +312,7 @@
       if (!msg) return;
       const name = KM.S.players[KM.me].name;
       this.sendRaw({ t: 'chat', m: msg.slice(0, 200), name });
-      KM.ui.toast(`💬 Você: ${KM.esc(msg.slice(0, 200))}`, 'ok');
+      KM.ui.toast(`Você: ${KM.esc(msg.slice(0, 200))}`, 'ok');
     },
 
     // ---------- quedas ----------
@@ -341,7 +341,7 @@
       }
       this.drops[o] = n;
       this.sendRaw({ t: 'drop', o, n });
-      KM.ui.toast(`🔌 ${KM.S && KM.S.players[o] ? KM.S.players[o].name : 'Um jogador'} desconectou. A IA vai assumir o reino.`, 'warn');
+      KM.ui.toast(`${KM.S && KM.S.players[o] ? KM.S.players[o].name : 'Um jogador'} desconectou. A IA vai assumir o reino.`, 'warn');
     },
     // convidado: perdeu o anfitrião. Sem rede, a partida continua só neste navegador.
     lost() {
@@ -350,7 +350,7 @@
       this.active = false; this.connected = false;
       clearInterval(this.pingTimer); this.pingTimer = null;
       if (wasActive && KM.S) {
-        KM.ui.toast(this.humans > 2 ? '🔌 O anfitrião desconectou. A partida continua localmente e a IA assume os outros reinos.' : '🔌 O outro jogador desconectou. A partida continua localmente.', 'danger');
+        KM.ui.toast(this.humans > 2 ? 'O anfitrião desconectou. A partida continua localmente e a IA assume os outros reinos.' : 'O outro jogador desconectou. A partida continua localmente.', 'danger');
         KM.S.players.forEach((p, o) => { if (o !== KM.me && p.human) KM.exec(KM.S, { o, c: 'leave' }); });
       } else if (!wasActive && this.started === false && $('#mpbox')) {
         this.status('<div class="warn">A conexão com o anfitrião caiu.</div><button class="mbtn" data-net="enter">Tentar de novo</button>');

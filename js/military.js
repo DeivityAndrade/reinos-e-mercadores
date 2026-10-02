@@ -166,7 +166,7 @@
       if (u.hunger < 50 && !u.wantFood) u.wantFood = true;
       if (u.hunger <= 0) {
         u.hp -= dt * 0.35;
-        if (u.owner === KM.me && S.time - (S.hungerWarn || -99) > 60) { S.hungerWarn = S.time; KM.notify(S, '🍖 Seus soldados estão morrendo de fome! Tenha comida no Armazém.', 'danger', { x: u.tx, y: u.ty }); }
+        if (u.owner === KM.me && S.time - (S.hungerWarn || -99) > 60) { S.hungerWarn = S.time; KM.notify(S, 'Seus soldados estão morrendo de fome! Tenha comida no Armazém.', 'danger', { x: u.tx, y: u.ty }); }
         if (u.hp <= 0) { KM.killUnit(S, u, false); return; }
       }
     }
@@ -322,7 +322,7 @@
   function warnAttack(S, x, y) {
     if (S.time - (S.lastWarn || -99) < 25) return;
     S.lastWarn = S.time;
-    KM.notify(S, '⚔️ Você está sob ataque!', 'danger', { x, y });
+    KM.notify(S, 'Você está sob ataque!', 'danger', { x, y });
     KM.sfx && KM.sfx('alarm');
   }
 

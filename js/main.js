@@ -29,7 +29,7 @@
     if (t % 20 === 9 && S.fx.length) S.fx = S.fx.filter((e) => e.t < e.T);
     if (S.zones && !S.peaceDone && S.time >= S.peaceEnd) {
       S.peaceDone = true;
-      KM.notify(S, '🏁 Fim da paz! As fronteiras estão abertas: agora dá para explorar e atacar fora do seu quadrante.', 'warn');
+      KM.notify(S, 'Fim da paz! As fronteiras estão abertas: agora dá para explorar e atacar fora do seu quadrante.', 'warn');
       KM.sfx && KM.sfx('horn');
     }
   };
@@ -127,9 +127,9 @@
     let tutDone = false; try { tutDone = localStorage.getItem('rm_tut_full_done') === '1' || localStorage.getItem('rm_tut_full_dismissed') === '1'; } catch (e) { /* ok */ }
     if ((S.mission === 't1' || S.mission === 'm1' || (S.mission === 'c1' && !tutDone)) && !opts.noTutorial) KM.tutorial.start(S, S.mission !== 'm1');
     if (S.mission) { S.paused = true; KM.ui.showBriefing(S); return; }
-    if (S.mp) { KM.ui.toast(`🌐 Partida multijogador iniciada. Você é ${S.players[KM.me].name}. Enter abre o chat.`, 'ok'); return; }
-    KM.ui.toast('👑 Bem-vindo, senhor! Construa sua economia e prepare-se para a guerra.', 'info');
-    KM.ui.toast('💡 Dica: ligue cada casa ao Armazém com estradas (R). Carregadores só andam por elas, e cada trecho custa 1 pedra.', 'info');
+    if (S.mp) { KM.ui.toast(`Partida multijogador iniciada. Você é ${S.players[KM.me].name}. Enter abre o chat.`, 'ok'); return; }
+    KM.ui.toast('Bem-vindo, senhor! Construa sua economia e prepare-se para a guerra.', 'info');
+    KM.ui.toast('Dica: ligue cada casa ao Armazém com estradas (R). Carregadores só andam por elas, e cada trecho custa 1 pedra.', 'info');
   };
 
   KM.quitToMenu = function () {
@@ -151,7 +151,7 @@
     if (!S || S.mp || S.editor) return;
     try {
       localStorage.setItem('rm_save_' + slot, JSON.stringify(Object.assign({}, S, { fx: [] })));
-      localStorage.setItem('rm_meta_' + slot, JSON.stringify({ time: S.time, date: Date.now(), diff: S.diff, v: KM.VERSION, v3: true, name: S.mission ? (S.mission[0] === 'c' ? '👑 ' : '') + KM.findMission(S.mission, S.diff).n : 'Escaramuça ' + KM.DIFF[S.diff].n }));
+      localStorage.setItem('rm_meta_' + slot, JSON.stringify({ time: S.time, date: Date.now(), diff: S.diff, v: KM.VERSION, v3: true, name: S.mission ? KM.findMission(S.mission, S.diff).n : 'Escaramuça ' + KM.DIFF[S.diff].n }));
     } catch (e) { KM.ui.toast('Não foi possível salvar: ' + e.message, 'danger'); }
   };
   KM.saveMeta = function (slot) {
