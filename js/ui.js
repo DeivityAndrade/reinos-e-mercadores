@@ -4,19 +4,21 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   KM.esc = esc;
-  const ri = (r) => KM.RES[r].i;
+  const ri = (r) => KM.icon(KM.RES[r].i);
   const costStr = (c) => Object.keys(c).map((r) => `${ri(r)}${c[r]}`).join(' ');
   const ME = () => KM.me;
-  // ícone da construção: miniatura 3D renderizada (cai no emoji se não houver)
-  const hic = (t) => (KM.R && KM.R.icons && KM.R.icons[t] ? `<i class="hic hic-${t}"></i>` : KM.HOUSES[t].i);
+  // ícone da construção: miniatura 3D renderizada (usa emblema vetorial enquanto carrega)
+  const hic = (t) => (KM.R && KM.R.icons && KM.R.icons[t] ? `<i class="hic hic-${t}"></i>` : KM.icon(KM.HOUSES[t].i));
   // ícone de unidade (soldado ou profissão): miniatura do personagem
-  const uic = (t) => (KM.R && KM.R.icons && KM.R.icons['u_' + t] ? `<i class="hic uic hic-u_${t}"></i>` : (KM.SOLDIERS[t] || KM.PROF[t]).i);
+  const uic = (t) => (KM.R && KM.R.icons && KM.R.icons['u_' + t] ? `<i class="hic uic hic-u_${t}"></i>` : KM.icon((KM.SOLDIERS[t] || KM.PROF[t]).i));
+  const portrait = (t) => (KM.R && KM.R.icons && KM.R.icons['p_' + t] ? `<i class="hic portrait hic-p_${t}" aria-hidden="true"></i>` : uic(t));
 
   const ui = KM.ui = {
     tool: null, hover: null, drag: null, box: null, selHouse: 0, selUnits: [], selGroups: [], selSet: new Set(),
     tab: 'build', miniDirty: true, lastPanel: '', lastTab: '', t: 0,
 
     init() {
+      KM.initIcons();
       this.buildTabs();
       $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) this.setTab(b.dataset.tab); });
       $('#tabcontent').addEventListener('click', (e) => this.onTabClick(e));
@@ -59,7 +61,7 @@
 
     // ---------- abas ----------
     buildTabs() {
-      const tabs = [['build', '🏗️', 'Construir'], ['stock', '📦', 'Estoque'], ['people', '👥', 'Povo'], ['goals', '🎯', 'Objetivos'], ['menu', '⚙️', 'Menu']];
+      const tabs = [['build', '<i class=ui-icon data-icon=build aria-hidden=true></i>', 'Construir'], ['stock', '<i class=ui-icon data-icon=crate aria-hidden=true></i>', 'Estoque'], ['people', '<i class=ui-icon data-icon=people aria-hidden=true></i>', 'Povo'], ['goals', '<i class=ui-icon data-icon=target aria-hidden=true></i>', 'Objetivos'], ['menu', '<i class=ui-icon data-icon=settings aria-hidden=true></i>', 'Menu']];
       $('#tabs').innerHTML = tabs.map(([k, i, n]) => `<button data-tab="${k}" class="${k === this.tab ? 'active' : ''}" title="${n}"><span>${i}</span><small>${n}</small></button>`).join('');
     },
     setTab(t) {
@@ -82,13 +84,13 @@
         if (!P.all) {
           const shown = next.slice(0, 3);
           if (shown.length) {
-            html += `<div class="progress-card"><div class="pc-title">📜 Próximos passos</div>${shown.map((n) => `<div class="pc-row"><span>${hic(n.t)}</span><div>Construa <b>${KM.HOUSES[n.t].n}</b><small>libera ${n.gives.map((g) => KM.HOUSES[g].i + ' ' + KM.HOUSES[g].n).join(', ')}</small></div></div>`).join('')}<button class="pc-more" data-act="tree">Ver árvore completa ›</button></div>`;
+            html += `<div class="progress-card"><div class="pc-title">Próximos passos</div>${shown.map((n) => `<div class="pc-row"><span>${hic(n.t)}</span><div>Construa <b>${KM.HOUSES[n.t].n}</b><small>libera ${n.gives.map((g) => KM.HOUSES[g].n).join(', ')}</small></div></div>`).join('')}<button class="pc-more" data-act="tree">Ver árvore completa ›</button></div>`;
           } else {
             const locked = Object.keys(KM.HOUSES).filter((t) => !KM.houseUnlocked(S, ME(), t)).length;
-            if (!locked) html += `<div class="progress-card done"><div class="pc-title">🏰 Reino completo</div><small>Todas as construções estão liberadas.</small></div>`;
+            if (!locked) html += `<div class="progress-card done"><div class="pc-title">Reino completo</div><small>Todas as construções estão liberadas.</small></div>`;
           }
         }
-        const tools = [['road', '🛤️', 'Estrada', 'R', 'Clique e arraste. Carregadores só entregam por estradas! Cada trecho custa 1 🪨.'], ['field', '🌾', 'Campo de trigo', 'F', 'Arraste para desenhar vários. Perto de uma Fazenda.'], ['vine', '🍇', 'Vinhedo', 'V', 'Arraste para desenhar vários. Perto de uma Vinícola.'], ['demolish', '❌', 'Demolir', 'X', 'Remove casas, estradas ou campos.']];
+        const tools = [['road', '<i class=ui-icon data-icon=road aria-hidden=true></i>', 'Estrada', 'R', 'Clique e arraste. Carregadores só entregam por estradas! Cada trecho custa 1 <i class=ui-icon data-icon=stone aria-hidden=true></i>.'], ['field', '<i class=ui-icon data-icon=wheat aria-hidden=true></i>', 'Campo de trigo', 'F', 'Arraste para desenhar vários. Perto de uma Fazenda.'], ['vine', '<i class=ui-icon data-icon=grapes aria-hidden=true></i>', 'Vinhedo', 'V', 'Arraste para desenhar vários. Perto de uma Vinícola.'], ['demolish', '<i class=ui-icon data-icon=cross aria-hidden=true></i>', 'Demolir', 'X', 'Remove casas, estradas ou campos.']];
         html += `<div class="tools">${tools.map(([k, i, n, key, tip]) => `<button class="tool" data-tool="${k}" data-tip="${n} <kbd>${key}</kbd><br><small>${tip}</small>"><span>${i}</span><small>${n}</small></button>`).join('')}</div>`;
         for (const grp of KM.HOUSE_GROUPS) {
           html += `<h4>${grp}</h4><div class="grid">`;
@@ -98,7 +100,7 @@
             const open = KM.houseUnlocked(S, ME(), k);
             const isNew = open && KM.TECH[k] && !(P.built || {})[k] && !P.all;
             if (open) html += `<button class="bbtn ${isNew ? 'new' : ''}" data-build="${k}" data-tip="${esc(this.houseTip(k))}"><span class="ic">${hic(k)}</span><span class="nm">${d.n}</span><span class="cost">${costStr(d.cost)}</span>${isNew ? '<i class="badge-new">novo</i>' : ''}</button>`;
-            else html += `<button class="bbtn locked" data-locked="${k}" data-tip="${esc(`<b>🔒 ${d.n}</b><br>Para liberar, construa: ${KM.reqNames(KM.TECH[k])}<br><small>${d.desc || ''}</small>`)}"><span class="ic">${hic(k)}</span><span class="nm">${d.n}</span><span class="cost">🔒 bloqueado</span></button>`;
+            else html += `<button class="bbtn locked" data-locked="${k}" data-tip="${esc(`<b><i class=ui-icon data-icon=lock aria-hidden=true></i> ${d.n}</b><br>Para liberar, construa: ${KM.reqNames(KM.TECH[k])}<br><small>${d.desc || ''}</small>`)}"><span class="ic">${hic(k)}</span><span class="nm">${d.n}</span><span class="cost"><i class=ui-icon data-icon=lock aria-hidden=true></i> bloqueado</span></button>`;
           }
           html += '</div>';
         }
@@ -115,7 +117,7 @@
         html += `<h4 data-tip="Quanto de cada recurso cada tipo de casa pode pedir (0 a 5). Use para decidir, por exemplo, se o carvão vai para armas ou para ouro.">Distribuição ⓘ</h4>`;
         for (const r in dist) {
           html += `<div class="dist"><div class="dh">${ri(r)} ${KM.RES[r].n}</div>`;
-          for (const t in dist[r]) html += `<div class="ratio"><span>${KM.HOUSES[t].i} ${KM.HOUSES[t].n}</span><button data-act="dist:${r}:${t}:-1">−</button><b>${dist[r][t]}</b><button data-act="dist:${r}:${t}:1">+</button></div>`;
+          for (const t in dist[r]) html += `<div class="ratio"><span>${KM.icon(KM.HOUSES[t].i)} ${KM.HOUSES[t].n}</span><button data-act="dist:${r}:${t}:-1">−</button><b>${dist[r][t]}</b><button data-act="dist:${r}:${t}:1">+</button></div>`;
           html += '</div>';
         }
       } else if (this.tab === 'people') {
@@ -132,29 +134,29 @@
         let rec = 0; for (const id in S.houses) { const h = S.houses[id]; if (h.owner === ME() && h.type === 'barracks') rec += h.recruits; }
         const st = S.stats[ME()];
         html = `<h4>Cidadãos (${nc})</h4>
-          <div class="meter" data-tip="Fome média. Construa uma Taverna e mantenha comida nela."><span>🍗 Alimentação</span><div class="mbar"><i style="width:${nc ? hunger / nc : 0}%"></i></div></div>
-          ${starving ? `<div class="warn">⚠️ ${starving} cidadão(s) passando fome: trabalham na metade da velocidade!</div>` : ''}
+          <div class="meter" data-tip="Fome média. Construa uma Taverna e mantenha comida nela."><span>Alimentação</span><div class="mbar"><i style="width:${nc ? hunger / nc : 0}%"></i></div></div>
+          ${starving ? `<div class="warn"><i class=ui-icon data-icon=warning aria-hidden=true></i> ${starving} cidadão(s) passando fome: trabalham na metade da velocidade!</div>` : ''}
           <div class="plist">${KM.PROF_ORDER.filter((p) => c[p]).map((p) => `<div class="prow"><span>${uic(p)}</span><span class="sn">${KM.PROF[p].n}</span><b>${c[p]}</b><em>${idle[p] ? idle[p] + ' livre' + (idle[p] > 1 ? 's' : '') : ''}</em></div>`).join('')}</div>
           <label class="chk" data-tip="A Escola treina automaticamente os trabalhadores que suas casas precisam e mantém carregadores suficientes."><input type="checkbox" data-act="auto" ${P.autoTrain ? 'checked' : ''}> Treino automático na Escola</label>
           <h4>Exército (${ns})</h4>
-          ${ns ? `<div class="meter" data-tip="Soldados com fome recebem comida dos carregadores. Com fome zero, eles perdem vida."><span>🍖 Tropas</span><div class="mbar"><i style="width:${sh / ns}%"></i></div></div>` : ''}
+          ${ns ? `<div class="meter" data-tip="Soldados com fome recebem comida dos carregadores. Com fome zero, eles perdem vida."><span>Tropas</span><div class="mbar"><i style="width:${sh / ns}%"></i></div></div>` : ''}
           <div class="plist">${KM.SOLDIER_ORDER.filter((t) => sold[t]).map((t) => `<div class="prow"><span>${uic(t)}</span><span class="sn">${KM.SOLDIERS[t].n}</span><b>${sold[t]}</b></div>`).join('') || '<div class="muted">Nenhum soldado.</div>'}</div>
-          ${rec ? `<div class="muted">🪖 ${rec} recruta(s) aguardando no quartel</div>` : ''}
+          ${rec ? `<div class="muted"><i class=ui-icon data-icon=helmet aria-hidden=true></i> ${rec} recruta(s) aguardando no quartel</div>` : ''}
           <h4>Estatísticas</h4>
           <div class="muted">Casas construídas: ${st.built} · Treinados: ${st.trained}<br>Inimigos abatidos: ${st.killed} · Perdas: ${st.lost}</div>`;
       } else if (this.tab === 'goals') {
         const mis = S.mission && KM.findMission(S.mission, S.diff);
         html = `<h4>${mis ? esc(mis.n) : S.mp ? 'Multijogador' : 'Escaramuça'}</h4>${this.goalsHtml(S, false)}`;
-        html += `<div class="muted">🌿 ${KM.biome(S.map).n}: ${KM.biome(S.map).desc}</div>`;
-        if (S.sites && S.sites.length) html += `<h4>Pontos estratégicos</h4>${S.sites.map((s) => `<button class="mbtn wide" data-act="goto:${s.x}:${s.y}">🚩 ${esc(s.n)} · ${s.contested ? 'contestado' : s.owner >= 0 ? esc(S.players[s.owner].name) : 'sem controle'}</button>`).join('')}<div class="muted">Mantenha 3 soldados sem rivais no raio de 6 casas. ${S.sites.some((s) => s.outpost) ? 'Os postos exigem também um Armazém conectado à base por estrada pronta.' : ''}</div>`;
-        if (mis) html += `<button class="mbtn wide" data-act="brief">📜 Rever briefing</button>`;
+        html += `<div class="muted"><i class=ui-icon data-icon=leaf aria-hidden=true></i> ${KM.biome(S.map).n}: ${KM.biome(S.map).desc}</div>`;
+        if (S.sites && S.sites.length) html += `<h4>Pontos estratégicos</h4>${S.sites.map((s) => `<button class="mbtn wide" data-act="goto:${s.x}:${s.y}"><i class=ui-icon data-icon=flag aria-hidden=true></i> ${esc(s.n)} · ${s.contested ? 'contestado' : s.owner >= 0 ? esc(S.players[s.owner].name) : 'sem controle'}</button>`).join('')}<div class="muted">Mantenha 3 soldados sem rivais no raio de 6 casas. ${S.sites.some((s) => s.outpost) ? 'Os postos exigem também um Armazém conectado à base por estrada pronta.' : ''}</div>`;
+        if (mis) html += `<button class="mbtn wide" data-act="brief"><i class=ui-icon data-icon=scroll aria-hidden=true></i> Rever briefing</button>`;
         if (!P.all) {
           const total = Object.keys(KM.HOUSES).length, open = Object.keys(KM.HOUSES).filter((t) => KM.houseUnlocked(S, ME(), t)).length;
-          html += `<h4>Progresso do reino</h4><div class="meter"><span>🏗️ ${open}/${total} construções</span><div class="mbar"><i style="width:${(open / total) * 100}%"></i></div></div><button class="mbtn wide" data-act="tree">🌳 Árvore de progresso</button>`;
+          html += `<h4>Progresso do reino</h4><div class="meter"><span><i class=ui-icon data-icon=build aria-hidden=true></i> ${open}/${total} construções</span><div class="mbar"><i style="width:${(open / total) * 100}%"></i></div></div><button class="mbtn wide" data-act="tree"><i class=ui-icon data-icon=tree aria-hidden=true></i> Árvore de progresso</button>`;
         }
-        html += `<button class="mbtn wide" data-act="stats">📊 Estatísticas da partida</button>`;
+        html += `<button class="mbtn wide" data-act="stats"><i class=ui-icon data-icon=chart aria-hidden=true></i> Estatísticas da partida</button>`;
         const log = (this.msgLog || []).slice(0, 8);
-        if (log.length) html += `<h4>Mensagens recentes</h4><div class="msglog">${log.map((l) => `<button class="msg ${l.kind}" ${l.pos ? `data-act="goto:${l.pos.x}:${l.pos.y}"` : ''}><small>${KM.fmtTime(l.t)}</small> ${esc(l.msg)}${l.pos ? ' 📍' : ''}</button>`).join('')}</div><div class="muted"><kbd>Z</kbd> vai até o último aviso.</div>`;
+        if (log.length) html += `<h4>Mensagens recentes</h4><div class="msglog">${log.map((l) => `<button class="msg ${l.kind}" ${l.pos ? `data-act="goto:${l.pos.x}:${l.pos.y}"` : ''}><small>${KM.fmtTime(l.t)}</small> ${esc(l.msg)}${l.pos ? ' <i class=ui-icon data-icon=pin aria-hidden=true></i>' : ''}</button>`).join('')}</div><div class="muted"><kbd>Z</kbd> vai até o último aviso.</div>`;
         html += `<h4>Jogadores</h4><div class="plist">${S.players.map((p, i) => `<div class="prow"><span class="dot" style="background:${p.color}"></span><span class="sn">${esc(p.name)}${i === ME() ? ' (você)' : ''}</span><em class="${p.out ? 'bad' : KM.hostile(S, ME(), i) ? 'bad' : 'good'}">${p.out ? 'derrotado' : i === ME() ? '' : KM.hostile(S, ME(), i) ? 'inimigo' : 'aliado'}</em></div>`).join('')}</div>`;
         const ais = S.players.filter((p, i) => p.ai && p.ai.mode !== 'none' && KM.hostile(S, ME(), i) && !p.out);
         const peace = Math.min(...ais.map((p) => p.ai.next - S.time).filter((x) => x > 0), Infinity);
@@ -162,31 +164,31 @@
       } else if (this.tab === 'menu') {
         html = `<h4>Jogo</h4>
           <div class="mgrid">
-            <button class="mbtn" data-act="pause">${S.paused ? '▶️ Continuar' : '⏸️ Pausar'} <kbd>P</kbd></button>
+            <button class="mbtn" data-act="pause">${S.paused ? '<i class=ui-icon data-icon=play aria-hidden=true></i> Continuar' : '<i class=ui-icon data-icon=pause aria-hidden=true></i> Pausar'} <kbd>P</kbd></button>
             <button class="mbtn" data-act="grid">${KM.R.showGrid ? '▦ Ocultar grade' : '▦ Mostrar grade'} <kbd>G</kbd></button>
-            <button class="mbtn" data-act="help">❓ Como jogar <kbd>F1</kbd></button>
-            ${S.mission === 't1' ? '<button class="mbtn" data-act="tutorial">🎓 Reabrir tutorial completo</button>' : ''}
+            <button class="mbtn" data-act="help"><i class=ui-icon data-icon=help aria-hidden=true></i> Como jogar <kbd>F1</kbd></button>
+            ${S.mission === 't1' ? '<button class="mbtn" data-act="tutorial"><i class=ui-icon data-icon=book aria-hidden=true></i> Reabrir tutorial completo</button>' : ''}
           </div>
           <h4>Opções</h4>
           <div class="opts">
-            <label><span>🔊 Volume geral</span><input type="range" min="0" max="100" data-vol="master" value="${Math.round(KM.audioCfg.master * 100)}"></label>
-            <label><span>🎵 Música</span><input type="range" min="0" max="100" data-vol="music" value="${Math.round(KM.audioCfg.music * 100)}"></label>
-            <label><span>🔨 Efeitos</span><input type="range" min="0" max="100" data-vol="sfx" value="${Math.round(KM.audioCfg.sfx * 100)}"></label>
+            <label><span>Volume geral</span><input type="range" min="0" max="100" data-vol="master" value="${Math.round(KM.audioCfg.master * 100)}"></label>
+            <label><span>Música</span><input type="range" min="0" max="100" data-vol="music" value="${Math.round(KM.audioCfg.music * 100)}"></label>
+            <label><span>Efeitos</span><input type="range" min="0" max="100" data-vol="sfx" value="${Math.round(KM.audioCfg.sfx * 100)}"></label>
           </div>
           <div class="mgrid">
-            <button class="mbtn" data-act="sound">${KM.audioOn ? '🔊 Efeitos ligados' : '🔈 Efeitos desligados'}</button>
-            <button class="mbtn" data-act="music">${KM.musicOn ? '🎵 Música ligada' : '🎵 Música desligada'} <kbd>M</kbd></button>
-            <button class="mbtn" data-act="musicmode" data-tip="Gravada: trilhas medievais de RandomMind (CC0). Gerada: música composta pelo jogo na hora">🎼 Música: ${KM.audioCfg.musicMode === 'gerada' ? 'gerada' : 'gravada'}</button>
-            <button class="mbtn" data-act="voices" data-tip="Os soldados respondem às ordens com voz sintetizada do navegador">${KM.audioCfg.voices ? '🗣️ Vozes ligadas' : '🗣️ Vozes desligadas'}</button>
-            <button class="mbtn" data-act="gfx" data-tip="Alta: sombras nítidas e grama · Média: sombras simples · Baixa: sem sombras nem grama (PCs fracos)">🖥️ Gráficos: ${{ high: 'alta', medium: 'média', low: 'baixa' }[KM.R.gfx]}</button>
-            <button class="mbtn" data-act="edge">${KM.edgeScroll !== false ? '🖱️ Rolar pela borda: sim' : '🖱️ Rolar pela borda: não'}</button>
+            <button class="mbtn" data-act="sound">${KM.audioOn ? '<i class=ui-icon data-icon=sound aria-hidden=true></i> Efeitos ligados' : '<i class=ui-icon data-icon=sound aria-hidden=true></i> Efeitos desligados'}</button>
+            <button class="mbtn" data-act="music">${KM.musicOn ? '<i class=ui-icon data-icon=music aria-hidden=true></i> Música ligada' : '<i class=ui-icon data-icon=music aria-hidden=true></i> Música desligada'} <kbd>M</kbd></button>
+            <button class="mbtn" data-act="musicmode" data-tip="Gravada: trilhas medievais de RandomMind (CC0). Gerada: música composta pelo jogo na hora"><i class=ui-icon data-icon=music aria-hidden=true></i> Música: ${KM.audioCfg.musicMode === 'gerada' ? 'gerada' : 'gravada'}</button>
+            <button class="mbtn" data-act="voices" data-tip="Os soldados respondem às ordens com voz sintetizada do navegador">${KM.audioCfg.voices ? '<i class=ui-icon data-icon=voice aria-hidden=true></i> Vozes ligadas' : '<i class=ui-icon data-icon=voice aria-hidden=true></i> Vozes desligadas'}</button>
+            <button class="mbtn" data-act="gfx" data-tip="Alta: sombras nítidas e grama · Média: sombras simples · Baixa: sem sombras nem grama (PCs fracos)"><i class=ui-icon data-icon=screen aria-hidden=true></i> Gráficos: ${{ high: 'alta', medium: 'média', low: 'baixa' }[KM.R.gfx]}</button>
+            <button class="mbtn" data-act="edge">${KM.edgeScroll !== false ? '<i class=ui-icon data-icon=mouse aria-hidden=true></i> Rolar pela borda: sim' : '<i class=ui-icon data-icon=mouse aria-hidden=true></i> Rolar pela borda: não'}</button>
           </div>
           ${S.mp ? '<div class="muted">Salvar não está disponível no multijogador.</div>' : `<h4>Salvar / Carregar</h4>
-          ${[1, 2, 3].map((s) => { const meta = KM.saveMeta(s); return `<div class="slot"><div><b>Espaço ${s}</b><br><small>${meta ? `${esc(meta.name || '')} · ${KM.fmtTime(meta.time)} · ${new Date(meta.date).toLocaleString('pt-BR')}` : 'vazio'}</small></div><button data-act="save:${s}">💾</button><button data-act="load:${s}" ${meta ? '' : 'disabled'}>📂</button></div>`; }).join('')}
+          ${[1, 2, 3].map((s) => { const meta = KM.saveMeta(s); return `<div class="slot"><div><b>Espaço ${s}</b><br><small>${meta ? `${esc(meta.name || '')} · ${KM.fmtTime(meta.time)} · ${new Date(meta.date).toLocaleString('pt-BR')}` : 'vazio'}</small></div><button data-act="save:${s}" title="Salvar no espaço ${s}" aria-label="Salvar no espaço ${s}"><i class=ui-icon data-icon=save aria-hidden=true></i></button><button data-act="load:${s}" title="Carregar espaço ${s}" aria-label="Carregar espaço ${s}" ${meta ? '' : 'disabled'}><i class=ui-icon data-icon=folder aria-hidden=true></i></button></div>`; }).join('')}
           <div class="muted">Salvamento automático a cada 3 min (<kbd>F5</kbd> salva rápido, <kbd>F9</kbd> carrega).</div>`}
           <h4>Partida</h4>
-          ${S.mission ? '<button class="mbtn wide" data-act="restart">🔄 Reiniciar missão</button>' : ''}
-          <button class="mbtn wide danger" data-act="quit">🏠 Voltar ao menu principal</button>`;
+          ${S.mission ? '<button class="mbtn wide" data-act="restart"><i class=ui-icon data-icon=reset aria-hidden=true></i> Reiniciar missão</button>' : ''}
+          <button class="mbtn wide danger" data-act="quit"><i class=ui-icon data-icon=home aria-hidden=true></i> Voltar ao menu principal</button>`;
       }
       if (this.sliding && !force) return;
       if (html !== this.lastTabHtml || force) { $('#tabcontent').innerHTML = html; this.lastTabHtml = html; }
@@ -200,9 +202,9 @@
     },
     houseTip(k) {
       const d = KM.HOUSES[k];
-      let s = `<b>${d.i} ${d.n}</b><br>${d.desc || ''}<br><small>Custo: ${costStr(d.cost)}</small>`;
-      if (d.worker) s += `<br><small>Trabalhador: ${KM.PROF[d.worker].i} ${KM.PROF[d.worker].n}</small>`;
-      if (d.recipes) s += '<br><small>' + d.recipes.map((r) => `${Object.keys(r.in).map((x) => ri(x) + (r.in[x] > 1 ? '×' + r.in[x] : '')).join('+') || '⛰️'} → ${Object.keys(r.out).map((x) => ri(x) + (r.out[x] > 1 ? '×' + r.out[x] : '')).join('+')}`).join('<br>') + '</small>';
+      let s = `<b>${KM.icon(d.i)} ${d.n}</b><br>${d.desc || ''}<br><small>Custo: ${costStr(d.cost)}</small>`;
+      if (d.worker) s += `<br><small>Trabalhador: ${KM.icon(KM.PROF[d.worker].i)} ${KM.PROF[d.worker].n}</small>`;
+      if (d.recipes) s += '<br><small>' + d.recipes.map((r) => `${Object.keys(r.in).map((x) => ri(x) + (r.in[x] > 1 ? '×' + r.in[x] : '')).join('+') || '<i class=ui-icon data-icon=terrain aria-hidden=true></i>'} → ${Object.keys(r.out).map((x) => ri(x) + (r.out[x] > 1 ? '×' + r.out[x] : '')).join('+')}`).join('<br>') + '</small>';
       if (d.gather) s += `<br><small>Produz: ${ri(d.out)} ${KM.RES[d.out].n}</small>`;
       return s;
     },
@@ -212,7 +214,7 @@
       if (!b) return;
       if (b.dataset.tool) { this.setTool(this.tool === b.dataset.tool ? null : b.dataset.tool); if (KM.touchUI) document.body.classList.remove('sb-open'); return; }
       if (b.dataset.build) { this.setTool(this.tool && this.tool.build === b.dataset.build ? null : { build: b.dataset.build }); if (KM.touchUI && this.tool) { document.body.classList.remove('sb-open'); this.toast('Toque no mapa onde quer construir.', 'info'); } return; }
-      if (b.dataset.locked) { const k = b.dataset.locked; this.toast(`🔒 ${KM.HOUSES[k].n}: construa antes ${KM.reqNames(KM.TECH[k])}.`, 'warn'); KM.sfx && KM.sfx('error'); return; }
+      if (b.dataset.locked) { const k = b.dataset.locked; this.toast(`${KM.HOUSES[k].n}: construa antes ${KM.reqNames(KM.TECH[k])}.`, 'warn'); KM.sfx && KM.sfx('error'); return; }
       if (b.dataset.act) this.act(b.dataset.act, b, e);
     },
     setTool(t) {
@@ -247,8 +249,8 @@
       if (k === 'tutorial') KM.tutorial.start(S, true);
       if (k === 'goto') KM.R.centerOn(+v, +w);
       if (k === 'restart') { if (confirm('Reiniciar a missão do começo?')) KM.startGame({ mission: S.mission, diff: S.diff }); }
-      if (k === 'save') { KM.save(+v); this.toast(`💾 Jogo salvo no espaço ${v}`, 'ok'); this.renderTab(true); }
-      if (k === 'load') { if (KM.load(+v)) this.toast(`📂 Jogo carregado do espaço ${v}`, 'ok'); }
+      if (k === 'save') { KM.save(+v); this.toast(`Jogo salvo no espaço ${v}`, 'ok'); this.renderTab(true); }
+      if (k === 'load') { if (KM.load(+v)) this.toast(`Jogo carregado do espaço ${v}`, 'ok'); }
       if (k === 'quit') { if (confirm('Sair para o menu principal? O progresso não salvo será perdido.')) KM.quitToMenu(); }
     },
     toggleMusic() {
@@ -289,8 +291,8 @@
       else if (this.selUnits.length && this.selectedUnits().length) html = this.unitPanel(S, this.selectedUnits()[0]);
       else if (this.tool && this.tool.build) {
         const d = KM.HOUSES[this.tool.build], rg = d.radius || (d.mine && KM.MINE_RADIUS) || d.shoot;
-        html = `<div class="hint">${d.i} <b>${d.n}</b> · porta para o <b>${KM.DOOR_DIR[this.buildRot || 0]}</b> <button class="mbtn" data-act2="rotb">⟳ Girar</button> <kbd>R</kbd>${rg ? ` · 📏 alcance <b>${rg}</b>` : ''} · <kbd>Shift</kbd> constrói várias</div>`;
-      } else html = `<div class="hint">🖱️ <b>Clique</b> para selecionar · <b>arraste</b> para selecionar tropas · <b>botão direito</b> para ordenar · <kbd>WASD</kbd> câmera · <kbd>Espaço</kbd> base${S.mp ? ' · <kbd>Enter</kbd> chat' : ''}</div>`;
+        html = `<div class="hint">${KM.icon(d.i)} <b>${d.n}</b> · porta para o <b>${KM.DOOR_DIR[this.buildRot || 0]}</b> <button class="mbtn" data-act2="rotb">⟳ Girar</button> <kbd>R</kbd>${rg ? ` · <i class=ui-icon data-icon=ruler aria-hidden=true></i> alcance <b>${rg}</b>` : ''} · <kbd>Shift</kbd> constrói várias</div>`;
+      } else html = `<div class="hint"><i class=ui-icon data-icon=mouse aria-hidden=true></i> <b>Clique</b> para selecionar · <b>arraste</b> para selecionar tropas · <b>botão direito</b> para ordenar · <kbd>WASD</kbd> câmera · <kbd>Espaço</kbd> base${S.mp ? ' · <kbd>Enter</kbd> chat' : ''}</div>`;
       if (html !== this.lastPanel) {
         const el = $('#selpanel');
         el.innerHTML = html; this.lastPanel = html;
@@ -305,7 +307,7 @@
       let s = `<div class="ph"><span class="big">${hic(h.type)}</span><div><b>${d.n}</b><br><small>${rel}</small></div></div>`;
       s += `<div class="hp"><i style="width:${(h.hp / h.maxHp) * 100}%" class="${mine ? '' : 'e'}"></i><span>${Math.ceil(h.hp)}/${h.maxHp}</span></div>`;
       const rg = KM.houseRange(h);
-      if (rg) s += `<div class="row" data-tip="O círculo no chão mostra até onde ${d.shoot ? 'a torre atira' : d.mine ? 'a mina extrai minério' : 'o trabalhador vai buscar'}">📏 ${rg.n}: <b>${rg.r}</b> casas</div>`;
+      if (rg) s += `<div class="row" data-tip="O círculo no chão mostra até onde ${d.shoot ? 'a torre atira' : d.mine ? 'a mina extrai minério' : 'o trabalhador vai buscar'}"><i class=ui-icon data-icon=ruler aria-hidden=true></i> ${rg.n}: <b>${rg.r}</b> casas</div>`;
       if (!mine) return s;
       if (h.state !== 'built') {
         s += '<div class="io">';
@@ -316,13 +318,13 @@
         const road = S.map.road[h.ey * S.map.W + h.ex] === 2;
         const comp = KM.rt.comp && KM.rt.comp[h.ey * S.map.W + h.ex];
         if (!road) s += '<div class="warn">A estrada da entrada ainda não foi construída.</div>';
-        else if (!this.connected(S, comp)) s += '<div class="warn">⚠️ Sem estrada até um armazém: os materiais não chegam!</div>';
-        s += `<div class="mgrid"><button class="mbtn ${h.noDeliv ? 'on' : ''}" data-act2="hset:noDeliv:${h.noDeliv ? 0 : 1}">${h.noDeliv ? '🚫 Entregas bloqueadas' : '📥 Entregas liberadas'}</button><button class="mbtn ${h.prio ? 'on' : ''}" data-act2="hset:prio:${h.prio ? 0 : 1}" data-tip="Construtores e carregadores atendem esta obra antes das outras">${h.prio ? '⭐ Prioridade: sim' : '☆ Dar prioridade'}</button><button class="mbtn danger" data-act2="demolish">❌ Cancelar</button></div>`;
+        else if (!this.connected(S, comp)) s += '<div class="warn">Sem estrada até um armazém: os materiais não chegam!</div>';
+        s += `<div class="mgrid"><button class="mbtn ${h.noDeliv ? 'on' : ''}" data-act2="hset:noDeliv:${h.noDeliv ? 0 : 1}">${h.noDeliv ? '<i class=ui-icon data-icon=block aria-hidden=true></i> Entregas bloqueadas' : '<i class=ui-icon data-icon=delivery aria-hidden=true></i> Entregas liberadas'}</button><button class="mbtn ${h.prio ? 'on' : ''}" data-act2="hset:prio:${h.prio ? 0 : 1}" data-tip="Construtores e carregadores atendem esta obra antes das outras">${h.prio ? '<i class=ui-icon data-icon=star aria-hidden=true></i> Prioridade: sim' : '☆ Dar prioridade'}</button><button class="mbtn danger" data-act2="demolish"><i class=ui-icon data-icon=cross aria-hidden=true></i> Cancelar</button></div>`;
         return s;
       }
       if (d.worker) {
         const w = h.worker && S.units[h.worker];
-        s += `<div class="row">${KM.PROF[d.worker].i} ${KM.PROF[d.worker].n}: ${w ? (w.inside === h.id || (w.task && w.task.type === 'gather') ? '<span class="good">trabalhando</span>' : w.task && w.task.type === 'eat' ? '<span class="warnc">comendo</span>' : '<span class="warnc">a caminho</span>') : '<span class="bad">nenhum: treine na Escola</span>'}${w && w.hunger < 25 ? ' 🍗' : ''}</div>`;
+        s += `<div class="row">${KM.icon(KM.PROF[d.worker].i)} ${KM.PROF[d.worker].n}: ${w ? (w.inside === h.id || (w.task && w.task.type === 'gather') ? '<span class="good">trabalhando</span>' : w.task && w.task.type === 'eat' ? '<span class="warnc">comendo</span>' : '<span class="warnc">a caminho</span>') : '<span class="bad">nenhum: treine na Escola</span>'}${w && w.hunger < 25 ? ' <i class=ui-icon data-icon=meat aria-hidden=true></i>' : ''}</div>`;
       }
       const acc = KM.houseAccepts(h);
       if (acc.length && h.type !== 'barracks') {
@@ -336,7 +338,7 @@
         let made = 0;
         d.recipes.forEach((rc, i) => { const q = Object.values(rc.out).reduce((a, b) => a + b, 0); made += (h.cnt[i] || 0) * q; });
         const eff = Math.round((100 * (h.busyT || 0)) / h.upT);
-        s += `<div class="row" data-tip="Aproveitamento: parte do tempo em que a casa estava produzindo">📈 Produziu <b>${made}</b> · aproveitamento <b class="${eff < 40 ? 'bad' : eff < 70 ? 'warnc' : 'good'}">${eff}%</b></div>`;
+        s += `<div class="row" data-tip="Aproveitamento: parte do tempo em que a casa estava produzindo"><i class=ui-icon data-icon=chart aria-hidden=true></i> Produziu <b>${made}</b> · aproveitamento <b class="${eff < 40 ? 'bad' : eff < 70 ? 'warnc' : 'good'}">${eff}%</b></div>`;
         if (eff < 40 && !h.paused && h.upT > 120 && !(h.orders && !h.orders.some((q) => q > 0))) s += `<div class="warn">Parada boa parte do tempo: ${h.worker ? 'falta matéria-prima (confira estradas, carregadores e distribuição)' : 'sem trabalhador'}.</div>`;
       }
       if (d.mine && h.depleted) s += '<div class="warn">O minério próximo acabou.</div>';
@@ -355,7 +357,7 @@
         s += `<div class="trade"><div class="rate">${rate.sellN} ${ri(t.sell)} → ${rate.buyN} ${ri(t.buy)}</div><small class="muted">${KM.RES[t.sell].n} por ${KM.RES[t.buy].n} (taxa do mercador incluída)</small></div>`;
         s += `<div class="lbl">Vender</div>${grid(t.sell, 'tsell')}<div class="lbl">Comprar</div>${grid(t.buy, 'tbuy')}`;
         s += `<div class="ratio"><span>Trocas encomendadas</span><button data-act2="tn:-1" data-tip="Shift: −10">−</button><b>${t.n >= KM.INF ? '∞' : t.n}</b><button data-act2="tn:1" data-tip="Shift: +10">+</button><button data-act2="tn:inf" data-tip="Trocar sem parar">∞</button></div>`;
-        s += `<div class="row">📦 Aguardando: ${h.inv[t.sell] || 0}/${rate.sellN} ${ri(t.sell)}${h.tradeT > 0 ? ' · <span class="good">negociando…</span>' : ''} · Trocas feitas: <b>${h.traded || 0}</b></div>`;
+        s += `<div class="row"><i class=ui-icon data-icon=crate aria-hidden=true></i> Aguardando: ${h.inv[t.sell] || 0}/${rate.sellN} ${ri(t.sell)}${h.tradeT > 0 ? ' · <span class="good">negociando…</span>' : ''} · Trocas feitas: <b>${h.traded || 0}</b></div>`;
         if (!t.n) s += '<div class="muted">Encomende trocas para os carregadores começarem a trazer a mercadoria.</div>';
       }
       if (h.type === 'storehouse') {
@@ -365,31 +367,31 @@
         const P = S.players[ME()];
         s += `<div class="lbl">Fila de treino ${h.trainT ? `: ${KM.PROF[h.queue[0]].n}` : (h.queue.length && !(h.inv.gold > 0) ? ': <span class="bad">sem ouro!</span>' : '')}</div>`;
         if (h.trainT) s += `<div class="pbar"><i style="width:${(1 - h.trainT / h.trainMax) * 100}%"></i></div>`;
-        s += `<div class="queue">${h.queue.map((p, i) => `<button data-act2="unq:${i}" data-tip="Remover ${KM.PROF[p].n}">${KM.PROF[p].i}</button>`).join('') || '<small class="muted">vazia</small>'}</div>`;
-        s += `<div class="lbl">Treinar (1 🪙 cada)</div><div class="tgrid">${KM.PROF_ORDER.map((p) => {
-          if (KM.profUnlocked(S, ME(), p)) return `<button data-act2="train:${p}" data-tip="${KM.PROF[p].n}">${uic(p)}<small>${KM.PROF[p].n}</small></button>`;
-          const need = p === 'recruit' ? 'Construa um ⚔️ Quartel' : 'Libere uma construção que use este profissional: ' + Object.keys(KM.HOUSES).filter((t) => KM.HOUSES[t].worker === p).map((t) => KM.HOUSES[t].i + ' ' + KM.HOUSES[t].n).join(', ');
-          return `<button class="locked" data-act2="lockedp:${p}" data-tip="<b>🔒 ${KM.PROF[p].n}</b><br>${need}">${uic(p)}<small>🔒</small></button>`;
+        s += `<div class="queue">${h.queue.map((p, i) => `<button data-act2="unq:${i}" data-tip="Remover ${KM.PROF[p].n}" aria-label="Remover ${KM.PROF[p].n}">${uic(p)}<span class="queue-remove">×</span></button>`).join('') || '<small class="muted">vazia</small>'}</div>`;
+        s += `<div class="lbl">Profissionais <span class="muted">· 1 ouro por treino</span></div><div class="tgrid">${KM.PROF_ORDER.map((p) => {
+          if (KM.profUnlocked(S, ME(), p)) return `<button data-act2="train:${p}" aria-label="Treinar ${KM.PROF[p].n}" data-tip="${KM.PROF[p].n} · ${KM.PROF[p].t}s">${portrait(p)}<small>${KM.PROF[p].n}</small></button>`;
+          const need = p === 'recruit' ? 'Construa um <i class=ui-icon data-icon=sword aria-hidden=true></i> Quartel' : 'Libere uma construção que use este profissional: ' + Object.keys(KM.HOUSES).filter((t) => KM.HOUSES[t].worker === p).map((t) => KM.HOUSES[t].n).join(', ');
+          return `<button class="locked" data-act2="lockedp:${p}" aria-label="${KM.PROF[p].n} bloqueado" data-tip="<b>${KM.PROF[p].n}</b><br>${need}">${portrait(p)}<small>${KM.PROF[p].n}</small><em class="train-lock"><i class=ui-icon data-icon=lock aria-hidden=true></i> Bloqueado</em></button>`;
         }).join('')}</div>`;
         s += `<label class="chk"><input type="checkbox" data-act2="auto" ${P.autoTrain ? 'checked' : ''}> Treino automático</label>`;
       }
       if (h.type === 'barracks') {
-        s += `<div class="row">🪖 Recrutas: <b>${h.recruits}</b> <small class="muted">(treine "Recruta" na Escola)</small></div><div class="muted">🚩 Botão direito no mapa define o ponto de encontro dos novos soldados.</div>`;
+        s += `<div class="row"><i class=ui-icon data-icon=helmet aria-hidden=true></i> Recrutas: <b>${h.recruits}</b> <small class="muted">(treine "Recruta" na Escola)</small></div><div class="muted">Botão direito no mapa define o ponto de encontro dos novos soldados.</div>`;
         s += `<div class="io">${KM.WEAPONS.map((r) => `<div class="chip ${h.inv[r] ? '' : 'zero'}" data-tip="${KM.RES[r].n}">${ri(r)} ${h.inv[r] || 0}</div>`).join('')}</div>`;
         s += `<div class="lbl">Equipar soldado <small class="muted">(Shift: 5 de uma vez)</small></div><div class="sgrid">${KM.SOLDIER_ORDER.map((t) => {
           const sd = KM.SOLDIERS[t];
-          if (!KM.soldierUnlocked(S, ME(), t)) return `<button class="locked" data-act2="lockeds:${t}" data-tip="<b>🔒 ${sd.n}</b><br>Para liberar, construa: ${esc(KM.reqNames(KM.SOLDIER_REQ[t]))}"><span>${uic(t)}</span><small>${sd.n}</small><em>🔒 bloqueado</em></button>`;
+          if (!KM.soldierUnlocked(S, ME(), t)) return `<button class="locked" data-act2="lockeds:${t}" data-tip="<b><i class=ui-icon data-icon=lock aria-hidden=true></i> ${sd.n}</b><br>Para liberar, construa: ${esc(KM.reqNames(KM.SOLDIER_REQ[t]))}"><span>${uic(t)}</span><small>${sd.n}</small><em><i class=ui-icon data-icon=lock aria-hidden=true></i> bloqueado</em></button>`;
           const ok = h.recruits > 0 && Object.keys(sd.cost).every((r) => (h.inv[r] || 0) >= sd.cost[r]);
-          return `<button data-act2="equip:${t}" class="${ok ? '' : 'off'}" data-tip="<b>${sd.n}</b><br>Vida ${sd.hp} · Ataque ${sd.atk} · Defesa ${sd.def}${sd.range ? ' · Alcance ' + sd.range : ''}${sd.antiCav ? '<br>Forte contra cavalaria' : ''}<br>Custo: 🪖${Object.keys(sd.cost).length ? ' + ' + costStr(sd.cost) : ' (sem arma)'}"><span>${uic(t)}</span><small>${sd.n}</small><em>${costStr(sd.cost) || 'só 🪖'}</em></button>`;
+          return `<button data-act2="equip:${t}" class="${ok ? '' : 'off'}" data-tip="<b>${sd.n}</b><br>Vida ${sd.hp} · Ataque ${sd.atk} · Defesa ${sd.def}${sd.range ? ' · Alcance ' + sd.range : ''}${sd.antiCav ? '<br>Forte contra cavalaria' : ''}<br>Custo: <i class=ui-icon data-icon=helmet aria-hidden=true></i>${Object.keys(sd.cost).length ? ' + ' + costStr(sd.cost) : ' (sem arma)'}"><span>${uic(t)}</span><small>${sd.n}</small><em>${costStr(sd.cost) || 'só <i class=ui-icon data-icon=helmet aria-hidden=true></i>'}</em></button>`;
         }).join('')}</div>`;
       }
-      if (h.type === 'tower') s += `<div class="row">Munição: ${h.shots} tiros prontos + ${h.inv.stone || 0} 🪨</div>`;
+      if (h.type === 'tower') s += `<div class="row">Munição: ${h.shots} tiros prontos + ${h.inv.stone || 0} <i class=ui-icon data-icon=stone aria-hidden=true></i></div>`;
       s += `<div class="mgrid">`;
-      if (d.recipes || d.gather) s += `<button class="mbtn ${h.paused ? 'on' : ''}" data-act2="hset:paused:${h.paused ? 0 : 1}">${h.paused ? '▶️ Retomar' : '⏸️ Pausar'}</button>`;
-      if (acc.length) s += `<button class="mbtn ${h.noDeliv ? 'on' : ''}" data-act2="hset:noDeliv:${h.noDeliv ? 0 : 1}">${h.noDeliv ? '🚫 Entregas bloqueadas' : '📥 Entregas liberadas'}</button>`;
-      s += `<button class="mbtn ${h.repair ? '' : 'on'}" data-act2="hset:repair:${h.repair ? 0 : 1}" data-tip="Construtores consertam a casa quando danificada">${h.repair ? '🔧 Reparo: sim' : '🔧 Reparo: não'}</button>`;
+      if (d.recipes || d.gather) s += `<button class="mbtn ${h.paused ? 'on' : ''}" data-act2="hset:paused:${h.paused ? 0 : 1}">${h.paused ? '<i class=ui-icon data-icon=play aria-hidden=true></i> Retomar' : '<i class=ui-icon data-icon=pause aria-hidden=true></i> Pausar'}</button>`;
+      if (acc.length) s += `<button class="mbtn ${h.noDeliv ? 'on' : ''}" data-act2="hset:noDeliv:${h.noDeliv ? 0 : 1}">${h.noDeliv ? '<i class=ui-icon data-icon=block aria-hidden=true></i> Entregas bloqueadas' : '<i class=ui-icon data-icon=delivery aria-hidden=true></i> Entregas liberadas'}</button>`;
+      s += `<button class="mbtn ${h.repair ? '' : 'on'}" data-act2="hset:repair:${h.repair ? 0 : 1}" data-tip="Construtores consertam a casa quando danificada">${h.repair ? '<i class=ui-icon data-icon=wrench aria-hidden=true></i> Reparo: sim' : '<i class=ui-icon data-icon=wrench aria-hidden=true></i> Reparo: não'}</button>`;
       const onlySchool = h.type === 'school' && !Object.values(S.houses).some((x) => x !== h && x.owner === h.owner && x.type === 'school' && x.state === 'built');
-      s += onlySchool ? `<button class="mbtn off" disabled data-tip="É dela que vem todo o seu povo">🎓 Escola não pode ser demolida</button></div>` : `<button class="mbtn danger" data-act2="demolish">❌ Demolir</button></div>`;
+      s += onlySchool ? `<button class="mbtn off" disabled data-tip="É dela que vem todo o seu povo"><i class=ui-icon data-icon=book aria-hidden=true></i> Escola não pode ser demolida</button></div>` : `<button class="mbtn danger" data-act2="demolish"><i class=ui-icon data-icon=cross aria-hidden=true></i> Demolir</button></div>`;
       return s;
     },
     connected(S, comp) {
@@ -399,11 +401,11 @@
     },
     unitPanel(S, u) {
       const sd = KM.SOLDIERS[u.type], p = KM.PROF[u.type];
-      const nm = sd ? sd.n : p.n, ic = sd ? sd.i : p.i;
+      const nm = sd ? sd.n : p.n;
       const mine = u.owner === ME();
       let s = `<div class="ph"><span class="big">${uic(u.type)}</span><div><b>${nm}</b><br><small>${mine ? KM.taskText(S, u) : `<span class="${KM.hostile(S, ME(), u.owner) ? 'enemy' : 'good'}">${esc(S.players[u.owner].name)}</span>`}</small></div></div>`;
       s += `<div class="hp"><i style="width:${(u.hp / u.maxHp) * 100}%" class="${mine ? '' : 'e'}"></i><span>${Math.ceil(u.hp)}/${u.maxHp}</span></div>`;
-      if (mine) s += `<div class="meter"><span>🍗 Fome</span><div class="mbar"><i style="width:${u.hunger}%"></i></div></div>`;
+      if (mine) s += `<div class="meter"><span>Fome</span><div class="mbar"><i style="width:${u.hunger}%"></i></div></div>`;
       return s;
     },
     groupPanel(S, groups) {
@@ -413,22 +415,22 @@
       for (const g of groups) for (const u of KM.groupUnits(S, g)) { n++; hp += u.hp; mhp += u.maxHp; hun += u.hunger; KM.add(c, u.type, 1); }
       if (!n) return '';
       const sd = KM.SOLDIERS[groups[0].type];
-      let s = `<div class="ph"><span class="big">${groups.length > 1 ? '⚔️' : sd.i}</span><div><b>${groups.length > 1 ? groups.length + ' grupos' : sd.n}</b> · ${n} soldado${n > 1 ? 's' : ''}<br><small>${mine ? this.groupState(S, groups[0]) : `<span class="${KM.hostile(S, ME(), groups[0].owner) ? 'enemy' : 'good'}">${esc(S.players[groups[0].owner].name)}</span>`}</small></div></div>`;
+      let s = `<div class="ph"><span class="big">${groups.length > 1 ? '<i class=ui-icon data-icon=sword aria-hidden=true></i>' : KM.icon(sd.i)}</span><div><b>${groups.length > 1 ? groups.length + ' grupos' : sd.n}</b> · ${n} soldado${n > 1 ? 's' : ''}<br><small>${mine ? this.groupState(S, groups[0]) : `<span class="${KM.hostile(S, ME(), groups[0].owner) ? 'enemy' : 'good'}">${esc(S.players[groups[0].owner].name)}</span>`}</small></div></div>`;
       s += `<div class="hp"><i style="width:${(hp / mhp) * 100}%" class="${mine ? '' : 'e'}"></i><span>Vida ${Math.round((hp / mhp) * 100)}%</span></div>`;
-      if (groups.length > 1) s += `<div class="io">${Object.keys(c).map((t) => `<div class="chip">${KM.SOLDIERS[t].i} ${c[t]}</div>`).join('')}</div>`;
+      if (groups.length > 1) s += `<div class="io">${Object.keys(c).map((t) => `<div class="chip">${KM.icon(KM.SOLDIERS[t].i)} ${c[t]}</div>`).join('')}</div>`;
       else s += `<div class="muted">Ataque ${sd.atk} · Defesa ${sd.def}${sd.range ? ' · Alcance ' + sd.range : ''}${sd.antiCav ? ' · anti-cavalaria' : ''}</div>`;
       if (!mine) return s;
-      s += `<div class="meter"><span>🍖 Comida</span><div class="mbar"><i style="width:${hun / n}%"></i></div></div>`;
+      s += `<div class="meter"><span>Comida</span><div class="mbar"><i style="width:${hun / n}%"></i></div></div>`;
       s += `<div class="cmds">
-        <button data-act2="stop" data-tip="Parar <kbd>Shift</kbd>+<kbd>S</kbd>">✋</button>
-        <button data-act2="turn:-1" data-tip="Girar à esquerda <kbd>Q</kbd>">↺</button>
-        <button data-act2="turn:1" data-tip="Girar à direita <kbd>E</kbd>">↻</button>
-        <button data-act2="cols:-1" data-tip="Menos colunas <kbd>[</kbd>">⇤</button>
-        <button data-act2="cols:1" data-tip="Mais colunas <kbd>]</kbd>">⇥</button>
-        <button data-act2="split" data-tip="Dividir grupo ao meio <kbd>T</kbd>">✂️</button>
-        <button data-act2="link" data-tip="Unir grupos selecionados do mesmo tipo <kbd>L</kbd>" ${groups.length > 1 ? '' : 'disabled'}>🔗</button>
-        <button data-act2="feed" data-tip="Chamar carregadores com comida <kbd>H</kbd>">🍖</button>
-        <button data-act2="amove" data-tip="Atacar-mover <kbd>Shift</kbd>+<kbd>A</kbd>">⚔️</button>
+        <button data-act2="stop" aria-label="Parar" data-tip="Parar <kbd>Shift</kbd>+<kbd>S</kbd>"><i class=ui-icon data-icon=stop aria-hidden=true></i></button>
+        <button data-act2="turn:-1" aria-label="Girar à esquerda" data-tip="Girar à esquerda <kbd>Q</kbd>">↺</button>
+        <button data-act2="turn:1" aria-label="Girar à direita" data-tip="Girar à direita <kbd>E</kbd>">↻</button>
+        <button data-act2="cols:-1" aria-label="Menos colunas" data-tip="Menos colunas <kbd>[</kbd>">⇤</button>
+        <button data-act2="cols:1" aria-label="Mais colunas" data-tip="Mais colunas <kbd>]</kbd>">⇥</button>
+        <button data-act2="split" aria-label="Dividir grupo" data-tip="Dividir grupo ao meio <kbd>T</kbd>"><i class=ui-icon data-icon=split aria-hidden=true></i></button>
+        <button data-act2="link" aria-label="Unir grupos" data-tip="Unir grupos selecionados do mesmo tipo <kbd>L</kbd>" ${groups.length > 1 ? '' : 'disabled'}><i class=ui-icon data-icon=link aria-hidden=true></i></button>
+        <button data-act2="feed" aria-label="Pedir comida" data-tip="Chamar carregadores com comida <kbd>H</kbd>"><i class=ui-icon data-icon=meat aria-hidden=true></i></button>
+        <button data-act2="amove" aria-label="Atacar e mover" data-tip="Atacar-mover <kbd>Shift</kbd>+<kbd>A</kbd>"><i class=ui-icon data-icon=sword aria-hidden=true></i></button>
       </div><div class="muted">Colunas: ${groups[0].cols} · <kbd>Ctrl</kbd>+<kbd>1-9</kbd> cria atalho</div>`;
       return s;
     },
@@ -464,14 +466,14 @@
         KM.sfx && KM.sfx('click');
       }
       if (k === 'train' && h) { if (h.queue.length < 10) KM.issue({ c: 'train', id: h.id, p: a }); else this.toast('Fila cheia (máx. 10).', 'warn'); }
-      if (k === 'lockedp') this.toast(`🔒 ${KM.PROF[a].n} ainda não está disponível. ${a === 'recruit' ? 'Construa um Quartel.' : 'Libere a construção onde ele trabalha.'}`, 'warn');
-      if (k === 'lockeds') this.toast(`🔒 ${KM.SOLDIERS[a].n}: construa antes ${KM.reqNames(KM.SOLDIER_REQ[a])}.`, 'warn');
+      if (k === 'lockedp') this.toast(`${KM.PROF[a].n} ainda não está disponível. ${a === 'recruit' ? 'Construa um Quartel.' : 'Libere a construção onde ele trabalha.'}`, 'warn');
+      if (k === 'lockeds') this.toast(`${KM.SOLDIERS[a].n}: construa antes ${KM.reqNames(KM.SOLDIER_REQ[a])}.`, 'warn');
       if (k === 'unq' && h) KM.issue({ c: 'unq', id: h.id, i: +a });
       if (k === 'auto') KM.issue({ c: 'auto', v: b.checked });
       if (k === 'equip' && h) {
         const sd = KM.SOLDIERS[a];
         const ok = h.recruits > 0 && Object.keys(sd.cost).every((r) => (h.inv[r] || 0) >= sd.cost[r]);
-        if (!KM.soldierUnlocked(S, ME(), a)) this.toast(`🔒 ${sd.n}: construa antes ${KM.reqNames(KM.SOLDIER_REQ[a])}.`, 'warn');
+        if (!KM.soldierUnlocked(S, ME(), a)) this.toast(`${sd.n}: construa antes ${KM.reqNames(KM.SOLDIER_REQ[a])}.`, 'warn');
         else if (!ok) this.toast(h.recruits < 1 ? 'Sem recrutas! Treine "Recruta" na Escola.' : 'Faltam armas ou armaduras no quartel.', 'warn');
         else { KM.issue({ c: 'equip', id: h.id, t: a, n: e.shiftKey ? 5 : 1 }); KM.sfx && KM.sfx('click'); }
       }
@@ -480,7 +482,7 @@
       if (k === 'cols') KM.issue({ c: 'cols', g: gids, d: +a });
       if (k === 'split') KM.issue({ c: 'split', g: gids });
       if (k === 'link') KM.issue({ c: 'link', g: gids });
-      if (k === 'feed') { KM.issue({ c: 'feed', g: gids }); this.toast('🍖 Carregadores levarão comida às tropas.', 'info'); }
+      if (k === 'feed') { KM.issue({ c: 'feed', g: gids }); this.toast('Carregadores levarão comida às tropas.', 'info'); }
       if (k === 'amove') { this.attackMove = true; this.toast('Clique com o botão direito no destino do ataque.', 'info'); }
       this.lastPanel = null;
       setTimeout(() => { this.lastPanel = null; this.renderPanel(); }, 80);
@@ -504,7 +506,7 @@
       if (!box) return;
       const el = document.createElement('div');
       el.className = 'toast ' + (kind || 'info');
-      el.innerHTML = esc(msg) + (pos ? ' <span class="go">📍</span>' : '');
+      el.innerHTML = esc(msg) + (pos ? ' <span class="go"><i class=ui-icon data-icon=pin aria-hidden=true></i></span>' : '');
       if (pos) { el.style.cursor = 'pointer'; el.onclick = () => KM.R.centerOn(pos.x, pos.y); this.lastPos = pos; }
       if (pos && (kind === 'danger' || kind === 'warn')) {
         this.pings = (this.pings || []).filter((p) => Math.hypot(p.x - pos.x, p.y - pos.y) > 4);
@@ -530,8 +532,8 @@
       const peace = Math.min(...ais.map((p) => (p.ai.wave === 0 ? p.ai.next - S.time : Infinity)));
       const waves = ais.reduce((a, p) => a + p.ai.wave, 0);
       let threat = '';
-      if (KM.zone(S, ME())) threat = `<span class="peace" data-tip="Tempo de paz. Até ele acabar, cada reino só constrói, anda e ataca no próprio quadrante do mapa (cerca de luz no chão, tracejado no minimapa)">🕊️ Paz ${KM.fmtTime(S.peaceEnd - S.time)} 🚧</span>`;
-      else if (ais.length) threat = isFinite(peace) && peace > 0 ? `<span class="peace" data-tip="Tempo de paz antes do primeiro ataque">🕊️ Paz ${KM.fmtTime(peace)}</span>` : `<span class="muted">Ataques: ${waves}</span>`;
+      if (KM.zone(S, ME())) threat = `<span class="peace" data-tip="Tempo de paz. Até ele acabar, cada reino só constrói, anda e ataca no próprio quadrante do mapa (cerca de luz no chão, tracejado no minimapa)"><i class=ui-icon data-icon=peace aria-hidden=true></i> Paz ${KM.fmtTime(S.peaceEnd - S.time)} <i class=ui-icon data-icon=block aria-hidden=true></i></span>`;
+      else if (ais.length) threat = isFinite(peace) && peace > 0 ? `<span class="peace" data-tip="Tempo de paz antes do primeiro ataque"><i class=ui-icon data-icon=peace aria-hidden=true></i> Paz ${KM.fmtTime(peace)}</span>` : `<span class="muted">Ataques: ${waves}</span>`;
       // tendência: variação por minuto (janela de ~1 min de jogo)
       const vals = { wood: tot.wood || 0, stone: tot.stone || 0, gold: tot.gold || 0, food };
       if (this.trendS !== S) { this.trendS = S; this.trendBuf = []; }
@@ -544,11 +546,11 @@
       };
       const req = S.goals.filter((g) => !g.opt), opt = S.goals.filter((g) => g.opt);
       const done = req.filter((g) => KM.goalStatus(S, g).done).length;
-      const crowns = opt.length ? ` · 👑 ${opt.filter((g) => KM.goalStatus(S, g).done).length}/${opt.length}` : '';
-      const net = S.mp && KM.net ? `<span class="${KM.net.lag > 0.5 ? 'threat' : 'muted'}" data-tip="Conexão multijogador">📶 ${KM.net.ping}ms</span>` : '';
-      const html = `<div class="tb-group">⏱️ ${KM.fmtTime(S.time)} ${threat} ${net} <button class="goalsbtn" data-goals="1" data-tip="Objetivos e desafios">🎯 ${done}/${req.length}${crowns}</button></div>
-        <div class="tb-group res"><span data-tip="Madeira (variação por minuto)">🪜 ${tot.wood || 0}${tr('wood')}</span><span data-tip="Pedra (variação por minuto)">🪨 ${tot.stone || 0}${tr('stone')}</span><span data-tip="Ouro (variação por minuto)">🪙 ${tot.gold || 0}${tr('gold')}</span><span data-tip="Comida: pão, salsicha, vinho, peixe (variação por minuto)">🍞 ${food}${tr('food')}</span><span data-tip="Cidadãos">👥 ${cit}</span><span data-tip="Soldados">⚔️ ${sol}</span></div>
-        <div class="tb-group speed">${(S.mp ? [1, 2, 3] : [0, 1, 2, 3, 5]).map((v) => `<button data-speed="${v}" class="${(v === 0 ? S.paused : !S.paused && S.speed === v) ? 'active' : ''}">${v === 0 ? '⏸' : v + '×'}</button>`).join('')}</div>`;
+      const crowns = opt.length ? ` · <i class=ui-icon data-icon=crown aria-hidden=true></i> ${opt.filter((g) => KM.goalStatus(S, g).done).length}/${opt.length}` : '';
+      const net = S.mp && KM.net ? `<span class="${KM.net.lag > 0.5 ? 'threat' : 'muted'}" data-tip="Conexão multijogador"><i class=ui-icon data-icon=signal aria-hidden=true></i> ${KM.net.ping}ms</span>` : '';
+      const html = `<div class="tb-group"><span><i class=ui-icon data-icon=clock aria-hidden=true></i> ${KM.fmtTime(S.time)}</span> ${threat} ${net} <button class="goalsbtn" data-goals="1" data-tip="Objetivos e desafios"><i class=ui-icon data-icon=target aria-hidden=true></i> ${done}/${req.length}${crowns}</button></div>
+        <div class="tb-group res"><span data-tip="Madeira (variação por minuto)"><i class=ui-icon data-icon=wood aria-hidden=true></i> ${tot.wood || 0}${tr('wood')}</span><span data-tip="Pedra (variação por minuto)"><i class=ui-icon data-icon=stone aria-hidden=true></i> ${tot.stone || 0}${tr('stone')}</span><span data-tip="Ouro (variação por minuto)"><i class=ui-icon data-icon=coin aria-hidden=true></i> ${tot.gold || 0}${tr('gold')}</span><span data-tip="Comida: pão, salsicha, vinho, peixe (variação por minuto)"><i class=ui-icon data-icon=bread aria-hidden=true></i> ${food}${tr('food')}</span><span data-tip="Cidadãos"><i class=ui-icon data-icon=people aria-hidden=true></i> ${cit}</span><span data-tip="Soldados"><i class=ui-icon data-icon=sword aria-hidden=true></i> ${sol}</span></div>
+        <div class="tb-group speed">${(S.mp ? [1, 2, 3] : [0, 1, 2, 3, 5]).map((v) => `<button data-speed="${v}" aria-label="${v === 0 ? (S.paused ? 'Continuar' : 'Pausar') : 'Velocidade ' + v + ' vezes'}" class="${(v === 0 ? S.paused : !S.paused && S.speed === v) ? 'active' : ''}">${v === 0 ? '<i class=ui-icon data-icon=pause aria-hidden=true></i>' : v + '×'}</button>`).join('')}</div>`;
       if (html !== this.lastTop) { $('#topbar').innerHTML = html; this.lastTop = html; }
     },
     setSpeed(v) {
@@ -665,8 +667,8 @@
       }
       for (const id in S.units) { const u = S.units[id]; if (u.owner !== o || KM.isSoldier(u.type)) continue; cit++; if (u.hunger <= 0) starving++; }
       const adv = S.adv || (S.adv = {});
-      const say = (k, msg) => { if (S.time - (adv[k] || -999) < 120) return; adv[k] = S.time; this.toast('🧙 ' + msg, 'warn'); };
-      const name = (t) => `${KM.HOUSES[t].i} ${KM.HOUSES[t].n}`;
+      const say = (k, msg) => { if (S.time - (adv[k] || -999) < 120) return; adv[k] = S.time; this.toast(msg, 'warn'); };
+      const name = (t) => KM.HOUSES[t].n;
       const path = (t) => (KM.houseUnlocked(S, o, t) ? `construa ${name(t)}` : `libere e construa ${name(t)} (antes: ${KM.reqNames(KM.TECH[t])})`);
       const school = Object.values(S.houses).find((h) => h.owner === o && h.type === 'school' && h.state === 'built');
       if (school && school.queue.length && !(tot.gold > 0) && !(school.inv.gold > 0)) {
@@ -743,7 +745,7 @@
       $('#conquests').innerHTML = KM.conquestList(diff).map((m, i) => {
         const open = i + 1 <= P.open, cr = P.crowns[m.id] || 0;
         const foes = m.players.slice(1).map((p, k) => `<i class="shield" style="background:${KM.COLORS[k + 1]}" title="${esc(p.name)}"></i>`).join('');
-        return `<button class="mission conq ${open ? '' : 'locked'}" ${open ? `data-conquest="${m.id}"` : 'disabled'}><span>${cr ? '🏆' : open ? '⚔️' : '🔒'}</span><div><b>${esc(m.n)}</b><small>${open ? `${foes} ${m.players.length - 1} reino${m.players.length > 2 ? 's' : ''} rival${m.players.length > 2 ? 'is' : ''} · ${KM.BIOMES[m.biome].n} · ${m.W}×${m.W}` : 'Vença a fase anterior · ' + KM.BIOMES[m.biome].n}</small></div><em class="cr">${[1, 2, 3, 4].map((k) => `<span class="${k <= cr ? 'on' : ''}">👑</span>`).join('')}</em></button>`;
+        return `<button class="mission conq ${open ? '' : 'locked'}" ${open ? `data-conquest="${m.id}"` : 'disabled'}><span>${cr ? '<i class=ui-icon data-icon=trophy aria-hidden=true></i>' : open ? '<i class=ui-icon data-icon=sword aria-hidden=true></i>' : '<i class=ui-icon data-icon=lock aria-hidden=true></i>'}</span><div><b>${esc(m.n)}</b><small>${open ? `${foes} ${m.players.length - 1} reino${m.players.length > 2 ? 's' : ''} rival${m.players.length > 2 ? 'is' : ''} · ${KM.BIOMES[m.biome].n} · ${m.W}×${m.W}` : 'Vença a fase anterior · ' + KM.BIOMES[m.biome].n}</small></div><em class="cr">${[1, 2, 3, 4].map((k) => `<span class="${k <= cr ? 'on' : ''}"><i class=ui-icon data-icon=crown aria-hidden=true></i></span>`).join('')}</em></button>`;
       }).join('');
     },
     renderCampaign() {
@@ -751,12 +753,12 @@
       $('#missions').innerHTML = KM.MISSIONS.map((m, i) => {
         const open = i + 1 <= prog, done = i + 1 < prog;
         const fake = { houses: {}, units: {}, time: 0, players: [] };
-        return `<button class="mission ${open ? '' : 'locked'}" ${open ? `data-mission="${m.id}"` : 'disabled'}><span>${done ? '✅' : open ? '⚔️' : '🔒'}</span><div><b>${m.n}</b><small>${open ? m.goals.map((g) => KM.goalStatus(fake, g).text).join(' · ') : 'Complete a missão anterior'}</small></div></button>`;
+        return `<button class="mission ${open ? '' : 'locked'}" ${open ? `data-mission="${m.id}"` : 'disabled'}><span>${done ? '<i class=ui-icon data-icon=check aria-hidden=true></i>' : open ? '<i class=ui-icon data-icon=sword aria-hidden=true></i>' : '<i class=ui-icon data-icon=lock aria-hidden=true></i>'}</span><div><b>${m.n}</b><small>${open ? m.goals.map((g) => KM.goalStatus(fake, g).text).join(' · ') : 'Complete a missão anterior'}</small></div></button>`;
       }).join('');
     },
     refreshMenu() {
       const slots = [0, 1, 2, 3].map((s) => ({ s, m: KM.saveMeta(s) })).filter((x) => x.m && x.m.v3).sort((a, b) => b.m.date - a.m.date);
-      $('#continue').innerHTML = slots.length ? slots.map(({ s, m }) => `<button class="mbtn" data-cont="${s}">📂 ${s === 0 ? 'Autosave' : 'Espaço ' + s} · ${esc(m.name || '')} · ${KM.fmtTime(m.time)}</button>`).join('') : '';
+      $('#continue').innerHTML = slots.length ? slots.map(({ s, m }) => `<button class="mbtn" data-cont="${s}"><i class=ui-icon data-icon=folder aria-hidden=true></i> ${s === 0 ? 'Autosave' : 'Espaço ' + s} · ${esc(m.name || '')} · ${KM.fmtTime(m.time)}</button>`).join('') : '';
       this.menuScreen('main');
     },
     showHelp(on) { $('#help').classList.toggle('hidden', !on); },
@@ -779,17 +781,17 @@
       const card = (t) => {
         const d = KM.HOUSES[t], open = KM.houseUnlocked(S, ME(), t), done = built[t];
         const st = done ? 'done' : open ? 'open' : 'lock';
-        return `<div class="tcard ${st}" data-tip="${esc(this.houseTip(t))}"><span class="ti">${hic(t)}</span><div><b>${d.n}</b><small>${done ? '✅ construída' : open ? '🔓 disponível' : '🔒 ' + esc(KM.reqNames(KM.TECH[t]))}</small></div></div>`;
+        return `<div class="tcard ${st}" data-tip="${esc(this.houseTip(t))}"><span class="ti">${hic(t)}</span><div><b>${d.n}</b><small>${done ? '<i class=ui-icon data-icon=check aria-hidden=true></i> construída' : open ? '<i class=ui-icon data-icon=unlock aria-hidden=true></i> disponível' : '<i class=ui-icon data-icon=lock aria-hidden=true></i> ' + esc(KM.reqNames(KM.TECH[t]))}</small></div></div>`;
       };
       const sol = KM.SOLDIER_ORDER.map((t) => {
         const sd = KM.SOLDIERS[t], open = KM.soldierUnlocked(S, ME(), t);
-        return `<div class="tcard ${open ? 'open' : 'lock'}"><span class="ti">${uic(t)}</span><div><b>${sd.n}</b><small>${open ? '🔓 disponível no Quartel' : '🔒 ' + esc(KM.reqNames(KM.SOLDIER_REQ[t]))}</small></div></div>`;
+        return `<div class="tcard ${open ? 'open' : 'lock'}"><span class="ti">${uic(t)}</span><div><b>${sd.n}</b><small>${open ? '<i class=ui-icon data-icon=unlock aria-hidden=true></i> disponível no Quartel' : '<i class=ui-icon data-icon=lock aria-hidden=true></i> ' + esc(KM.reqNames(KM.SOLDIER_REQ[t]))}</small></div></div>`;
       }).join('');
       el.innerHTML = `<div class="card treecard"><button class="close" data-close="1">✕</button>
-        <h2>🌳 Árvore de progresso</h2>
+        <h2>Árvore de progresso</h2>
         <p class="muted">Cada construção erguida libera novas opções. Siga da esquerda para a direita.</p>
         <div class="tcols">${cols.map((c, i) => `<div class="tcol"><div class="tera">${ERAS[i] || 'Era ' + (i + 1)}</div>${c.map(card).join('')}</div>`).join('')}</div>
-        <h3>⚔️ Soldados</h3><div class="tsol">${sol}</div></div>`;
+        <h3>Soldados</h3><div class="tsol">${sol}</div></div>`;
       el.classList.remove('hidden');
       el.addEventListener('mousemove', (e) => this.onTip(e));
       el.addEventListener('mouseleave', () => this.hideTip());
@@ -798,18 +800,18 @@
     goalsHtml(S, brief) {
       const row = (g) => {
         const st = KM.goalStatus(S, g);
-        const ic = brief ? (g.opt ? '👑' : '🎯') : st.done ? '✅' : st.fail ? '❌' : '⬜';
+        const ic = brief ? (g.opt ? '<i class=ui-icon data-icon=crown aria-hidden=true></i>' : '<i class=ui-icon data-icon=target aria-hidden=true></i>') : st.done ? '<i class=ui-icon data-icon=check aria-hidden=true></i>' : st.fail ? '<i class=ui-icon data-icon=cross aria-hidden=true></i>' : '<i class=ui-icon data-icon=empty aria-hidden=true></i>';
         return `<div class="goal ${st.done && !brief ? 'done' : ''} ${st.fail ? 'fail' : ''}"><span>${ic}</span><div>${st.text}${brief ? '' : `<small>${st.prog || ''}</small>`}</div></div>`;
       };
       const req = S.goals.filter((g) => !g.opt), opt = S.goals.filter((g) => g.opt);
       let s = `${brief ? '<h3>Objetivo</h3>' : ''}<div class="goals">${req.map(row).join('')}</div>`;
-      if (opt.length) s += `${brief ? '<h3>Desafios opcionais</h3>' : '<h4>Desafios opcionais 👑</h4>'}<div class="goals opt">${opt.map(row).join('')}</div>${brief ? '<div class="muted">Cada desafio cumprido vale uma coroa. Não são necessários para vencer.</div>' : ''}`;
+      if (opt.length) s += `${brief ? '<h3>Desafios opcionais</h3>' : '<h4>Desafios opcionais <i class=ui-icon data-icon=crown aria-hidden=true></i></h4>'}<div class="goals opt">${opt.map(row).join('')}</div>${brief ? '<div class="muted">Cada desafio cumprido vale uma coroa. Não são necessários para vencer.</div>' : ''}`;
       return s;
     },
     showBriefing(S) {
       const mis = KM.findMission(S.mission, S.diff);
       if (!mis) return;
-      $('#brief').innerHTML = `<div class="card brief"><div class="seal">📜</div><h2>${esc(mis.n)}</h2><div class="btext">${mis.brief}</div>
+      $('#brief').innerHTML = `<div class="card brief"><div class="seal"><i class=ui-icon data-icon=scroll aria-hidden=true></i></div><h2>${esc(mis.n)}</h2><div class="btext">${mis.brief}</div>
         ${this.goalsHtml(S, true)}
         ${S.players.length > 1 ? `<h3>Jogadores</h3><div class="plist">${S.players.map((p, i) => `<div class="prow"><span class="dot" style="background:${p.color}"></span><span class="sn">${esc(p.name)}</span><em class="${i === ME() ? '' : KM.hostile(S, ME(), i) ? 'bad' : 'good'}">${i === ME() ? 'você' : KM.hostile(S, ME(), i) ? 'inimigo' : 'aliado'}</em></div>`).join('')}</div>` : ''}
         <button class="mbtn primary" data-go="1">${S.time > 0 ? 'Voltar ao jogo' : 'Começar'}</button></div>`;
@@ -824,7 +826,7 @@
       }
       const S = KM.S;
       KM.recordHist(S);
-      el.innerHTML = `<div class="card endcard"><button class="close" data-close="1">✕</button><h2>📊 Estatísticas</h2>${this.statsHtml(S)}</div>`;
+      el.innerHTML = `<div class="card endcard"><button class="close" data-close="1">✕</button><h2>Estatísticas</h2>${this.statsHtml(S)}</div>`;
       el.classList.remove('hidden');
       this.bindStats(el, S);
       // a amostra extra não entra no histórico definitivo
@@ -836,11 +838,11 @@
       const nextId = res === 'win' ? KM.nextMission(S.mission) : null, next = nextId && KM.findMission(nextId, S.diff);
       const conq = S.mission && S.mission[0] === 'c';
       const txt = res === 'win' ? (conq ? (next ? 'Objetivo cumprido. Novas terras aguardam a sua coroa.' : 'Sua conquista está completa. Todo o continente se curva à sua coroa!') : S.mission === 't1' ? 'Você aprendeu a construir, abastecer e comandar seu reino. A Conquista espera por você!' : S.mission ? (next ? 'Missão cumprida! O Rei aguarda suas próximas ordens.' : 'Todos os traidores caíram. O Reino de Aldor está reunido sob sua bandeira!') : 'Todos os inimigos foram derrotados. Seu reino prospera!') : S.defeatReason || 'Seu reino caiu. Os mercadores fugiram e os cavaleiros depuseram as armas.';
-      el.innerHTML = `<div class="card endcard"><h1>${res === 'win' ? '🏆 Vitória!' : '💀 Derrota'}</h1><p>${txt}</p>
-        ${conq && res === 'win' ? `<div class="crowns">${[1, 2, 3, 4].map((k) => `<span class="${k <= (S.crowns || 1) ? 'on' : ''}">👑</span>`).join('')}</div><div class="muted">1 coroa pela vitória + 1 por desafio cumprido</div>` : ''}
-        ${res === 'win' && S.unlockedBiomes && S.unlockedBiomes.length ? `<p>🌿 Novo bioma disponível na Escaramuça: <b>${S.unlockedBiomes.map((id) => KM.BIOMES[id].n).join(', ')}</b></p>` : ''}
+      el.innerHTML = `<div class="card endcard"><h1>${res === 'win' ? '<i class=ui-icon data-icon=trophy aria-hidden=true></i> Vitória!' : '<i class=ui-icon data-icon=skull aria-hidden=true></i> Derrota'}</h1><p>${txt}</p>
+        ${conq && res === 'win' ? `<div class="crowns">${[1, 2, 3, 4].map((k) => `<span class="${k <= (S.crowns || 1) ? 'on' : ''}"><i class=ui-icon data-icon=crown aria-hidden=true></i></span>`).join('')}</div><div class="muted">1 coroa pela vitória + 1 por desafio cumprido</div>` : ''}
+        ${res === 'win' && S.unlockedBiomes && S.unlockedBiomes.length ? `<p><i class=ui-icon data-icon=leaf aria-hidden=true></i> Novo bioma disponível na Escaramuça: <b>${S.unlockedBiomes.map((id) => KM.BIOMES[id].n).join(', ')}</b></p>` : ''}
         ${this.statsHtml(S)}
-        <div class="mgrid">${next ? `<button class="mbtn primary" data-next="${next.id}">➡️ ${conq ? 'Próxima fase' : 'Próxima missão'}</button>` : ''}${res === 'win' ? '<button class="mbtn" data-cont="1">Continuar jogando</button>' : ''}${res === 'lose' && S.mission ? '<button class="mbtn" data-retry="1">🔄 Tentar de novo</button>' : ''}<button class="mbtn" data-menu="1">Menu principal</button></div></div>`;
+        <div class="mgrid">${next ? `<button class="mbtn primary" data-next="${next.id}"><i class=ui-icon data-icon=next aria-hidden=true></i> ${conq ? 'Próxima fase' : 'Próxima missão'}</button>` : ''}${res === 'win' ? '<button class="mbtn" data-cont="1">Continuar jogando</button>' : ''}${res === 'lose' && S.mission ? '<button class="mbtn" data-retry="1"><i class=ui-icon data-icon=reset aria-hidden=true></i> Tentar de novo</button>' : ''}<button class="mbtn" data-menu="1">Menu principal</button></div></div>`;
       el.classList.remove('hidden');
       this.bindStats(el, S);
       KM.sfx && KM.sfx(res === 'win' ? 'win' : 'horn');
@@ -853,8 +855,8 @@
         return `<tr><td><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${o === ME() ? ' <small>(você)</small>' : ''}</td><td>${st.built || 0}</td><td>${st.trained || 0}</td><td>${st.killed || 0}</td><td>${st.lost || 0}</td><td>${st.razed || 0}</td></tr>`;
       }).join('');
       return `<div class="stats"><div class="muted">Duração: <b>${KM.fmtTime(S.time)}</b></div>
-        <table class="stable"><tr><th>Jogador</th><th title="Casas construídas">🏠</th><th title="Cidadãos treinados">🎓</th><th title="Inimigos abatidos">⚔️</th><th title="Perdas">💀</th><th title="Casas inimigas destruídas">🔥</th></tr>${rows}</table>
-        <div class="chartbar">${[['0', '👥 Cidadãos'], ['1', '⚔️ Soldados'], ['2', '🏠 Casas'], ['3', '📦 Recursos']].map(([k, n]) => `<button class="${k === '1' ? 'active' : ''}" data-chart="${k}">${n}</button>`).join('')}</div>
+        <table class="stable"><tr><th>Jogador</th><th title="Casas construídas"><i class=ui-icon data-icon=home aria-hidden=true></i></th><th title="Cidadãos treinados"><i class=ui-icon data-icon=book aria-hidden=true></i></th><th title="Inimigos abatidos"><i class=ui-icon data-icon=sword aria-hidden=true></i></th><th title="Perdas"><i class=ui-icon data-icon=skull aria-hidden=true></i></th><th title="Casas inimigas destruídas"><i class=ui-icon data-icon=fire aria-hidden=true></i></th></tr>${rows}</table>
+        <div class="chartbar">${[['0', '<i class=ui-icon data-icon=people aria-hidden=true></i> Cidadãos'], ['1', '<i class=ui-icon data-icon=sword aria-hidden=true></i> Soldados'], ['2', '<i class=ui-icon data-icon=home aria-hidden=true></i> Casas'], ['3', '<i class=ui-icon data-icon=crate aria-hidden=true></i> Recursos']].map(([k, n]) => `<button class="${k === '1' ? 'active' : ''}" data-chart="${k}">${n}</button>`).join('')}</div>
         <canvas class="chart" width="560" height="190"></canvas></div>`;
     },
     bindStats(el, S) {

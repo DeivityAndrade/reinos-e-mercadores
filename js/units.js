@@ -397,7 +397,7 @@
       return 'Ocioso';
     }
     switch (t.type) {
-      case 'carry': return `Transportando ${KM.RES[t.r].i} ${KM.RES[t.r].n}`;
+      case 'carry': return `Transportando ${KM.RES[t.r].n}`;
       case 'road': return 'Construindo estrada';
       case 'field': return 'Preparando campo';
       case 'level': return 'Nivelando terreno';

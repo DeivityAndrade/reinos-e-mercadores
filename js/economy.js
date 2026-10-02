@@ -278,7 +278,7 @@
     if (best < 0) return;
     if (d.mine) {
       if (!KM.findOre(S, KM.hcx(h), KM.hcy(h), d.mine, true)) {
-        if (!h.depleted) { h.depleted = true; if (h.owner === KM.me) KM.notify(S, `⛏️ ${d.n}: o minério acabou.`, 'warn', { x: h.ex, y: h.ey }); }
+        if (!h.depleted) { h.depleted = true; if (h.owner === KM.me) KM.notify(S, `${d.n}: o minério acabou.`, 'warn', { x: h.ex, y: h.ey }); }
         return;
       }
     }

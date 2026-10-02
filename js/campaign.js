@@ -228,11 +228,11 @@
     const foes = players.slice(1);
     const biome = KM.BIOMES[scenario.biome];
     const brief = `${L.text}<br><br><b>${scenario.hint || 'Elimine o reino rival. Um reino cai quando perde o Armazém, a Escola e o Quartel e fica sem soldados.'}</b>`
-      + `<br><br>🌿 <b>${biome.n}</b> — ${biome.desc}`
+      + `<br><br><b>${biome.n}</b> — ${biome.desc}`
       + '<br><br>Os rivais produzem seus recursos, respeitam os desbloqueios e precisam alimentar as tropas. As cidades e guarnições iniciais fazem parte do desafio desta região.'
       + `<br><br>${foes.map((p, k) => `<i class="shield" style="background:${KM.COLORS[k + 1]}"></i> <b>${p.name}</b>, governado por ${p.title} (${PERS_N[p.pers]})`).join('<br>')}`
-      + (foes.length > 1 ? `<br><br>${L.allied ? '🤝 Os rivais são <b>aliados entre si</b>.' : '⚔️ <b>Todos contra todos:</b> os rivais também lutam entre si.'}` : '')
-      + `<br><br>🕊️ Primeiro ataque planejado a partir de ${Math.round(Math.min(...foes.map((p) => p.ai.peace)) / 60)} minutos. Defensores reagem a invasões antes disso.`;
+      + (foes.length > 1 ? `<br><br>${L.allied ? 'Os rivais são <b>aliados entre si</b>.' : '<b>Todos contra todos:</b> os rivais também lutam entre si.'}` : '')
+      + `<br><br>Primeiro ataque planejado a partir de ${Math.round(Math.min(...foes.map((p) => p.ai.peace)) / 60)} minutos. Defensores reagem a invasões antes disso.`;
     return {
       id, conquest: true, idx: i, n: `${ROMAN[i]} · ${L.n}`, seed: 70000 + i * 1013, W: L.W, mapType: L.mapType, brief, players,
       biome: scenario.biome, scenario: scenario.town || null, sites: scenario.sites || [],
@@ -308,16 +308,16 @@
       let n = 0;
       for (const id in S.houses) { const h = S.houses[id]; if (h.owner === me && h.type === g.t && h.state === 'built') n++; }
       const d = KM.HOUSES[g.t];
-      return { done: n >= g.n, text: `Construir ${g.n > 1 ? g.n + '× ' : ''}${d.i} ${d.n}`, prog: `${Math.min(n, g.n)}/${g.n}` };
+      return { done: n >= g.n, text: `Construir ${g.n > 1 ? g.n + '× ' : ''}${d.n}`, prog: `${Math.min(n, g.n)}/${g.n}` };
     }
     if (g.k === 'res') {
       const n = storeTotal(S, g.r, me);
-      return { done: n >= g.n, text: `Ter ${KM.RES[g.r].i} ${g.n} ${KM.RES[g.r].n} no Armazém`, prog: `${Math.min(n, g.n)}/${g.n}` };
+      return { done: n >= g.n, text: `Ter ${g.n} ${KM.RES[g.r].n} no Armazém`, prog: `${Math.min(n, g.n)}/${g.n}` };
     }
     if (g.k === 'army' || g.k === 'units') {
       let n = 0;
       for (const id in S.units) { const u = S.units[id]; if (u.owner === me && KM.isSoldier(u.type) && (!g.t || u.type === g.t)) n++; }
-      const lbl = g.t ? `${KM.SOLDIERS[g.t].i} ${g.n} ${KM.SOLDIERS[g.t].n}${g.n > 1 ? 's' : ''}` : `${g.n} soldados`;
+      const lbl = g.t ? `${g.n} ${KM.SOLDIERS[g.t].n}${g.n > 1 ? 's' : ''}` : `${g.n} soldados`;
       if (g.done) return { done: true, text: `Ter ${lbl}`, prog: 'feito' };
       return { done: n >= g.n, text: `Ter ${lbl}`, prog: `${Math.min(n, g.n)}/${g.n}` };
     }
@@ -342,13 +342,13 @@
     S.players.forEach((p, o) => {
       if (p.out || !defeated(S, o)) return;
       p.out = true;
-      if (o !== KM.me) KM.notify(S, `🏳️ ${p.name} foi derrotado!`, KM.hostile(S, KM.me, o) ? 'ok' : 'danger');
+      if (o !== KM.me) KM.notify(S, `${p.name} foi derrotado!`, KM.hostile(S, KM.me, o) ? 'ok' : 'danger');
     });
     if (S.over) return;
     // objetivos cumpridos uma vez ficam marcados (ex.: ter 8 cavaleiros); desafios opcionais também
     for (const g of S.goals) if ((g.opt || g.k === 'units' || g.k === 'army') && g.k !== 'fast' && !g.done && KM.goalStatus(S, g).done) {
       g.done = true;
-      if (g.opt && KM.S === S) KM.notify(S, `👑 Desafio cumprido: ${KM.goalStatus(S, g).text}`, 'unlock');
+      if (g.opt && KM.S === S) KM.notify(S, `Desafio cumprido: ${KM.goalStatus(S, g).text}`, 'unlock');
     }
     const req = S.goals.filter((g) => !g.opt);
     if (S.players[KM.me].out || (S.protected || []).some((id) => !S.houses[id])) {

@@ -435,7 +435,7 @@
     const c = cv(64, 64), g = c.getContext('2d');
     g.fillStyle = '#6b4526'; g.beginPath(); g.roundRect(2, 2, 60, 60, 8); g.fill();
     g.strokeStyle = '#e3b95c'; g.lineWidth = 3; g.stroke();
-    g.font = '38px "Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 32, 35);
+    KM.drawIcon(g, ch, 12, 12, 40);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     return (iconCache[ch] = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide }));
   }
@@ -488,7 +488,7 @@
       K.door(b, dx, 0.1, d / 2, 0, 0.2, 0.34, T);
       K.window(b, -w / 3, 0.3, d / 2, 0, 0.14, 0.14, T); K.window(b, w / 3, 0.3, d / 2, 0, 0.14, 0.14, T);
       K.window(b, -0.18, 0.85, d / 2 + 0.05, 0, 0.13, 0.14, T); K.window(b, 0.2, 0.85, d / 2 + 0.05, 0, 0.13, 0.14, T);
-      K.sign(b, '🍺', w / 2 + 0.02, 0.62, d / 2 - 0.12, PI / 2);
+      K.sign(b, 'mug', w / 2 + 0.02, 0.62, d / 2 - 0.12, PI / 2);
       K.barrel(b, -w / 2 - 0.02, d / 2 + 0.16); K.barrel(b, -w / 2 + 0.16, d / 2 + 0.18, 0.9);
       K.box(b, 'planks', 0.3, 0.02, 0.12, w / 2 - 0.1, 0.13, d / 2 + 0.24); K.box(b, 'timber', 0.03, 0.13, 0.03, w / 2 - 0.22, 0, d / 2 + 0.24); K.box(b, 'timber', 0.03, 0.13, 0.03, w / 2 + 0.02, 0, d / 2 + 0.24);
       return { smoke: c };
@@ -614,7 +614,7 @@
       K.box(b, 'glow', 0.12, 0.1, 0.02, 0.62, 0.02, 0.35);
       const c = K.chimney(b, 0.62, 0.18, -0.08, 0.3);
       K.sack(b, 0.45, 0.5); K.box(b, 'planks', 0.26, 0.02, 0.12, -0.5, 0.14, 0.5); K.box(b, 'timber', 0.03, 0.14, 0.03, -0.6, 0, 0.5); K.box(b, 'timber', 0.03, 0.14, 0.03, -0.4, 0, 0.5);
-      K.sign(b, '🍞', -0.12 - w / 2 - 0.02, 0.55, d / 2 - 0.2, -PI / 2);
+      K.sign(b, 'bread', -0.12 - w / 2 - 0.02, 0.55, d / 2 - 0.2, -PI / 2);
       K.banner(b, o, 0.85, 0, -0.5, 0.85);
       return { smoke: c };
     },
@@ -645,7 +645,7 @@
       for (let i = 0; i < 4; i++) { const x = -w / 3 + i * 0.12; if (Math.abs(x - dx) < 0.12) continue; b.put('meat', new THREE.SphereGeometry(0.04, 6, 5).scale(1, 1.6, 1), x, 0.36, 0.2); }
       b.pop();
       K.box(b, 'planks', 0.3, 0.04, 0.14, 0.55, 0.14, 0.55); K.box(b, 'timber', 0.03, 0.14, 0.03, 0.43, 0, 0.55); K.box(b, 'timber', 0.03, 0.14, 0.03, 0.67, 0, 0.55);
-      K.sign(b, '🔪', w / 2 + 0.02, 0.6, d / 2 - 0.25, PI / 2);
+      K.sign(b, 'knife', w / 2 + 0.02, 0.6, d / 2 - 0.25, PI / 2);
       K.banner(b, o, -0.8, 0, 0.45, 0.85);
       return { smoke: c };
     },
@@ -790,7 +790,7 @@
       K.cyl(b, 'timber', 0.015, 0.015, 0.3, w / 2 - 0.45, 0, d / 2 + 0.22, 5);
       K.box(b, 'iron', 0.22, 0.012, 0.012, w / 2 - 0.45, 0.3, d / 2 + 0.22);
       for (const s of [-1, 1]) K.cyl(b, 'gold', 0.045, 0.03, 0.012, w / 2 - 0.45 + s * 0.1, 0.22, d / 2 + 0.22, 8);
-      K.sign(b, '⚖️', -w / 2 - 0.03, 0.55, d / 2 - 0.2, -PI / 2);
+      K.sign(b, 'scales', -w / 2 - 0.03, 0.55, d / 2 - 0.2, -PI / 2);
       K.banner(b, o, w / 2 + 0.06, 0, -d / 2, 1.25, true);
       return {};
     },

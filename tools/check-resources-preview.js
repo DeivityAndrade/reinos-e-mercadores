@@ -20,8 +20,8 @@ const element = () => ({ dataset: {}, style: {}, classList: { add() {}, remove()
   const context2d = new Proxy({ createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }) }, { get: (obj, key) => obj[key] || (() => {}) });
   const gameDocument = { getElementById: () => null, querySelector: key => { if (!nodes.has(key)) nodes.set(key, element()); return nodes.get(key); }, querySelectorAll: () => [], createElement: () => ({ ...element(), getContext: () => context2d }), body: { classList: { toggle() {} } }, head: { appendChild() {} } };
   const warnings = [];
-  const context = vm.createContext({ console: { ...console, warn: (...args) => warnings.push(args) }, Math, performance, window: { THREE, addEventListener() {} }, document: gameDocument, localStorage: { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v) }, setInterval: () => 0, requestAnimationFrame() {} });
-  for (const file of ['config', 'util', 'map', 'world', 'economy', 'units', 'military', 'ai', 'campaign', 'cmd', 'tutorial', 'main', 'art']) vm.runInContext(fs.readFileSync(path.join(root, 'js', file + '.js'), 'utf8'), context);
+  const context = vm.createContext({ console: { ...console, warn: (...args) => warnings.push(args) }, Math, performance, Path2D: class {}, window: { THREE, addEventListener() {} }, document: gameDocument, localStorage: { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v) }, setInterval: () => 0, requestAnimationFrame() {} });
+  for (const file of ['icons', 'config', 'util', 'map', 'world', 'economy', 'units', 'military', 'ai', 'campaign', 'cmd', 'tutorial', 'main', 'art']) vm.runInContext(fs.readFileSync(path.join(root, 'js', file + '.js'), 'utf8'), context);
   const KM = context.window.KM;
   KM.ART.init(THREE); KM.ART.buildNature();
   const renderSource = fs.readFileSync(path.join(root, 'js/render3d.js'), 'utf8');

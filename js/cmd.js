@@ -79,7 +79,7 @@
   // a Escola é o único jeito de ganhar gente: a última Escola pronta não pode ser demolida
   const lastSchool = (S, h) => h.type === 'school' && h.state === 'built' && !Object.values(S.houses).some((x) => x !== h && x.owner === h.owner && x.type === 'school' && x.state === 'built');
   function demolish(S, o, h) {
-    if (lastSchool(S, h)) { if (o === KM.me) { KM.notify(S, '🎓 A Escola não pode ser demolida: é dela que vem todo o seu povo.', 'warn', { x: h.ex, y: h.ey }); KM.sfx && KM.sfx('error'); } return; }
+    if (lastSchool(S, h)) { if (o === KM.me) { KM.notify(S, 'A Escola não pode ser demolida: é dela que vem todo o seu povo.', 'warn', { x: h.ex, y: h.ey }); KM.sfx && KM.sfx('error'); } return; }
     KM.removeHouse(S, h, false);
   }
   const zoneWarn = (S, o) => { if (o === KM.me && S.time - (S.zoneWarnT || -99) > 4) { S.zoneWarnT = S.time; KM.notify(S, KM.ZONE_MSG, 'warn'); } };
@@ -180,7 +180,7 @@
         if (!P.human) return;
         P.human = false;
         KM.setupAI(S, o, { mode: 'economy', peace: Math.max(S.peaceEnd || 0, S.time + 180) }, S.diff);
-        if (o !== KM.me) KM.notify(S, `🔌 ${P.name} saiu da partida. A IA assumiu o reino.`, 'warn');
+        if (o !== KM.me) KM.notify(S, `${P.name} saiu da partida. A IA assumiu o reino.`, 'warn');
         return;
       }
       case 'pause': if (o === 0) S.paused = !!c.v; return;

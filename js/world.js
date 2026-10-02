@@ -16,7 +16,7 @@
   // quadrante do reino durante a paz (null = sem limite)
   KM.zone = (S, o) => (S.zones && S.time < S.peaceEnd && S.zones[o]) || null;
   KM.inZone = (S, o, x, y) => { const z = KM.zone(S, o); return !z || (x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1); };
-  KM.ZONE_MSG = '🕊️ Durante a paz seu reino fica no próprio quadrante. A fronteira abre quando a paz acabar.';
+  KM.ZONE_MSG = 'Durante a paz seu reino fica no próprio quadrante. A fronteira abre quando a paz acabar.';
 
   // Pegada da casa girada: rot 0 = porta ao sul, 1 = leste, 2 = norte, 3 = oeste (90° por passo).
   // Devolve largura/altura no mapa, a entrada e o retângulo casa+entrada (usado para aplainar o terreno).
@@ -118,7 +118,7 @@
     for (const t in KM.HOUSES) if (KM.HOUSES[t].worker === prof && KM.houseUnlocked(S, o, t)) return true;
     return false;
   };
-  KM.reqNames = (reqs) => (reqs || []).map((r) => `${KM.HOUSES[r].i} ${KM.HOUSES[r].n}`).join(' + ');
+  KM.reqNames = (reqs) => (reqs || []).map((r) => `${KM.HOUSES[r].n}`).join(' + ');
   // o que construir cada tipo ainda não erguido liberaria
   KM.nextUnlocks = function (S, o) {
     const p = S.players[o], out = [];
@@ -146,8 +146,8 @@
         if (!silent && h.owner === KM.me && P.human && !P.all) {
           const nh = Object.keys(KM.HOUSES).filter((t) => KM.houseUnlocked(S, h.owner, t) && !before.includes(t));
           const ns = KM.SOLDIER_ORDER.filter((t) => KM.soldierUnlocked(S, h.owner, t) && !beforeS.includes(t));
-          if (nh.length) KM.notify(S, `🔓 Novas construções liberadas: ${nh.map((t) => KM.HOUSES[t].i + ' ' + KM.HOUSES[t].n).join(', ')}`, 'unlock');
-          if (ns.length) KM.notify(S, `🔓 Novos soldados no Quartel: ${ns.map((t) => KM.SOLDIERS[t].i + ' ' + KM.SOLDIERS[t].n).join(', ')}`, 'unlock');
+          if (nh.length) KM.notify(S, `Novas construções liberadas: ${nh.map((t) => KM.HOUSES[t].n).join(', ')}`, 'unlock');
+          if (ns.length) KM.notify(S, `Novos soldados no Quartel: ${ns.map((t) => KM.SOLDIERS[t].n).join(', ')}`, 'unlock');
           if (nh.length || ns.length) { S.newUnlock = (S.newUnlock || 0) + 1; KM.sfx && KM.sfx('unlock'); }
         }
       }
@@ -157,8 +157,8 @@
       // comemoração: estandarte sobe, faíscas douradas e o nome da casa flutuando por cima (render3d)
       S.fx.push({ k: 'built', id: h.id, x: h.x, y: h.y, w: h.w, h: h.h, o: h.owner, t: 0, T: 3.2 });
       if (h.owner === KM.me) {
-        KM.notify(S, `${KM.def(h).i} ${KM.def(h).n} concluído!`, 'ok', { x: h.ex, y: h.ey });
-        if (h.orders) KM.notify(S, `📋 ${KM.def(h).n}: faça encomendas no painel da casa para começar a produzir.`, 'info', { x: h.ex, y: h.ey });
+        KM.notify(S, `${KM.def(h).n} concluído!`, 'ok', { x: h.ex, y: h.ey });
+        if (h.orders) KM.notify(S, `${KM.def(h).n}: faça encomendas no painel da casa para começar a produzir.`, 'info', { x: h.ex, y: h.ey });
         KM.sfx && KM.sfx('built');
       }
     }
@@ -177,8 +177,8 @@
     if (destroyed) {
       S.fx.push({ k: 'smoke', x: KM.hcx(h), y: KM.hcy(h), t: 0, T: 2.5 });
       S.fx.push({ k: 'rubble', x: h.x, y: h.y, w: h.w, h: h.h, t: 0, T: 40 });
-      if (h.owner === KM.me) KM.notify(S, `💥 ${KM.def(h).n} foi destruído!`, 'danger', { x: h.ex, y: h.ey });
-      else if (KM.hostile(S, KM.me, h.owner) && KM.isExp(S, h.ey * m.W + h.ex)) KM.notify(S, `🔥 ${KM.def(h).n} inimigo destruído!`, 'ok', { x: h.ex, y: h.ey });
+      if (h.owner === KM.me) KM.notify(S, `${KM.def(h).n} foi destruído!`, 'danger', { x: h.ex, y: h.ey });
+      else if (KM.hostile(S, KM.me, h.owner) && KM.isExp(S, h.ey * m.W + h.ex)) KM.notify(S, `${KM.def(h).n} inimigo destruído!`, 'ok', { x: h.ex, y: h.ey });
       KM.sfxAt && KM.sfxAt('collapse', h.ex, h.ey);
     }
     KM.ui && KM.ui.onRemoved && KM.ui.onRemoved('h', h.id);

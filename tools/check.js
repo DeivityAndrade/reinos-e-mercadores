@@ -14,7 +14,7 @@ const context = { console, performance, Math, setInterval: () => 0, requestAnima
 };
 vm.createContext(context);
 for (const file of fs.readdirSync(path.join(root, 'js')).filter((f) => f.endsWith('.js'))) new vm.Script(fs.readFileSync(path.join(root, 'js', file), 'utf8'), { filename: file });
-for (const file of ['config', 'util', 'map', 'world', 'economy', 'units', 'military', 'ai', 'campaign', 'cmd', 'tutorial', 'main', 'ui', 'input']) vm.runInContext(fs.readFileSync(path.join(root, 'js', file + '.js'), 'utf8'), context, { filename: file });
+for (const file of ['icons', 'config', 'util', 'map', 'world', 'economy', 'units', 'military', 'ai', 'campaign', 'cmd', 'tutorial', 'main', 'ui', 'input']) vm.runInContext(fs.readFileSync(path.join(root, 'js', file + '.js'), 'utf8'), context, { filename: file });
 vm.runInContext(fs.readFileSync(path.join(root, 'tools/sim.js'), 'utf8'), context);
 const KM = context.window.KM;
 let passed = 0;
