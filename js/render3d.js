@@ -19,8 +19,6 @@
     const c = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)], t = Math.abs(f), to = f > 0 ? 255 : 0;
     return `rgb(${Math.round(c[0] + (to - c[0]) * t)},${Math.round(c[1] + (to - c[1]) * t)},${Math.round(c[2] + (to - c[2]) * t)})`;
   };
-  KM.icon = (ch, size) => (KM.pixIcon ? KM.pixIcon(ch, size) : null);
-
   // ---------------- tabelas visuais ----------------
 
   // personagem de cada unidade: modelo base + peças visíveis
@@ -305,7 +303,7 @@
     },
     // miniaturas das construções (renderizadas das próprias casas 3D) para os ícones da interface
     makeHouseIcons() {
-      const size = 112, cv = document.createElement('canvas');
+      const size = 256, cv = document.createElement('canvas');
       cv.width = cv.height = size;
       let r;
       try { r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch (e) { return; }
@@ -313,7 +311,8 @@
       const sc = new THREE.Scene();
       sc.add(new THREE.HemisphereLight('#eef3ff', '#7a6a50', 2.1));
       const sun = new THREE.DirectionalLight('#ffe7c2', 2.4); sun.position.set(-3, 5, 4); sc.add(sun);
-      const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+      const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
+      const portraitCam = new THREE.OrthographicCamera(-0.3, 0.3, 0.3, -0.3, 0.01, 50);
       this.icons = {};
       for (const t in KM.HOUSES) {
         const d = KM.HOUSES[t];
@@ -366,6 +365,19 @@
         cam.lookAt(c.x, c.y, c.z);
         r.render(sc, cam);
         this.icons['u_' + t] = cv.toDataURL('image/png');
+        if (KM.PROF[t]) {
+          // O rosto guia o enquadramento: ferramentas compridas não encolhem o retrato.
+          const head = body.getObjectByName(KM.PEOPLE.ready ? 'Head' : 'head');
+          const face = head ? head.getWorldPosition(new THREE.Vector3()) : c.clone();
+          const height = KM.PEOPLE.ready ? KM.PEOPLE_SCALE * 1.25 : box.getSize(new THREE.Vector3()).y * 0.55;
+          face.y -= height * 0.16;
+          portraitCam.left = portraitCam.bottom = -height / 2;
+          portraitCam.right = portraitCam.top = height / 2;
+          portraitCam.position.set(face.x, face.y + height * 0.03, face.z + 4);
+          portraitCam.lookAt(face); portraitCam.updateProjectionMatrix();
+          r.render(sc, portraitCam);
+          this.icons['p_' + t] = cv.toDataURL('image/png');
+        }
         sc.remove(g);
       }
       r.dispose();
@@ -1095,19 +1107,6 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       G.userData.key = this.houseKey(S, h);
       return G;
     },
-    iconTex(ch) {
-      this.iconCache = this.iconCache || {};
-      if (this.iconCache[ch]) return this.iconCache[ch];
-      const c = document.createElement('canvas'); c.width = c.height = 96;
-      const g = c.getContext('2d');
-      g.fillStyle = 'rgba(40,28,18,0.85)'; g.beginPath(); g.arc(48, 48, 44, 0, 7); g.fill();
-      g.strokeStyle = '#e8c56b'; g.lineWidth = 5; g.stroke();
-      g.font = '54px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
-      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 48, 52);
-      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-      return (this.iconCache[ch] = t);
-    },
-
     // ---------- unidades ----------
     // pelagem: cavaleiros por reino (montarias escuras e nobres), os demais variam por unidade
     horseCoat(u) {
@@ -1867,7 +1866,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
             g.fillStyle = '#3a2410'; g.fillText(grp.m.length, sx, sy + 1);
           }
         }
-        if (u.hunger < 25 && u.owner === KM.me) { g.font = '14px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText('🍗', q.x, q.y - 16); }
+        if (u.hunger < 25 && u.owner === KM.me) KM.drawIcon(g, 'meat', q.x - 7, q.y - 29, 14, '#f0b64a');
         if (u.flankedAt != null && S.time - u.flankedAt < 1.2) {
           g.font = '700 12px "Alegreya Sans",sans-serif'; g.textAlign = 'center';
           g.fillStyle = '#ffe066'; g.fillText(u.flankBonus >= 1.3 ? 'Costas +30%' : 'Flanco +15%', q.x, q.y - 28);
@@ -1883,15 +1882,15 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         const q = this.toScreen(hv.position.x, hv.position.y + top, hv.position.z);
         if (q.behind || q.x < -80 || q.y < -80 || q.x > this.vw + 80 || q.y > this.vh + 80) continue;
         if (h.state === 'site') bar(q.x - 24, q.y, 48, h.total ? h.used / h.total : 0, '#f5b83a');
-        if (mine && h.prio && h.state !== 'built') { g.font = '16px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText('⭐', q.x + 34, q.y + 5); }
+        if (mine && h.prio && h.state !== 'built') KM.drawIcon(g, 'star', q.x + 26, q.y - 11, 16);
         else if (h.hp < h.maxHp || selected) bar(q.x - 24, q.y, 48, h.hp / h.maxHp, mine ? '#5fd35a' : KM.hostile(S, KM.me, h.owner) ? '#ef4b4b' : '#3fa6ff');
         if (mine && !S.editor) {
-          if ((S.protected || []).includes(h.id)) { g.font = '14px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillStyle = '#ffe066'; g.fillText('🛡️ Proteger', q.x, q.y - 17); }
+          if ((S.protected || []).includes(h.id)) { g.font = '700 12px "Alegreya Sans",sans-serif'; g.textAlign = 'center'; g.fillStyle = '#ffe066'; g.fillText('Proteger', q.x, q.y - 17); }
           // casas sem estrada até o Armazém: o erro mais comum de quem está começando
           if (!this.linkT || this.time - this.linkT > 1) { this.linkT = this.time; this.unlinked = new Set(); for (const hid in S.houses) { const o = S.houses[hid]; if (o.owner === KM.me && !KM.roadLinked(S, o)) this.unlinked.add(o.id); } }
           if (this.unlinked && this.unlinked.has(h.id)) {
             g.font = '700 12px "Alegreya Sans", sans-serif';
-            const txt = '⚠ sem estrada', w = g.measureText(txt).width + 14;
+            const txt = 'sem estrada', w = g.measureText(txt).width + 14;
             g.fillStyle = 'rgba(120,30,20,0.9)'; g.beginPath(); g.roundRect(q.x - w / 2, q.y - 40, w, 20, 5); g.fill();
             g.fillStyle = '#ffe9c9'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, q.x, q.y - 29.5);
             continue;
@@ -1899,8 +1898,8 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         }
         if (mine && h.state === 'built') {
           const needsWorker = d.worker && !h.worker, noOrders = h.orders && !h.orders.some((o) => o > 0);
-          const badge = needsWorker ? '❗' : h.paused ? '⏸️' : noOrders ? '📋' : null;
-          if (badge && Math.floor(this.time * 2) % 2 === 0) { g.font = '18px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.fillText(badge, q.x, q.y - 14); }
+          const badge = needsWorker ? 'warning' : h.paused ? 'pause' : noOrders ? 'orders' : null;
+          if (badge && Math.floor(this.time * 2) % 2 === 0) KM.drawIcon(g, badge, q.x - 9, q.y - 32, 18, '#f0b64a');
         }
       }
       // Os objetivos territoriais têm marcadores próprios, visíveis também sem seleção.
@@ -1915,7 +1914,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           if (k) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y);
         }
         g.strokeStyle = color; g.lineWidth = 2; g.setLineDash([6, 4]); g.stroke(); g.setLineDash([]);
-        const text = `🚩 ${site.n}${site.outpost ? ' · posto' : ''}${site.contested ? ' · contestado' : ''}`;
+        const text = `${site.n}${site.outpost ? ' · posto' : ''}${site.contested ? ' · contestado' : ''}`;
         g.font = '700 14px "Alegreya Sans",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
         const w = g.measureText(text).width + 20;
         g.fillStyle = 'rgba(28,20,14,0.9)'; g.fillRect(q.x - w / 2, q.y - 32, w, 25);
@@ -1929,7 +1928,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (!hv || !hv.visible || !h) continue;
         const f = e.t / e.T, q = this.toScreen(hv.position.x, hv.position.y + (hv.userData.top || 1.2) + 0.3, hv.position.z);
         if (q.behind) continue;
-        const txt = `✔ ${KM.def(h).n} concluído!`;
+        const txt = `${KM.def(h).n} concluído!`;
         g.globalAlpha = f < 0.12 ? f / 0.12 : 1 - Math.max(0, (f - 0.6) / 0.4);
         g.font = '800 17px "Alegreya Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
         const y = q.y - 52 - f * 26, w = g.measureText(txt).width + 26;
@@ -1943,7 +1942,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       if (sb && sb.type === 'barracks' && sb.owner === KM.me && sb.state === 'built') {
         const rp = sb.rally || { x: sb.ex, y: sb.ey + 3 };
         const q = this.toScreen(rp.x + 0.5, this.groundY(rp.x + 0.5, rp.y + 0.5) + 0.5, rp.y + 0.5);
-        if (!q.behind) { g.font = '22px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('🚩', q.x + 6, q.y); }
+        if (!q.behind) KM.drawIcon(g, 'flag', q.x - 5, q.y - 22, 22, '#f0b64a');
       }
       // nome da casa sob o mouse
       if (!S.editor && ui.hover && !ui.tool && KM.inb(ui.hover.tx, ui.hover.ty)) {
@@ -1955,7 +1954,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           const q = this.toScreen(hv.position.x, hv.position.y + (hv.userData.top || 1.2) + 0.2, hv.position.z);
           const d = KM.def(h);
           g.font = '600 14px "Alegreya Sans", sans-serif';
-          const txt = `${d.i}  ${d.n}`, w = g.measureText(txt).width + 22;
+          const txt = d.n, w = g.measureText(txt).width + 22;
           g.fillStyle = 'rgba(28,20,14,0.88)'; g.beginPath(); g.roundRect(q.x - w / 2, q.y - 44, w, 26, 6); g.fill();
           g.strokeStyle = 'rgba(232,197,107,0.7)'; g.lineWidth = 1; g.stroke();
           g.fillStyle = '#f3e3bf'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, q.x, q.y - 31);
@@ -1996,7 +1995,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           g.setLineDash([8, 6]); g.lineDashOffset = -this.time * 18; g.strokeStyle = 'rgba(255,80,60,0.9)'; g.lineWidth = 2.4;
           g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); g.setLineDash([]); g.lineDashOffset = 0;
           g.lineWidth = 2; g.beginPath(); g.ellipse(b.x, b.y, 16, 7, 0, 0, 7); g.stroke();
-          g.font = '16px "Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('⚔️', b.x, b.y - 10);
+          KM.drawIcon(g, 'sword', b.x - 8, b.y - 26, 16, '#ff7050');
           continue;
         }
         const movers = us.filter((u) => u.order);

@@ -433,3 +433,28 @@ body.touch .tip, body.touch #tooltip { display: none !important; }
 .tcard .ti .hic.uic { width: 36px; height: 36px; }
 .ph .big .hic.uic { width: 58px; height: 58px; }
 .sgrid button.locked .hic, .tgrid button.locked .hic { filter: grayscale(1) brightness(0.6); opacity: 0.8; }
+
+/* Emblemas de um só material, sem depender da fonte de emojis do sistema. */
+.ui-icon { display: inline-block; width: 1.15em; height: 1.15em; flex: 0 0 auto; background: currentColor; color: var(--gold); vertical-align: -0.18em; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
+.mbtn.primary .ui-icon, .btext .ui-icon, #tooltip .ui-icon { color: currentColor; }
+.crest .ui-icon { width: 1em; height: 1em; }
+.crowns .ui-icon, .conq .cr .ui-icon { color: inherit; }
+.ui-icon[data-icon="ironore"] { color: #c69779; }
+.ui-icon[data-icon="coal"] { color: #a6a098; }
+.ui-icon[data-icon="goldore"], .ui-icon[data-icon="coin"] { color: #efcd73; }
+.ui-icon[data-icon="iron"] { color: #b9c5cf; }
+.ui-icon[data-icon="ironshield"], .ui-icon[data-icon="mail"] { color: #b9c5cf; }
+
+/* É o rosto e o traje que identificam um profissional, não uma figura minúscula. */
+.tgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tgrid button { position: relative; min-width: 0; padding: 5px 4px 7px; gap: 4px; overflow: hidden; background: radial-gradient(ellipse at 50% 28%, #65523b, #2a2119 75%); }
+.tgrid button .hic.portrait { width: 100%; height: auto; aspect-ratio: 1; margin: 0; filter: drop-shadow(0 2px 3px #17110c); }
+.tgrid button small { color: var(--text); font-size: 11px; line-height: 1.1; min-height: 2.2em; width: 100%; display: grid; place-items: center; overflow-wrap: anywhere; }
+.tgrid button.locked { opacity: 1; filter: none; background: #26211b; }
+.tgrid button.locked .portrait { filter: grayscale(0.8) brightness(0.8); opacity: 0.8; }
+.tgrid button.locked small { color: var(--muted); }
+.train-lock { font: 500 8px var(--font); color: var(--muted); white-space: nowrap; }
+.queue button { position: relative; width: 36px; height: 38px; }
+.queue .hic.uic { width: 30px; height: 34px; }
+.queue-remove { position: absolute; top: -2px; right: 2px; font: 700 12px var(--font); color: var(--muted); }
+.tgrid button:focus-visible, .queue button:focus-visible, .cmds button:focus-visible { outline: 2px solid var(--gold2); outline-offset: 2px; }

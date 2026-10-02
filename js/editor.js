@@ -4,9 +4,9 @@
   const $ = (s) => document.querySelector(s);
   const T = KM.T;
   const TOOLS = [
-    ['Terreno', [['grass', '🟩', 'Grama'], ['sand', '🟨', 'Areia'], ['water', '🟦', 'Água'], ['mountain', '⛰️', 'Montanha']]],
-    ['Relevo', [['raise', '⬆️', 'Elevar'], ['lower', '⬇️', 'Rebaixar'], ['flatten', '➖', 'Nivelar'], ['smooth', '〰️', 'Suavizar']]],
-    ['Objetos', [['tree', '🌳', 'Árvores'], ['stone', '🪨', 'Rochas'], ['coal', '⚫', 'Carvão'], ['iron', '🟤', 'Ferro'], ['gold', '🟡', 'Ouro'], ['erase', '🧽', 'Apagar']]],
+    ['Terreno', [['grass', '<i class=ui-icon data-icon=leaf aria-hidden=true></i>', 'Grama'], ['sand', '<i class=ui-icon data-icon=terrain aria-hidden=true></i>', 'Areia'], ['water', '<i class=ui-icon data-icon=globe aria-hidden=true></i>', 'Água'], ['mountain', '<i class=ui-icon data-icon=terrain aria-hidden=true></i>', 'Montanha']]],
+    ['Relevo', [['raise', '<i class=ui-icon data-icon=up aria-hidden=true></i>', 'Elevar'], ['lower', '<i class=ui-icon data-icon=down aria-hidden=true></i>', 'Rebaixar'], ['flatten', '<i class=ui-icon data-icon=level aria-hidden=true></i>', 'Nivelar'], ['smooth', '<i class=ui-icon data-icon=smooth aria-hidden=true></i>', 'Suavizar']]],
+    ['Objetos', [['tree', '<i class=ui-icon data-icon=tree aria-hidden=true></i>', 'Árvores'], ['stone', '<i class=ui-icon data-icon=stone aria-hidden=true></i>', 'Rochas'], ['coal', '<i class=ui-icon data-icon=coal aria-hidden=true></i>', 'Carvão'], ['iron', '<i class=ui-icon data-icon=ironore aria-hidden=true></i>', 'Ferro'], ['gold', '<i class=ui-icon data-icon=goldore aria-hidden=true></i>', 'Ouro'], ['erase', '<i class=ui-icon data-icon=erase aria-hidden=true></i>', 'Apagar']]],
   ];
 
   const ed = KM.editor = {
@@ -51,7 +51,7 @@
       } else if (mode === 'import') { this.importFile(); return; }
       KM.me = 0;
       KM.afterLoad(S);
-      KM.ui.toast('🗺️ Editor de mapas: pinte com o botão esquerdo, arraste a câmera com o direito.', 'info');
+      KM.ui.toast('Editor de mapas: pinte com o botão esquerdo, arraste a câmera com o direito.', 'info');
     },
 
     // ---------- painel ----------
@@ -69,18 +69,18 @@
       html += `<div class="muted">Bases no mapa: ${S.edStarts.length}. Clique numa base existente com a ferramenta dela para removê-la.</div>`;
       html += `<h4>Casas prontas do jogador</h4><div class="ratio"><span>Dono</span>${[0, 1, 2, 3].map((i) => `<button data-ed="owner:${i}" style="background:${this.owner === i ? KM.COLORS[i] : ''}">${i + 1}</button>`).join('')}</div>`;
       html += '<div class="grid">';
-      for (const k in KM.HOUSES) { const d = KM.HOUSES[k]; html += `<button class="bbtn ${this.tool === 'house' && this.house === k ? 'active' : ''}" data-ed="house:${k}"><span class="ic">${d.i}</span><span class="nm">${d.n}</span></button>`; }
+      for (const k in KM.HOUSES) { const d = KM.HOUSES[k]; html += `<button class="bbtn ${this.tool === 'house' && this.house === k ? 'active' : ''}" data-ed="house:${k}"><span class="ic">${KM.icon(d.i)}</span><span class="nm">${d.n}</span></button>`; }
       html += '</div>';
       $('#tabcontent').innerHTML = html;
     },
     top() {
       const S = KM.S;
-      return `<div class="tb-group">🗺️ Editor · ${S.map.W}×${S.map.H} ${S.name ? '· ' + KM.esc(S.name) : ''}</div>
-        <div class="tb-group speed"><button data-edtop="save">💾 Salvar</button><button data-edtop="export">⬇️ Exportar</button><button data-edtop="test">▶️ Testar</button><button data-edtop="exit">🏠 Sair</button></div>`;
+      return `<div class="tb-group"><i class=ui-icon data-icon=map aria-hidden=true></i> Editor · ${S.map.W}×${S.map.H} ${S.name ? '· ' + KM.esc(S.name) : ''}</div>
+        <div class="tb-group speed"><button data-edtop="save"><i class=ui-icon data-icon=save aria-hidden=true></i> Salvar</button><button data-edtop="export"><i class=ui-icon data-icon=down aria-hidden=true></i> Exportar</button><button data-edtop="test"><i class=ui-icon data-icon=play aria-hidden=true></i> Testar</button><button data-edtop="exit"><i class=ui-icon data-icon=home aria-hidden=true></i> Sair</button></div>`;
     },
     hint() {
       const names = { grass: 'Grama', sand: 'Areia', water: 'Água', mountain: 'Montanha', raise: 'Elevar', lower: 'Rebaixar', flatten: 'Nivelar', smooth: 'Suavizar', tree: 'Árvores', stone: 'Rochas', coal: 'Carvão', iron: 'Ferro', gold: 'Ouro', erase: 'Apagar', start: 'Base ' + (this.owner + 1), house: this.house ? KM.HOUSES[this.house].n : '' };
-      return `<div class="hint">🖌️ Ferramenta: <b>${names[this.tool] || this.tool}</b> · pincel ${this.brush} · <b>esquerdo</b> pinta · <b>direito</b> move a câmera · roda = zoom</div>`;
+      return `<div class="hint"><i class=ui-icon data-icon=brush aria-hidden=true></i> Ferramenta: <b>${names[this.tool] || this.tool}</b> · pincel ${this.brush} · <b>esquerdo</b> pinta · <b>direito</b> move a câmera · roda = zoom</div>`;
     },
     onClick(e) {
       const b = e.target.closest('[data-ed]');
@@ -203,7 +203,7 @@
         const list = this.mapNames(); if (!list.includes(name)) list.push(name);
         localStorage.setItem('rm_maps', JSON.stringify(list));
         S.name = name;
-        KM.ui.toast(`💾 Mapa "${name}" salvo. Ele aparece na Escaramuça.`, 'ok');
+        KM.ui.toast(`Mapa "${name}" salvo. Ele aparece na Escaramuça.`, 'ok');
         return true;
       } catch (e) { KM.ui.toast('Não foi possível salvar: ' + e.message, 'danger'); return false; }
     },
@@ -229,7 +229,7 @@
             const list = this.mapNames(); if (!list.includes(name)) list.push(name);
             localStorage.setItem('rm_maps', JSON.stringify(list));
             this.fillMapLists();
-            KM.ui.toast(`📥 Mapa "${name}" importado.`, 'ok');
+            KM.ui.toast(`Mapa "${name}" importado.`, 'ok');
           } catch (e) { KM.ui.toast('Não foi possível importar: ' + e.message, 'danger'); }
         });
       };

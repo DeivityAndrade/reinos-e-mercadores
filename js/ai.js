@@ -174,12 +174,12 @@
     ai.raidT = S.time;
     for (const g of pick) { g.size0 = g.m.length; for (const u of KM.groupUnits(S, g)) u.ai = 'atk'; }
     KM.orderGroups(S, pick, tg.ex, tg.ey + 1, true);
-    warnMe(S, o, `🐎 Saqueadores de ${S.players[o].name} atacam sua produção!`, tg.owner === KM.me ? { x: tg.ex, y: tg.ey } : null);
+    warnMe(S, o, `Saqueadores de ${S.players[o].name} atacam sua produção!`, tg.owner === KM.me ? { x: tg.ex, y: tg.ey } : null);
   }
 
   // ---------- ondas ----------
   function wavesAI(S, o, ai, bar, dt) {
-    if (!ai.warned && S.time >= ai.next - 60) { ai.warned = true; if (KM.hostile(S, o, KM.me)) KM.notify(S, `👁️ Batedores relatam movimentação no acampamento de ${S.players[o].name}...`, 'warn'); }
+    if (!ai.warned && S.time >= ai.next - 60) { ai.warned = true; if (KM.hostile(S, o, KM.me)) KM.notify(S, `Batedores relatam movimentação no acampamento de ${S.players[o].name}...`, 'warn'); }
     if (S.time >= ai.next) launchWave(S, o, ai, bar);
     ai.defT -= dt;
     if (ai.defT <= 0) {
@@ -216,7 +216,7 @@
     if (target) launchAssault(S, o, ai, groups, { x: bar.ex, y: bar.ey }, target);
     ai.next = S.time + ai.interval * Math.max(0.55, 1 - 0.04 * w);
     if (target) {
-      warnMe(S, o, `🚩 ${S.players[o].name} enviou ${n} soldados! (onda ${w})`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
+      warnMe(S, o, `${S.players[o].name} enviou ${n} soldados! (onda ${w})`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
       if (target.owner === KM.me) KM.sfx && KM.sfx('horn');
     }
   }
@@ -293,7 +293,7 @@
       const reserve = Math.min(Math.max(0, n - 4), Math.round(2 + ai.mult * 2));
       const available = n - reserve;
       const threshold = S.time - ai.next > 180 ? Math.max(4, Math.ceil(wanted * 0.65)) : wanted;
-      if (!ai.warned && available >= threshold - 3) { ai.warned = true; if (KM.hostile(S, o, KM.me)) KM.notify(S, `👁️ Batedores relatam o exército de ${S.players[o].name} se reunindo...`, 'warn'); }
+      if (!ai.warned && available >= threshold - 3) { ai.warned = true; if (KM.hostile(S, o, KM.me)) KM.notify(S, `Batedores relatam o exército de ${S.players[o].name} se reunindo...`, 'warn'); }
       if (available >= threshold) {
         const def = groups;
         def.sort((a, b) => b.m.length - a.m.length || a.id - b.id);
@@ -311,10 +311,10 @@
           if (strat === 'pinca' && send.length >= 2) {
             launchAssault(S, o, ai, send.filter((g, i) => i % 2 === 0), { x: st.ex, y: st.ey }, target, 1);
             launchAssault(S, o, ai, send.filter((g, i) => i % 2 === 1), { x: st.ex, y: st.ey }, target, -1);
-            warnMe(S, o, `⚔️ ${S.players[o].name} está atacando pelos dois lados!`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
+            warnMe(S, o, `${S.players[o].name} está atacando pelos dois lados!`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
           } else launchAssault(S, o, ai, send, { x: st.ex, y: st.ey }, target);
           ai.wave++;
-          warnMe(S, o, `🚩 ${S.players[o].name} enviou ${sent} soldados para a batalha!`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
+          warnMe(S, o, `${S.players[o].name} enviou ${sent} soldados para a batalha!`, target.owner === KM.me ? { x: target.ex, y: target.ey } : null);
           if (target.owner === KM.me) KM.sfx && KM.sfx('horn');
         }
         if (target && sent) {
