@@ -14,6 +14,8 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 
 **Câmera:** `WASD`/setas/bordas movem · roda do mouse aproxima · **botão do meio arrastado gira e inclina** · `,` e `.` giram · botão direito arrastado (sem tropas selecionadas) arrasta o mapa.
 
+**Tropas:** `Shift+A` prepara ataque-mover (botão direito no destino) · `Shift+S` manda parar. `WASD` continua movendo a câmera com tropas selecionadas.
+
 ## 🎮 Modos
 
 | Modo | Descrição |

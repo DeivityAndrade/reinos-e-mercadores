@@ -16,6 +16,7 @@ window.KM = window.KM || {};
 
   KM.T = { GRASS: 0, WATER: 1, MOUNTAIN: 2, SAND: 3 };
   KM.ORE = { NONE: 0, COAL: 1, IRON: 2, GOLD: 3 };
+  KM.MINE_RADIUS = 5.5; // alcance da extração, a partir do centro da mina
   KM.IN_CAP = 5;
   KM.OUT_CAP = 5;
   KM.PLAYER = 0;
