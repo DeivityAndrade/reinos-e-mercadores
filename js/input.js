@@ -304,6 +304,7 @@
       const k = e.key.toLowerCase();
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
       keys[k] = down;
+      keys.shift = e.shiftKey;
       if (!down || !S) return;
       if (S.editor) { KM.editor.key(k, e); return; }
       if (k === 'enter' && S.mp) { KM.net.chatPrompt(); return; }
@@ -343,8 +344,8 @@
       }
       const sel = ui().myGroups(), g = sel.map((x) => x.id);
       if (sel.length) {
-        if (k === 's') { KM.issue({ c: 'stop', g }); return; }
-        if (k === 'a') { ui().attackMove = true; ui().toast('Ataque-mover: clique com o botão direito no destino.', 'info'); return; }
+        if (k === 's' && e.shiftKey) { KM.issue({ c: 'stop', g }); return; }
+        if (k === 'a' && e.shiftKey) { ui().attackMove = true; ui().toast('Ataque-mover: clique com o botão direito no destino.', 'info'); return; }
         if (k === 'q' || k === 'e') { KM.issue({ c: 'turn', g, d: k === 'q' ? -1 : 1 }); return; }
         if (k === '[' || k === ']') { KM.issue({ c: 'cols', g, d: k === '[' ? -1 : 1 }); return; }
         if (k === 't') { KM.issue({ c: 'split', g }); return; }
@@ -371,7 +372,7 @@
       if (keys[','] || keys['<']) KM.R.rotate(dt * 1.6);
       if (keys['.'] || keys['>']) KM.R.rotate(-dt * 1.6);
       let dx = 0, dy = 0;
-      const sel = ui().selGroups.length && !KM.S.editor;
+      const sel = keys.shift && ui().selGroups.length && !KM.S.editor;
       if (keys.arrowleft || (keys.a && !sel)) dx -= sp;
       if (keys.arrowright || keys.d) dx += sp;
       if (keys.arrowup || keys.w) dy -= sp;

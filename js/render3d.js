@@ -1791,8 +1791,8 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           for (let yy = y; yy <= y + f.h; yy++) for (let xx = x; xx <= x + f.w; xx++) gy = Math.max(gy, KM.hAt(m, KM.clamp(xx, 0, m.W), KM.clamp(yy, 0, m.H)) * HY);
           this.ghost.position.set(x + f.w / 2, gy, y + f.h / 2);
           G.add(this.ghost);
-          if (d.radius) this.rangeRing(G, d.radius, f.ex + 0.5, f.ey + 0.5, gy, '#ffffff');
-          else if (d.shoot) this.rangeRing(G, d.shoot, x + f.w / 2, y + f.h / 2, gy, '#ff9a6a');
+          const rg = KM.houseRange({ type: tool.build, x, y, ...f });
+          if (rg) this.rangeRing(G, rg.r, rg.x + 0.5, rg.y + 0.5, gy, d.shoot ? '#ff9a6a' : '#ffffff');
         } else if (ui.drag && ui.drag.tiles) {
           for (const [x, y, ok] of ui.drag.tiles) tiles.push({ x, y, c: ok ? (tool === 'road' ? [0.85, 0.65, 0.45] : tool === 'field' ? [1, 0.9, 0.35] : [0.8, 0.4, 0.85]) : [1, 0.3, 0.3], fill: true });
         } else tiles.push({ x: hov.tx, y: hov.ty, c: tool === 'demolish' ? [1, 0.3, 0.3] : [1, 0.9, 0.4] });

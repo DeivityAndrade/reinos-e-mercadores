@@ -90,6 +90,24 @@ const element = () => ({ dataset: {}, style: {}, classList: { add() {}, remove()
   handlers.get('wide')(); assert.equal(R.dist, 20);
   handlers.get('close')(); assert.equal(R.dist, 13);
   assert.equal(Object.values(KM.S.houses).filter(h => h.type === 'quarry').length, 1);
+  // Execute syncTools/rangeRing with real Three.js geometry, omitting only building art and tile quads.
+  const ranges = Object.create(R);
+  Object.assign(ranges, { world: new THREE.Group(), unitVis: {}, groundY: () => 0, buildHouse: () => new THREE.Group(), quadsMesh: () => null });
+  for (const type of ['coalmine', 'ironmine', 'goldmine', 'quarry', 'tower']) for (let rot = 0; rot < 4; rot++) {
+    const f = KM.footprint(type, 20, 20, rot), h = { id: 1, type, owner: 0, x: 20, y: 20, ...f };
+    const state = { ...KM.S, houses: { 1: h } }, rg = KM.houseRange(h);
+    for (const preview of [false, true]) {
+      ranges.syncTools(state, { selHouse: preview ? 0 : 1, tool: preview ? { build: type } : null, hover: { tx: 20 + (f.w >> 1), ty: 20 + (f.h >> 1) }, buildRot: rot });
+      const ring = ranges.toolGroup.children.find(o => o.geometry?.type === 'RingGeometry');
+      const disc = ranges.toolGroup.children.find(o => o.geometry?.type === 'CircleGeometry');
+      assert(ring && disc, `${type} rot=${rot} preview=${preview}: missing range`);
+      assert.equal(ring.geometry.parameters.outerRadius, rg.r + 0.06);
+      assert.equal(disc.geometry.parameters.radius, rg.r);
+      assert.equal(ring.position.x, rg.x + 0.5); assert.equal(ring.position.z, rg.y + 0.5);
+    }
+  }
+  ranges.world.remove(ranges.toolGroup); ranges.dispose(ranges.toolGroup);
+  console.log('RANGES_PASS: selection/construction rings for coal, iron, gold, quarry and tower in all four rotations.');
   console.log('INTEGRATION_PASS: production loadAll/prepare; eight real GLBs; toon colours; missing/malformed asset fallback.');
   console.log('PREVIEW_PASS: actual instancing; paused state; no saves; both cameras.');
   console.log('WebGL rendering and visual appearance are not validated by this check.');
