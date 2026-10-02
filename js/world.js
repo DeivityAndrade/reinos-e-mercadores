@@ -561,8 +561,9 @@
 
   KM.newState = function (opts) {
     opts = opts || {};
+    const hasRawMap = opts.map != null;
     const rawMap = opts.map;
-    if (rawMap) KM.assertMapData(rawMap);
+    if (hasRawMap) KM.assertMapData(rawMap);
     const mis = opts.mission ? KM.findMission(opts.mission, opts.diff) : null;
     const cfg = mis || KM.skirmishConfig(opts);
     const seed = cfg.seed || opts.seed || Math.floor(Math.random() * 1e9);
@@ -570,8 +571,8 @@
       { human: true, team: 0, name: KM.NAMES[0], town: cfg.player },
       ...(cfg.ai && cfg.ai.mode !== 'none' ? [{ team: 1, name: KM.NAMES[1], ai: cfg.ai }] : []),
     ];
-    const mapData = rawMap || cfg.map;
-    if (mapData && mapData !== rawMap) KM.assertMapData(mapData);
+    const mapData = hasRawMap ? rawMap : cfg.map;
+    if (!hasRawMap && mapData) KM.assertMapData(mapData);
     let m, starts;
     if (mapData) { ({ m, starts } = KM.mapFromData(mapData, seed)); }
     else ({ m, starts } = KM.genMap(seed, { players: Math.max(2, pl.length), W: cfg.W, H: cfg.W, type: opts.mapType || cfg.mapType, biome: opts.biome || cfg.biome }));

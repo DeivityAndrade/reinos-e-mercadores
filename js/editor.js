@@ -186,14 +186,36 @@
     // ---------- salvar / carregar ----------
     mapData(S) {
       const m = S.map;
-      return {
-        v: 1, W: m.W, H: m.H, biome: m.biome || 'pradaria', terrain: m.terrain.slice(), hv: m.hv.map((h) => Math.round(h * 100) / 100), tree: m.tree.slice(), stone: m.stone.slice(), ore: m.ore.slice(), oreAmt: m.oreAmt.slice(),
+      const d = {
+        v: KM.MAP_DATA_V, W: m.W, H: m.H, biome: m.biome || 'pradaria', terrain: m.terrain.slice(), hv: m.hv.map((h) => Math.round(h * 100) / 100), tree: m.tree.slice(), stone: m.stone.slice(), ore: m.ore.slice(), oreAmt: m.oreAmt.slice(),
         starts: S.edStarts.map((s) => ({ x: s.x, y: s.y })),
         houses: Object.values(S.houses).map((h) => ({ type: h.type, owner: h.owner, x: h.x, y: h.y })),
       };
+      const result = KM.validateMapData(d);
+      if (!result.ok) throw new Error('Mapa inválido: ' + result.error);
+      return d;
     },
-    mapNames() { try { return JSON.parse(localStorage.getItem('rm_maps') || '[]'); } catch (e) { return []; } },
-    loadMapData(name) { try { const d = localStorage.getItem('rm_map_' + name); return d ? JSON.parse(d) : null; } catch (e) { return null; } },
+    mapNames() {
+      try {
+        const list = JSON.parse(localStorage.getItem('rm_maps') || '[]');
+        return Array.isArray(list) ? list.filter((n) => typeof n === 'string') : [];
+      } catch (e) { return []; }
+    },
+    loadMapData(name) {
+      try {
+        const raw = localStorage.getItem('rm_map_' + name);
+        if (!raw) return null;
+        const d = JSON.parse(raw), result = KM.validateMapData(d);
+        if (!result.ok) {
+          KM.ui && KM.ui.toast(`Mapa salvo "${name}" inválido: ${result.error}`, 'danger');
+          return null;
+        }
+        return d;
+      } catch (e) {
+        KM.ui && KM.ui.toast(`Mapa salvo "${name}" inválido: JSON ilegível.`, 'danger');
+        return null;
+      }
+    },
     saveMap() {
       const S = KM.S;
       if (S.edStarts.length < 2) { KM.ui.toast('O mapa precisa de pelo menos 2 bases de jogador.', 'warn'); return false; }
@@ -209,11 +231,13 @@
       } catch (e) { KM.ui.toast('Não foi possível salvar: ' + e.message, 'danger'); return false; }
     },
     exportMap() {
-      const S = KM.S;
-      const blob = new Blob([JSON.stringify(this.mapData(S))], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = (S.name || 'mapa') + '.rmmap.json';
-      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      try {
+        const S = KM.S;
+        const blob = new Blob([JSON.stringify(this.mapData(S))], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = (S.name || 'mapa') + '.rmmap.json';
+        a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      } catch (e) { KM.ui.toast('Não foi possível exportar: ' + e.message, 'danger'); }
     },
     importFile() {
       const inp = document.createElement('input');
@@ -224,7 +248,8 @@
         f.text().then((txt) => {
           try {
             const d = JSON.parse(txt);
-            if (!d.W || !d.terrain || !d.starts) throw new Error('arquivo inválido');
+            const result = KM.validateMapData(d);
+            if (!result.ok) throw new Error(result.error);
             const name = f.name.replace(/\.rmmap\.json$|\.json$/, '');
             localStorage.setItem('rm_map_' + name, JSON.stringify(d));
             const list = this.mapNames(); if (!list.includes(name)) list.push(name);
@@ -232,7 +257,7 @@
             this.fillMapLists();
             KM.ui.toast(`📥 Mapa "${name}" importado.`, 'ok');
           } catch (e) { KM.ui.toast('Não foi possível importar: ' + e.message, 'danger'); }
-        });
+        }).catch((e) => KM.ui.toast('Não foi possível ler o arquivo: ' + e.message, 'danger'));
       };
       inp.click();
     },

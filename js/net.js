@@ -216,7 +216,7 @@
         if (this.role === 'host') this.renderLobby();
         else this.status('<div class="good">✅ Conectado! Aguardando o anfitrião começar a partida...</div><p id="mpcount" class="muted"></p>');
       };
-      dc.onmessage = (e) => { if (this.peers[slot] === peer) this.onMsg(JSON.parse(e.data), slot); };
+      dc.onmessage = (e) => { if (this.peers[slot] === peer) this.receive(e && e.data, slot); };
       dc.onclose = () => this.peerLost(slot, peer.pc);
     },
     startHost() {
@@ -291,7 +291,7 @@
       if (typeof data !== 'string' || data.length > MAX_PACKET) return this.reject();
       let m;
       try { m = JSON.parse(data); } catch (e) { return this.reject(); }
-      return this.onMsg(m, slot);
+      try { return this.onMsg(m, slot); } catch (e) { return this.reject(); }
     },
     queue(c) {
       if (!KM.validCommand || !KM.validCommand(c, true, KM.S) || this.pending.length >= MAX_COMMANDS) return this.reject();
@@ -365,31 +365,50 @@
     // anfitrião: envia a todos os convidados (menos a vaga "except"); convidado: envia ao anfitrião
     sendRaw(o, except) { for (const s of Object.keys(this.peers).map(Number)) if (s !== except) this.sendTo(s, o); },
     onMsg(m, slot) {
-      const host = this.role === 'host';
-      const peer = this.peers[slot];
+      try { if (!isRecord(m) || JSON.stringify(m).length > MAX_PACKET || !this.validPacket(m)) return this.reject(); }
+      catch (e) { return this.reject(); }
+      const host = this.role === 'host', peer = this.peers[slot];
+      if (!peer) return this.reject();
       if (m.t === 'turn') {
+        if (!this.active) return this.reject();
         if (host) {
-          // o anfitrião confia na vaga da conexão, não no que o convidado declara
-          if (!peer || !this.active) return;
+          // A vaga da conexao define o dono; o campo enviado pelo convidado nao tem autoridade.
+          if (slot === 0 || !int(peer.o, 1, this.humans - 1)) return this.reject();
           const o = peer.o;
-          if (this.drops[o] != null) return;
-          this.store(m.n, o, m.c);
-          this.sendRaw({ t: 'turn', n: m.n, o, c: m.c }, slot);
-        } else this.store(m.n, m.o, m.c);
+          if (this.drops[o] != null || !this.store(m.n, o, m.c)) return this.reject();
+          this.sendRaw({ t: 'turn', n: m.n, o, c: this.inbox[m.n][o] }, slot);
+        } else {
+          if (slot !== 0 || !own(m, 'o') || !int(m.o, 0, this.humans - 1) || m.o === KM.me ||
+            (this.drops[m.o] != null && m.n >= this.drops[m.o]) || !this.store(m.n, m.o, m.c)) return this.reject();
+        }
         this.warned = false;
       }
-      else if (m.t === 'start') { if (!host) this.begin(m.opts, m.me); }
-      else if (m.t === 'drop') { if (!host) this.drops[m.o] = m.n; }
-      else if (m.t === 'lobby') { const el = $('#mpcount'); if (!host && el) el.textContent = `${m.n} jogadores na sala.`; }
-      else if (m.t === 'ping') this.sendTo(slot, { t: 'pong', ts: m.ts });
-      else if (m.t === 'pong') { if (peer) peer.ping = Math.round(performance.now() - m.ts); this.ping = Math.max(0, ...Object.values(this.peers).map((p) => p.ping || 0)); }
-      else if (m.t === 'hash') {
-        if (host) this.sendRaw(m, slot);
-        const mine = this.hashes[m.n];
-        if (mine != null && mine !== m.h && !this.desync) { this.desync = true; KM.ui.toast('⚠️ Dessincronização detectada entre os jogadores.', 'danger'); }
+      else if (m.t === 'start') {
+        if (host || slot !== 0 || this.active || this.started || !this.begin(m.opts, m.me)) return this.reject();
       }
-      else if (m.t === 'chat') { if (host) this.sendRaw(m, slot); KM.ui.toast(`💬 ${KM.esc(String(m.name))}: ${KM.esc(String(m.m))}`, 'info'); }
+      else if (m.t === 'drop') {
+        if (host || slot !== 0 || !this.active || this.drops[m.o] != null) return this.reject();
+        this.drops[m.o] = m.n;
+      }
+      else if (m.t === 'lobby') {
+        if (host || slot !== 0 || this.active) return this.reject();
+        const el = $('#mpcount'); if (el) el.textContent = m.n + ' jogadores na sala.';
+      }
+      else if (m.t === 'ping') this.sendTo(slot, { t: 'pong', ts: m.ts });
+      else if (m.t === 'pong') { peer.ping = Math.round(performance.now() - m.ts); this.ping = Math.max(0, ...Object.values(this.peers).map((p) => p.ping || 0)); }
+      else if (m.t === 'hash') {
+        if (!this.active || (host ? slot === 0 : slot !== 0 || !own(m, 'o') || m.o === KM.me)) return this.reject();
+        const o = host ? peer.o : m.o;
+        if (!int(o, 0, this.humans - 1) || !this.saveHash(m.n, o, m.h)) return this.reject();
+        if (host) this.sendRaw({ t: 'hash', n: m.n, h: m.h, o }, slot);
+      }
+      else if (m.t === 'chat') {
+        if (!this.active || (host ? slot === 0 : slot !== 0)) return this.reject();
+        if (host) this.sendRaw(m, slot);
+        KM.ui.toast('?? ' + KM.esc(m.name) + ': ' + KM.esc(m.m), 'info');
+      }
       else if (m.t === 'bye') this.peerLost(slot);
+      return true;
     },
     chatPrompt() {
       const msg = prompt(this.humans > 2 ? 'Mensagem para os outros jogadores:' : 'Mensagem para o outro jogador:');

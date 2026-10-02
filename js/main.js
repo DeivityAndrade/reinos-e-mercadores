@@ -120,6 +120,8 @@
   };
 
   KM.startGame = function (opts) {
+    opts = opts || {};
+    if (opts.map != null) KM.assertMapData(opts.map);
     KM.me = opts.me || 0;
     const S = KM.newState(opts);
     KM.afterLoad(S);
