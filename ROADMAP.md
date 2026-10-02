@@ -1,12 +1,12 @@
 # 🗺️ Roadmap — Reinos & Mercadores
 
-Estado atual: **v0.7** (out/2026). Jogo jogável de ponta a ponta: Tutorial, Conquista (10 fases), Campanha (14 missões), Escaramuça, Multijogador por sala (até 4 jogadores), Editor de mapas, PWA offline, celular/tablet.
+Estado atual do código: **v0.8.0**, conferido em **02/10/2026** (`KM.VERSION` em `js/config.js`). Implementados: Tutorial (26 passos), Conquista (10 fases), Campanha (14 missões), Escaramuça, Multijogador por sala (2 a 4 humanos; até 4 reinos contando as IAs), Editor de mapas, PWA com cache sob demanda e controles de celular/tablet.
 
-Este roadmap é uma proposta. Prioridades podem mudar conforme os testes com jogadores.
+As entregas abaixo refletem o código local. Os próximos marcos são propostas, sem prazo de entrega; prioridades podem mudar conforme os testes com jogadores. A disponibilidade da publicação online não foi verificada nesta revisão.
 
 ---
 
-## ✅ Já entregue (v0.1 → v0.7)
+## ✅ Já entregue (v0.1 → v0.8)
 
 | Versão | Destaques |
 |---|---|
@@ -14,23 +14,29 @@ Este roadmap é uma proposta. Prioridades podem mudar conforme os testes com jog
 | v0.5 | Mercado, estrada inteligente (A*), prioridade de obra, alertas no minimapa, tendência de recursos, ponto de encontro, casas em chamas, vila viva, otimização de malhas (24,6 → 14,2 ms/quadro) |
 | v0.5+ | Modo Conquista (10 fases, coroas), arte própria por código, 6 tipos de mapa, 4 estratégias de IA, multijogador por código de sala, áudio gravado CC0, controles de toque |
 | v0.6 | IA econômica sem trapaça, combate por flanco e linha de visão, tutorial de 26 passos, biomas (Outono, Pântano, Tundra) |
-| v0.7 | Começo enxuto, obras mais longas, paz territorial por quadrantes, rota das tropas, bordas do mapa, personagens Quaternius |
+| v0.7 | Começo enxuto, obras mais longas, paz territorial por quadrantes, rota das tropas, bordas do mapa, personagens Quaternius; salas com até 4 humanos, times e substituição de convidado por IA |
+| v0.8 | Rotação de construções e portas em quatro direções, Quartel liberado pela Serraria, Camponês armado sem armas, círculo de alcance das casas e torres; regressões de rotação e recrutamento |
+
+Também já existem pesca e vinícola/vinho, exportação/importação de mapas por arquivo, checksum periódico com aviso de dessincronização e testes de determinismo com quatro humanos. Esses recursos não são entregas futuras.
+
+**Validação local em 02/10/2026:** com Node.js v24.19.0, `node tools/check.js` passou em 25 grupos e `node tools/net-check.js` em 4 grupos. Isso cobre simulação, salvar/carregar, regras da v0.8, times, repasse de comandos, sala cheia e desconexão com canais falsos. Não houve teste em navegadores reais, medição em celular, verificação da publicação ou execução de `--balance` nesta revisão. Não há workflow de CI no repositório.
 
 ---
 
-## 🎯 v0.8 — Estabilidade e qualidade (curto prazo)
+## 🎯 Próximo marco — Estabilidade e qualidade (curto prazo)
 
 Objetivo: consolidar o que existe antes de crescer.
 
-- **Testes automáticos no CI:** rodar `tools/check.js`, `tools/net-check.js` (e `--balance` em modo curto) a cada PR via GitHub Actions. Hoje depende de Node instalado localmente.
-- **Teste de sincronia do multijogador:** verificar que duas simulações com a mesma semente e os mesmos comandos geram o mesmo hash de estado (detecção de *desync* com aviso na tela).
-- **Reconexão no multijogador:** retomar a partida se a conexão WebRTC cair, a partir do último estado confirmado.
-- **Versão dos saves:** migrar saves antigos (`KM.VERSION`) em vez de invalidar; avisar quando o save é de outra versão.
+- **Testes automáticos no CI:** rodar `tools/check.js` e `tools/net-check.js` a cada PR via GitHub Actions. Avaliar uma execução de balanceamento separada; hoje `--balance` roda três sementes por até 40 minutos de simulação cada e não oferece modo curto.
+- **Sincronia em condições reais:** ampliar a cobertura existente de checksum/determinismo com partidas WebRTC de 2, 3 e 4 humanos, latência, aba em segundo plano e quedas. A detecção com aviso já existe; falta validar sessões longas em rede real.
+- **Reconexão no multijogador:** retomar a partida se a conexão WebRTC cair, a partir do último estado confirmado. Hoje o convidado que cai vira IA; a queda do anfitrião encerra a sessão compartilhada e os convidados continuam localmente.
+- **Migração dos saves:** definir compatibilidade entre versões e migrar formatos antigos. Hoje `KM.VERSION` identifica a versão nos metadados, `KM.SAVE_V` controla a compatibilidade de formato, saves antigos incompatíveis são rejeitados com aviso e há ajustes pontuais no carregamento.
 - **Desempenho em celular:** medir quadros por segundo em aparelho médio com 200+ unidades; ajustar o nível "baixo" de qualidade (sombras, pós-processamento, densidade de grama).
-- **Organização do código:** `render3d.js` (~1,9 mil linhas) e `art.js` (~1,3 mil) concentram muita coisa; separar terreno, personagens, câmera e pós-processamento em módulos menores.
-- **Revisão de balanceamento da v0.7:** confirmar com simulações que o começo enxuto (2 construtores, 2 carregadores, 55 ouros) e as obras +50% não travam a IA nem deixam a Escaramuça lenta demais.
+- **Organização do código:** `render3d.js` e `art.js` ainda concentram terreno, câmera, pós-processamento e arte. Os personagens Quaternius já estão em `people.js`; avaliar outras separações conforme a necessidade.
+- **Revisão de balanceamento da v0.8:** avaliar começo enxuto (2 construtores, 2 carregadores, 55 ouros), obras +50%, Quartel antecipado e Camponês armado em simulações e partidas humanas. As regressões de regras não substituem essa avaliação.
+- **Offline/PWA:** validar instalação e uso sem rede, explicitar o cache sob demanda e avaliar download prévio dos assets. Hoje os pedidos de áudio em streaming (Range) não são armazenados pelo service worker.
 
-**Pronto quando:** CI verde em todo PR, nenhum *desync* em 10 partidas de teste de 30 min, saves da v0.7 carregam na v0.8.
+**Critérios propostos:** CI verde em todo PR; 10 partidas de rede real de 30 minutos cobrindo 2, 3 e 4 humanos sem *desync*; política de saves documentada e testada com arquivos das versões suportadas; instalação/offline conferidos em navegador e desempenho medido em celular. Esses critérios ainda não foram demonstrados pelos testes locais.
 
 ---
 
@@ -38,15 +44,15 @@ Objetivo: consolidar o que existe antes de crescer.
 
 Objetivo: mais motivo para voltar ao jogo.
 
-- **Novas construções e cadeias:** pesca (água já existe nos mapas), vinícola/vinho como alimento de luxo, muralhas e portões.
+- **Novas construções e cadeias:** muralhas e portões; definir outras cadeias após os testes de balanceamento. Pesca e vinícola/vinho já estão implementadas.
 - **Unidades:** arqueiros montados, máquinas de cerco (aríete/catapulta) ligadas à estratégia "Cerco" da IA.
 - **Clima e estações:** inverno reduz colheita (estender a regra da Tundra), chuva desacelera tropas.
 - **Conquista estendida:** fases XI–XV com novos biomas (deserto, litoral/ilhas) e objetivos de comércio.
-- **Editor de mapas 2.0:** gatilhos e objetivos simples (para criar missões próprias), compartilhamento por código/arquivo.
+- **Editor de mapas 2.0:** gatilhos e objetivos simples (para criar missões próprias) e compartilhamento por código. Exportação/importação por arquivo já existe.
 - **Replays:** como a simulação é determinística, gravar só a semente + comandos e reproduzir a partida.
 - **Acessibilidade:** modo daltônico para as cores dos reinos, tamanho de fonte da interface, legendas para avisos sonoros.
 
-**Pronto quando:** ao menos 3 novas construções, 5 novas fases e replays funcionando.
+**Critérios propostos:** ao menos 3 construções adicionais às já existentes, com escopo definido e balanceado, 5 novas fases e replays funcionando.
 
 ---
 
@@ -79,7 +85,7 @@ Objetivo: versão "completa" para divulgar.
 | Risco | Mitigação |
 |---|---|
 | Dependência do ntfy.sh para o encontro no multijogador | Manter o modo manual; avaliar servidor próprio pós-1.0 |
-| Desempenho em celulares fracos | Medir cedo (v0.8) e manter o nível gráfico "baixo" |
-| *Desync* com novas mecânicas | Teste de hash de estado no CI antes de qualquer mecânica nova |
-| Arquivos grandes e difíceis de manter | Modularizar na v0.8 antes de adicionar conteúdo |
+| Desempenho em celulares fracos | Medir no próximo marco de estabilidade e manter o nível gráfico "baixo" |
+| *Desync* com novas mecânicas | Levar as regressões de checksum ao CI e validar sessões reais de rede |
+| Arquivos grandes e difíceis de manter | Avaliar separação de responsabilidades no próximo marco de estabilidade |
 | Licenças dos assets | Usar só CC0/MIT e registrar em `assets/*/CREDITS` |

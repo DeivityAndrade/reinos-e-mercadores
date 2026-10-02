@@ -3,9 +3,11 @@
 Um jogo de estratégia econômica medieval em tempo real: construa seu reino, organize a produção e conquiste novas regiões.
 Mundo em **3D estilizado com câmera 2.5D** (Three.js), arte própria e animações com licença livre (CC0).
 
+Estado do código: **v0.8.0**, conferido em **02/10/2026** (`KM.VERSION` em `js/config.js`). Próximos passos e pendências estão no [ROADMAP.md](ROADMAP.md).
+
 ## ▶️ Como jogar
 
-**Online:** abra **https://deivityandrade.github.io/reinos-e-mercadores/** no Chrome, Edge ou Firefox. Não precisa instalar nada. Para instalar como aplicativo, use o ícone "Instalar" na barra de endereço; depois ele funciona offline.
+**Online:** abra **https://deivityandrade.github.io/reinos-e-mercadores/** no Chrome, Edge ou Firefox. Não precisa instalar nada. No Chrome ou Edge, use "Instalar aplicativo" na barra de endereço quando disponível. O modo offline depende dos arquivos já carregados e armazenados no cache; não há download prévio de todos os assets. Áudio solicitado em streaming (Range) não entra nesse cache. O multijogador online exige conexão.
 
 **No computador (offline):** Dê dois cliques em **`Jogar.bat`**. Ele liga um pequeno servidor local e abre o jogo no navegador (Chrome, Edge ou Firefox).
 Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
@@ -22,13 +24,14 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 | **👑 Conquista** | 10 fases com controle de passagens, postos avançados, reconstrução, defesa, preparação de uma expedição e guerras entre reinos. Rivais com personalidade, alianças e desafios opcionais que valem coroas (até 4 por fase). Novos biomas acompanham a progressão |
 | **Campanha "A Reunificação de Aldor"** | 14 missões com briefing, objetivos, aliados e até 3 inimigos simultâneos |
 | **Escaramuça** | Mapa procedural ou feito no editor, 1 a 3 oponentes, aliado opcional, IA com economia real ou em ondas |
-| **Multijogador online** | **Salas por código de 5 letras** para **até 4 jogadores**: um cria a sala e os amigos digitam o código. A partida roda direto entre os navegadores (WebRTC), em todos contra todos, cooperativo contra a IA ou 2 contra 2, com IA nas vagas livres e chat. Também há o modo manual (2 jogadores), trocando códigos longos |
+| **Multijogador online** | **Salas por código de 5 letras** para **2 a 4 humanos**, até 4 reinos contando as IAs: um cria a sala e os amigos digitam o código. WebRTC em estrela, com o anfitrião repassando comandos, nos modos todos contra todos, cooperativo ou 2 contra 2, e chat. Cooperativo contra IA precisa de uma vaga livre para ela. O modo manual aceita 2 humanos, trocando códigos longos |
 | **Editor de mapas** | Terreno, relevo, árvores, rochas, minérios, até 4 bases e casas prontas. Salva localmente e exporta/importa arquivos |
 
 ## 🆕 Novidades da versão 0.8
 - **Girar prédios:** ao construir, `R` (ou o botão ⟳ Girar no painel) gira a casa 90°; a porta pode ficar ao sul, leste, norte ou oeste. `Shift`+`R` gira para o outro lado.
 - **Quartel mais cedo:** agora exige só a Serraria. O novo **Camponês armado** (vida 40, ataque 7) sai do Quartel sem arma nenhuma, só com o recruta.
 - **Alcance visível:** ao selecionar Lenhador, Pedreira, Fazenda, Vinícola, Pescador ou Torre aparece um círculo no chão com a área de trabalho (ou de tiro) e o valor no painel.
+- **Regressões:** verificações de pegada e entrada nas quatro rotações, recrutamento do Camponês armado e configuração/sincronia de partidas com quatro humanos.
 
 ## 🆕 Novidades da versão 0.7
 - **Multijogador para até 4:** a sala por código aceita até 3 convidados. O anfitrião vê as vagas, escolhe o modo (todos contra todos, cooperativo contra a IA ou 2 contra 2) e quantas IAs ocupam as vagas livres. Se um convidado cair, a IA assume o reino dele ao mesmo tempo em todos os navegadores, sem travar a partida.
@@ -67,11 +70,13 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 - **Estatísticas da partida** com gráficos (cidadãos, soldados, casas e recursos ao longo do tempo) e uma tabela por jogador, na tela final e na aba Objetivos.
 - **Mensagens recentes** na aba Objetivos, e a tecla `Z` leva até o último aviso.
 - **Conselheiro 🧙:** avisa quando acaba o ouro (e a Escola para), a pedra ou a madeira com obras esperando, ou quando o povo passa fome. Ele também diz o que construir para resolver.
-- **Economia inicial:** 40 ouros, além do estoque da Escola. Soldados parados reagem a inimigos próximos.
-- **Instalável e offline (PWA):** no Chrome ou Edge, use "Instalar aplicativo" na barra de endereço. Depois de aberto uma vez, funciona sem internet.
+- **Economia inicial (histórico):** versões anteriores usavam 40 ouros; desde a v0.7, o início enxuto usa 55. Soldados parados reagem a inimigos próximos.
+- **Instalável e offline (PWA):** no Chrome ou Edge, use "Instalar aplicativo" na barra de endereço. Sem internet, o jogo depende dos arquivos já armazenados no cache, conforme explicado em Como jogar.
 
 ## 🧪 Ferramenta de balanceamento
 Com Node.js disponível, execute `node tools/check.js` para verificar regras de combate, IA, tutorial, objetivos, inicialização das 25 missões/fases em três dificuldades e continuidade após salvar/carregar. `node tools/check.js --balance` também simula três mapas por até 40 minutos cada. São amostras de diagnóstico, não uma estimativa da taxa de vitória de jogadores humanos. `node tools/net-check.js` testa o multijogador (repasse das jogadas entre 4 jogadores, sala cheia e queda de jogador) sem navegador.
+
+Verificação local em **02/10/2026**, com **Node.js v24.19.0**: `node tools/check.js` passou em **25 grupos**, e `node tools/net-check.js` em **4 grupos**. Os testes usam simulação e canais falsos; não validam conexões WebRTC reais, o serviço de encontro, gráficos, toque ou instalação PWA. Não há workflow de CI no repositório. Nesta revisão documental, `--balance` não foi executado.
 
 Para conferir visualmente cada fase sem desbloquear a Conquista, abra `tools/playtest.html` no servidor local. A prévia começa pausada e não faz autosave. Ela permite examinar briefing, mapa e pontos estratégicos.
 
@@ -170,7 +175,7 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 - **Até 4 jogadores por mapa, com times e aliados. Névoa de guerra.**
 
 ## 🎨 Direção de arte própria: "vila medieval ilustrada"
-- **Personagens próprios:** 23 tipos (carregador, construtor, lenhador, padeiro com chapéu de cozinheiro, ferreiro de avental, soldados de tabardo na cor do reino, espadachins de cota de malha, cavaleiros de elmo com pluma…), com as armas de cada ofício e escudos. Cada personagem é **uma única malha** facetada, com 1 desenho por unidade. Os cavalos também são próprios, e os dos cavaleiros levam manta na cor do reino.
+- **Personagens Quaternius:** roupas de camponês e patrulheiro, cabeças, cabelos e barbas combinados com ferramentas e peças próprias em `js/people.js`. São 14 profissões (incluindo recruta) e 10 tipos de soldado. Cada pessoa usa **uma única malha** com atlas de texturas e cores de profissão/reino. Cavalos animados são de Quaternius; cavaleiros levam manta na cor do reino. O visual procedural anterior permanece como alternativa quando os personagens não carregam.
 - **Construções feitas pelo próprio jogo** (`js/art.js`), sem modelos prontos: são 27 projetos com silhueta própria.
   - Materiais: enxaimel com reboco caiado, tábuas, toras, pedra de cantaria; telhados de palha, telha ou ardósia.
   - Exemplos: moinho de vento com pás girando, taverna com andar avançado, escola com torre do sino, quartel com ameias, mina escorada em madeira, fornalhas com brasa, chiqueiro e estábulo com animais vivos.
@@ -187,19 +192,19 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 - **Obras próprias:** terreno marcado com estacas, fundação, estrutura de madeira, paredes e andaime. Construções destruídas viram ruínas.
 - **Fundação de pedra** que acompanha o relevo, com sombras longas de sol de fim de tarde e sombras de nuvens.
 - **Obras em etapas** com andaime e pilhas de material; prédios destruídos viram ruínas com fumaça.
-- **Personagens animados** (76 animações): andam, cortam árvores, quebram pedra, colhem, carregam madeira e sacos, lutam, atiram, bloqueiam e morrem. Capas na cor do time; cavaleiros e batedores montados em cavalos animados.
+- **Personagens animados:** a Universal Animation Library de Quaternius fornece as animações usadas para movimento, trabalho, interação e combate. Cavaleiros e batedores montam cavalos animados; o caminho visual anterior usa esqueletos e animações KayKit.
 - **Menu principal** com uma vila viva ao fundo e a câmera girando devagar.
 - **Sons e música procedurais** com volume pela distância da câmera e panorâmica estéreo.
 
-## 📦 Créditos (todos CC0, domínio público)
+## 📦 Créditos e licenças
 - Músicas: **RandomMind** (OpenGameArt): The Bard's Tale, Minstrel Dance, Market Day, Harvest Season, Battle e Victory Theme. Efeitos: **Kenney – RPG Audio** (kenney.nl). Detalhes em `assets/audio/CREDITS.txt`.
 - Construções, natureza, texturas e efeitos: **arte própria** gerada por código (`js/art.js`)
-- Personagens, cavalos, porcos, roupas, chapéus, armas, escudos e itens carregados: **arte própria** gerada por código (`js/art.js`), presa aos esqueletos de animação.
-- Esqueletos e animações (76 dos personagens, mais as do cavalo e do porco): **KayKit – Character Pack: Adventurers**, por Kay Lousberg (kaylousberg.com), e Quaternius. Só a sombra das nuvens usa o KayKit Medieval Hexagon Pack.
+- Personagens, roupas, cabelos, barbas e animações: **Quaternius**, CC0; integração e peças adicionais próprias em `js/people.js`. Espada, machado, picareta, escudo e texturas vêm do **Fantasy Props MegaKit**, também de Quaternius.
+- Esqueletos e animações do visual anterior: **KayKit – Character Pack: Adventurers**, por Kay Lousberg (kaylousberg.com), CC0. A sombra das nuvens usa o KayKit Medieval Hexagon Pack. Arte procedural alternativa em `js/art.js`.
 - **Animated Animal Pack** e **Farm Animal Pack**, por Quaternius (quaternius.com), via poly.pizza
 - **Three.js** (licença MIT)
 
-As licenças estão em `assets/kaykit/` e `js/vendor/three/LICENSE`.
+Os assets externos são CC0; Three.js é MIT. Licenças e créditos estão em `assets/kaykit/LICENSE_characters.txt`, `assets/kaykit/LICENSE_medieval.txt`, `assets/quaternius/chars/LICENSE_quaternius.txt`, `assets/quaternius/props/LICENSE_quaternius.txt`, `assets/audio/CREDITS.txt`, `assets/audio/sfx/LICENSE_kenney.txt` e `js/vendor/three/LICENSE`.
 
 ## 🗂️ Estrutura do código
 
@@ -222,12 +227,13 @@ js/campaign.js    tutorial, 14 missões, 10 fases de Conquista, objetivos e prog
 js/cmd.js         comandos: toda ação do jogador (base do multijogador)
 js/tutorial.js    tutorial completo e guia básico da Missão I
 js/art.js         arte própria: texturas pintadas, materiais, construções, obras, natureza
+js/people.js      personagens Quaternius, atlas, peças por profissão e animações
 js/render3d.js    motor 3D: terreno, água, névoa, instâncias, personagens, câmera, pós-processamento ilustrado
 js/ui.js          painéis, abas, minimapa, briefing, menus
 js/input.js       mouse, teclado, seleção por raio no relevo
 js/editor.js      editor de mapas
 js/net.js         multijogador WebRTC com lockstep
-js/audio.js       sons, música e vozes procedurais (Web Audio)
+js/audio.js       áudio gravado CC0 e sons, música e vozes procedurais (Web Audio)
 js/main.js        laço de 20 ticks/s, lockstep, salvar/carregar, histórico para os gráficos
 tools/sim.js      simulador de partidas para balanceamento
 tools/check.js    regressões da simulação, sem dependências externas
@@ -238,4 +244,6 @@ sw.js, manifest.webmanifest, icon.svg   modo offline e instalação como aplicat
 
 **Determinismo:** a simulação usa um RNG próprio guardado no estado do jogo e roda em ticks fixos. Todas as ações dos jogadores passam por `js/cmd.js`. Com isso, dois computadores com a mesma semente e os mesmos comandos chegam exatamente ao mesmo estado.
 
-O multijogador comporta 2 humanos e até 2 IAs. Ambos os participantes devem usar a mesma versão do jogo.
+O multijogador por sala comporta 2 a 4 humanos, até 4 reinos contando as IAs; o modo manual aceita 2 humanos. Todos devem usar a mesma versão do jogo. Há troca periódica de checksum com aviso de dessincronização. Se um convidado cai, a IA assume seu reino no mesmo turno nos participantes restantes; se o anfitrião cai, cada convidado continua localmente com IAs, sem reconexão à partida compartilhada.
+
+Saves e progresso ficam no `localStorage` do navegador e da origem usada (site online e localhost têm armazenamentos separados). Partidas multijogador não são salvas. O carregamento rejeita formatos anteriores a `KM.SAVE_V` e aplica ajustes pontuais nos estados aceitos; não há migração geral entre versões.
