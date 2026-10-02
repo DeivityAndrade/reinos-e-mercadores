@@ -187,7 +187,7 @@
       glow: new THREE.MeshBasicMaterial({ color: '#ffb040' }), water: toon({ color: '#3f86ad' }), leather: toon({ color: '#8a5a34' }),
       meat: toon({ color: '#a8463c' }), wine: toon({ color: '#5a1f3a' }), coal: toon({ color: '#26242a' }), ore2: toon({ color: '#a2512c' }), ore3: toon({ color: '#e8b830', emissive: new THREE.Color('#5a3c00'), emissiveIntensity: 0.5 }),
       leaf: toon({ vertexColors: true }), rock: toon({ vertexColors: true }),
-      green: toon({ color: '#4f8a34' }),
+      green: toon({ color: '#4f8a34' }), mud: toon({ color: '#6e563e' }),
     });
     // ruído detalhado na pedra/reboco à distância não é necessário: texturas repetem por metro
     for (let o = 0; o < 4; o++) {
@@ -629,9 +629,11 @@
       K.fence(b, x0, z0, x1, z0); K.fence(b, x1, z0, x1, z1); K.fence(b, x1, z1, x0 + 0.3, z1); K.fence(b, x0, z1, x0, z0);
       K.box(b, 'dirt', x1 - x0, 0.01, z1 - z0, (x0 + x1) / 2, 0, (z0 + z1) / 2);
       K.box(b, 'planks', 0.3, 0.06, 0.08, x1 - 0.25, 0, z0 + 0.12); K.box(b, 'water', 0.26, 0.02, 0.05, x1 - 0.25, 0.05, z0 + 0.12);
+      // poça de lama num canto do chiqueiro
+      b.put('mud', cylG(0.17, 0.17, 0.006, 16).scale(1.3, 1, 1), x0 + 0.42, 0.006, z1 - 0.36);
       K.hay(b, hx + 0.3, 0.55);
       K.banner(b, o, hx - 0.4, 0, 0.4, 0.85);
-      return { pen: [(x0 + x1) / 2, (z0 + z1) / 2] };
+      return { pen: [(x0 + x1) / 2, (z0 + z1) / 2], penBox: [x0, z0, x1, z1] };
     },
     butcher(b, W, D, o, dx, T) {
       const w = W * 0.58, d = D * 0.52;
@@ -1077,9 +1079,202 @@
   };
   // animais (cavalo e porco): peças geradas a partir das posições dos ossos, então as proporções vêm do esqueleto
   const animalCache = {};
+  // porco esculpido: corpo numa malha só (anéis ao longo do eixo), normais suaves, peso de ossos misturado
+  // e pele com variação suave de cor; variant 0 rosado, 1 claro, 2 malhado
+  function pigGeo(rig, variant) {
+    const P = rig.P, v = variant % 3;
+    const back = P.Hips || P.Back, hd = P.Head;
+    const fwd = new THREE.Vector3().subVectors(hd, back).setZ(0).normalize(), up = new THREE.Vector3(0, 0, 1);
+    const side = new THREE.Vector3().crossVectors(fwd, up);
+    const L = Math.hypot(hd.x - back.x, hd.y - back.y);
+    let g0 = Infinity; for (const k in P) if (/Foot/.test(k)) g0 = Math.min(g0, P[k].z); if (!isFinite(g0)) g0 = 0;
+    // (d ao longo do corpo, s para o lado, z altura), em unidades de L, chão em z = 0
+    const at = (d, s, z) => new THREE.Vector3(back.x, back.y, 0).addScaledVector(fwd, d * L).addScaledVector(side, s * L).addScaledVector(up, g0 + z * L);
+    const loc = (p) => { const r = new THREE.Vector3(p.x - back.x, p.y - back.y, 0); return [r.dot(fwd) / L, r.dot(side) / L, (p.z - g0) / L]; };
+    const bi = (n) => (rig.idx[n] != null ? rig.idx[n] : 0);
+    // ossos da coluna ordenados ao longo do corpo, para misturar os pesos
+    const spine = ['Back', 'Hips', 'Torso', 'Shoulders', 'Neck', 'Head'].filter((n) => P[n]).map((n) => [bi(n), loc(P[n])[0]]).sort((a, b) => a[1] - b[1]);
+    const spineW = (d) => {
+      if (d <= spine[0][1]) return [[spine[0][0], 1]];
+      for (let i = 0; i < spine.length - 1; i++) {
+        const [b0, d0] = spine[i], [b1, d1] = spine[i + 1];
+        if (d <= d1) { let t = (d - d0) / Math.max(1e-6, d1 - d0); t = t * t * (3 - 2 * t); return [[b0, 1 - t], [b1, t]]; }
+      }
+      return [[spine[spine.length - 1][0], 1]];
+    };
+    const C = (h) => lin(h);
+    const skin = C(['#e9a291', '#f2bcaa', '#eeb09e'][v]), belly = C(['#f3bfae', '#f8d2c4', '#f5c6b6'][v]), snoutC = C('#e0928c');
+    const spotC = C('#4a3430'), dark = C('#1c1412'), hoofC = C('#4a3a32'), mudC = C('#8a6a50');
+    const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+    const nz = (x, y, z) => Math.sin(x * 1.9 + y * 0.7 + 1.3) * Math.sin(y * 2.3 - z * 1.3 + 0.4) * Math.sin(z * 1.7 + x * 1.1 + 2.1);
+    const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    // pele: barriga mais clara, leve mancha de tom, sujeira de lama nas patas e manchas no malhado
+    const skinAt = (d, s, z, low) => {
+      let c = mix(skin, belly, low);
+      const k = 1 + 0.06 * nz(d * 5, s * 5, z * 5);
+      c = [c[0] * k, c[1] * k, c[2] * k];
+      if (v === 2) c = mix(c, spotC, sstep(0.28, 0.5, nz(d * 2.4 + 0.5, Math.abs(s) * 2 + d * 0.5, z * 2.6)) * 0.92);
+      return mix(c, mudC, sstep(0.16, 0.02, z) * 0.7);
+    };
+    const parts = [];
+    // monta uma peça indexada (normais suaves): cor e pesos por vértice
+    const part = (g, colFn, wFn) => {
+      if (g.attributes.uv) g.deleteAttribute('uv');
+      const pos = g.attributes.position, n = pos.count, c = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), p = new THREE.Vector3();
+      for (let i = 0; i < n; i++) {
+        p.fromBufferAttribute(pos, i);
+        const l = loc(p), col = colFn(l, p), w = wFn(l);
+        c.set(col, i * 3);
+        for (let j = 0; j < w.length && j < 4; j++) { si[i * 4 + j] = w[j][0]; sw[i * 4 + j] = w[j][1]; }
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+      g.computeVertexNormals();
+      parts.push(g);
+    };
+    // perfil do corpo: [d, altura do centro, meia-largura, meia-altura]
+    const K0 = [[-0.45, 0.58, 0.05, 0.05], [-0.4, 0.57, 0.2, 0.23], [-0.29, 0.57, 0.31, 0.33], [-0.1, 0.58, 0.36, 0.36], [0.2, 0.585, 0.37, 0.37],
+      [0.48, 0.58, 0.35, 0.36], [0.68, 0.585, 0.29, 0.32], [0.86, 0.6, 0.235, 0.27], [1.0, 0.58, 0.185, 0.2], [1.12, 0.54, 0.125, 0.125], [1.22, 0.52, 0.1, 0.098], [1.27, 0.52, 0.112, 0.106]];
+    const prof = [];
+    for (let i = 0; i < K0.length - 1; i++) {
+      const p0 = K0[Math.max(0, i - 1)], p1 = K0[i], p2 = K0[i + 1], p3 = K0[Math.min(K0.length - 1, i + 2)], S = 10;
+      for (let k = 0; k < S; k++) {
+        const t = k / S, t2 = t * t, t3 = t2 * t;
+        prof.push(p1.map((_, j) => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3)));
+      }
+    }
+    prof.push(K0[K0.length - 1]);
+    const R = 40;
+    // seção levemente achatada nos lados e barriga um pouco caída
+    const ring = (q, th) => {
+      const c = Math.cos(th), sn = Math.sin(th);
+      const cs = Math.sign(c) * Math.pow(Math.abs(c), 0.85), ss = Math.sign(sn) * Math.pow(Math.abs(sn), 0.9);
+      // papada sob a cabeça e pescoço
+      const jowl = sn < 0 ? 1.06 + 0.12 * Math.exp(-((q[0] - 0.8) * (q[0] - 0.8)) / 0.012) : 1;
+      return [q[0], cs * q[2], q[1] + ss * q[3] * jowl];
+    };
+    const surf = (d, th) => {
+      let i = 0; while (i < prof.length - 2 && prof[i + 1][0] < d) i++;
+      const a = prof[i], b = prof[i + 1], t = Math.min(1, Math.max(0, (d - a[0]) / Math.max(1e-6, b[0] - a[0])));
+      const r = ring(a.map((x, j) => x + (b[j] - x) * t), th);
+      return at(r[0], r[1], r[2]);
+    };
+    {
+      const vs = [], idx = [];
+      for (const q of prof) for (let j = 0; j < R; j++) { const r = ring(q, (j / R) * PI * 2); const p = at(r[0], r[1], r[2]); vs.push(p.x, p.y, p.z); }
+      const nr = prof.length;
+      for (let i = 0; i < nr - 1; i++) for (let j = 0; j < R; j++) {
+        const a = i * R + j, b = i * R + ((j + 1) % R), c = a + R, e = b + R;
+        idx.push(a, c, b, b, c, e);
+      }
+      // tampas: rabo (ponta arredondada) e disco do focinho
+      const last = prof[nr - 1], tailP = at(prof[0][0] - 0.02, 0, prof[0][1]), noseP = at(last[0] + 0.015, 0, last[1]);
+      const t0 = vs.length / 3; vs.push(tailP.x, tailP.y, tailP.z);
+      const t1 = vs.length / 3; vs.push(noseP.x, noseP.y, noseP.z);
+      for (let j = 0; j < R; j++) { const j1 = (j + 1) % R; idx.push(t0, j, j1); idx.push(t1, (nr - 1) * R + j1, (nr - 1) * R + j); }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(vs, 3));
+      g.setIndex(idx);
+      part(g, ([d, s, z]) => {
+        const q = prof.find((x) => x[0] >= d) || last;
+        const low = sstep(0.1, -0.7, (z - q[1]) / Math.max(0.05, q[3]));
+        if (d > 1.1) return mix(skinAt(d, s, z, low), snoutC, sstep(1.1, 1.25, d));
+        return skinAt(d, s, z, low);
+      }, ([d]) => spineW(d));
+    }
+    // narinas, olhos
+    const headW = spineW(5);
+    for (const s of [-1, 1]) {
+      const ns = at(K0[K0.length - 1][0] + 0.008, s * 0.042, K0[K0.length - 1][1] + 0.004);
+      part(new THREE.SphereGeometry(0.024 * L, 10, 8).scale(0.6, 0.7, 1.25).translate(ns.x, ns.y, ns.z), () => C('#4a2222'), () => headW);
+      const e = surf(0.94, s > 0 ? 0.55 : PI - 0.55), en = e.clone().sub(at(0.94, 0, 0.6)).normalize();
+      const eye = e.clone().addScaledVector(en, -0.012 * L);
+      part(new THREE.SphereGeometry(0.02 * L, 12, 10).translate(eye.x, eye.y, eye.z), () => C('#2a1812'), () => headW);
+      const lid = e.clone().addScaledVector(en, -0.012 * L).addScaledVector(up, 0.012 * L);
+      part(new THREE.SphereGeometry(0.026 * L, 12, 8, 0, PI * 2, 0, PI * 0.5).translate(lid.x, lid.y, lid.z), ([d, s2, z]) => skinAt(d, s2, z, 0), () => headW);
+    }
+    // orelhas: folha curva, levemente caída para a frente
+    for (const s of [-1, 1]) {
+      const g = new THREE.SphereGeometry(1, 14, 10, 0, PI * 2, 0, PI);
+      const pos = g.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i) * 0.15, y = pos.getY(i), z = pos.getZ(i) * 0.035;
+        y = (y + 1) * 0.13; // base em y = 0, ponta em y = 0.26
+        x *= 1.15 - 0.8 * (y / 0.26) * (y / 0.26); // afina na ponta
+        z -= 1.1 * y * y + 0.12 * x * x; // dobra para a frente e côncava
+        pos.setXYZ(i, x * L, y * L, z * L);
+      }
+      const dir = new THREE.Vector3().addScaledVector(fwd, 0.55).addScaledVector(side, s * 0.6).addScaledVector(up, 0.6).normalize();
+      const nrm = new THREE.Vector3().crossVectors(dir, side).multiplyScalar(-1).normalize();
+      const xa = new THREE.Vector3().crossVectors(dir, nrm).normalize();
+      g.applyMatrix4(new THREE.Matrix4().makeBasis(xa, dir, nrm));
+      const base = surf(0.84, s > 0 ? 1.0 : PI - 1.0).addScaledVector(up, -0.02 * L);
+      g.translate(base.x, base.y, base.z);
+      part(g, () => C('#f7b8aa'), () => headW);
+    }
+    // rabinho enrolado
+    {
+      const pts = [];
+      for (let i = 0; i <= 10; i++) { const a = i * 0.9, r = 0.05 * (1 - i * 0.04); pts.push(at(-0.44 - 0.012 * i - r * (1 - Math.cos(a)) * 0.6, r * Math.sin(a), 0.62 - r * (1 - Math.cos(a)) + 0.004 * i)); }
+      part(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 32, 0.024 * L, 8), () => mix(skin, snoutC, 0.25), () => spineW(-1));
+    }
+    // tubo varrido por uma curva com raio variável (pernas)
+    const sweep = (pts, rad, segs, radial) => {
+      const curve = new THREE.CatmullRomCurve3(pts), fr = curve.computeFrenetFrames(segs, false), vs = [], idx = [];
+      for (let i = 0; i <= segs; i++) {
+        const t = i / segs, c = curve.getPointAt(t), N = fr.normals[i], B = fr.binormals[i], r = rad(t);
+        for (let j = 0; j < radial; j++) { const a = (j / radial) * PI * 2, ca = Math.cos(a), sa = Math.sin(a); vs.push(c.x + (ca * N.x + sa * B.x) * r, c.y + (ca * N.y + sa * B.y) * r, c.z + (ca * N.z + sa * B.z) * r); }
+      }
+      // ordem dos triângulos conforme o sentido do quadro de Frenet, para a face ficar para fora
+      const c0 = curve.getPointAt(0), v0 = new THREE.Vector3(vs[0], vs[1], vs[2]), v1 = new THREE.Vector3(vs[3], vs[4], vs[5]), v2 = new THREE.Vector3(vs[radial * 3], vs[radial * 3 + 1], vs[radial * 3 + 2]);
+      const out = new THREE.Vector3().subVectors(v1, v0).cross(new THREE.Vector3().subVectors(v2, v0)).dot(v0.clone().sub(c0)) > 0;
+      for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+        const a = i * radial + j, b = i * radial + ((j + 1) % radial);
+        if (out) idx.push(a, b, a + radial, b, b + radial, a + radial); else idx.push(a, a + radial, b, b, a + radial, b + radial);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(vs, 3)); g.setIndex(idx);
+      return g;
+    };
+    // pernas com articulações (cotovelo/joelho, jarrete, quartela) e casco fendido de duas unhas
+    for (const [a, lo, f] of [['FrontUpLegL', 'FrontLowLegL', 'FrontFootL'], ['FrontUpLegR', 'FrontLowLegR', 'FrontFootR'], ['BackUpLegL', 'BackLowLegL', 'BackFootL'], ['BackUpLegR', 'BackLowLegR', 'BackFootR']]) {
+      if (!P[a] || !P[f]) continue;
+      const top = loc(P[a]), ft = loc(P[f]), hind = /Back/.test(a);
+      const d = (top[0] + ft[0]) / 2, s = ((top[1] + ft[1]) / 2) * 0.72;
+      // trajeto (d, z) e raio de cada ponto: dianteira quase reta, traseira com pernil e jarrete para trás
+      const path = hind
+        ? [[0.04, 0.58, 0.12], [0.0, 0.4, 0.14], [-0.05, 0.27, 0.095], [-0.07, 0.19, 0.06], [-0.03, 0.1, 0.05], [0.0, 0.045, 0.048]]
+        : [[0.0, 0.58, 0.1], [0.02, 0.38, 0.1], [0.01, 0.26, 0.07], [0.0, 0.18, 0.055], [0.01, 0.1, 0.048], [0.03, 0.045, 0.047]];
+      const pts = path.map(([dd, z]) => at(d + dd, s, z)), rs = path.map((q) => q[2]);
+      const g = sweep(pts, (t) => { const x = t * (rs.length - 1), i = Math.min(rs.length - 2, Math.floor(x)), u = x - i; return (rs[i] + (rs[i + 1] - rs[i]) * u * u * (3 - 2 * u)) * L; }, 40, 16);
+      const wb = [[bi(a), 1]], wl = [[bi(lo), 1]];
+      part(g, ([d2, s2, z]) => skinAt(d2, s2, z, 0.35 + 0.35 * sstep(0.4, 0.2, z)), ([, , z]) => (z > 0.36 ? wb : z > 0.26 ? [[bi(a), (z - 0.26) / 0.1], [bi(lo), 1 - (z - 0.26) / 0.1]] : wl));
+      // duas unhas: meias-gotas achatadas embaixo, levemente abertas na ponta
+      const hd2 = d + path[path.length - 1][0];
+      for (const k of [-1, 1]) {
+        const h = new THREE.SphereGeometry(1, 14, 10);
+        const hp = h.attributes.position;
+        for (let i = 0; i < hp.count; i++) {
+          let x = hp.getX(i), y = hp.getY(i), z = hp.getZ(i);
+          const tip = Math.max(0, y); // ponta para a frente (y local = frente)
+          x = x * 0.024 * (1 - 0.45 * tip) + k * 0.004 * tip; y = y * 0.05; z = Math.max(-0.2, z) * 0.045 * (1 - 0.4 * tip);
+          hp.setXYZ(i, x, y, z);
+        }
+        h.applyMatrix4(new THREE.Matrix4().makeBasis(side, fwd, up)).scale(L, L, L);
+        const c = at(hd2 + 0.012, s + k * 0.024, 0.01);
+        h.translate(c.x, c.y, c.z);
+        part(h, ([, , z]) => mix(hoofC, C('#6a564a'), sstep(0.0, 0.06, z)), () => wl);
+      }
+    }
+    const geo = merge(parts);
+    geo.computeBoundingSphere();
+    return geo;
+  }
   A.animal = function (kind, rig, owner) {
     const key = kind + ':' + (owner == null ? '-' : owner);
     if (animalCache[key]) return animalCache[key];
+    if (kind === 'pig') return (animalCache[key] = pigGeo(rig, owner == null ? 0 : owner));
     const P = rig.P, parts = [];
     const put = (g, col, bone, jitter) => {
       g = g.index ? g.toNonIndexed() : g;
@@ -1135,16 +1330,50 @@
         put(ball(add(mid(P.Back, P.Torso2), up, 0.2 * L), 0.09 * L, 1.6, 1.3, 0.6), lin('#5a3a22'), 'Torso2');
       }
     } else {
-      // porco
-      const pink = lin('#e8a0a0'), dark = lin('#b86a70');
-      const body = P.Torso || P.Body, hd = P.Head, back = P.Hips || P.Back;
+      // porco (owner = variação de pelagem: 0 rosado, 1 claro, 2 malhado)
+      const v = (owner == null ? 0 : owner) % 3;
+      const pink = lin(['#eeaa9e', '#f4c4b2', '#f0b8a6'][v]), snout = lin('#d98a88'), dark = lin('#3a2422'), hoof = lin('#4a3430'), spot = lin('#5e4034');
+      const hd = P.Head, back = P.Hips || P.Back, sh = P.Shoulders || P.Torso || P.Body;
       const L = hd.distanceTo(back);
       const fwd = new THREE.Vector3().subVectors(hd, back).setZ(0).normalize(), up = new THREE.Vector3(0, 0, 1);
-      put(seg(add(back, fwd, -0.15 * L), add(P.Shoulders || body, fwd, 0.05 * L), 0.36 * L, 0.34 * L, 8), pink, 'Torso');
-      put(ball(hd, 0.26 * L, 1, 1, 0.95), pink, 'Head');
-      put(seg(add(hd, fwd, 0.2 * L), add(hd, fwd, 0.34 * L), 0.12 * L, 0.11 * L, 7), dark, 'Head', 0.05);
-      for (const s of ['L', 'R']) put(new THREE.ConeGeometry(0.08 * L, 0.16 * L, 4).rotateX(PI / 2).translate(hd.x + (s === 'L' ? 0.12 : -0.12) * L, hd.y - 0.02 * L, hd.z + 0.22 * L), dark, 'Head');
-      for (const [a, b] of [['FrontUpLegL', 'FrontFootL'], ['FrontUpLegR', 'FrontFootR'], ['BackUpLegL', 'BackFootL'], ['BackUpLegR', 'BackFootR']]) if (P[a] && P[b]) put(seg(P[a], P[b], 0.08 * L, 0.07 * L), pink, a.replace('Up', 'Low'));
+      const side = new THREE.Vector3().crossVectors(fwd, up);
+      const toFwd = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), fwd);
+      // elipsoide alinhado ao porco: a = meia-largura, l = meio-comprimento, h = meia-altura
+      const ell = (p, a, l, h, det) => new THREE.IcosahedronGeometry(1, det == null ? 2 : det).scale(a, l, h).applyQuaternion(toFwd).translate(p.x, p.y, p.z);
+      // corpo oval, um pouco mais baixo que o esqueleto para as pernas ficarem curtas
+      const mid0 = add(mid(back, sh), up, -0.06 * L);
+      put(ell(mid0, 0.32 * L, 0.58 * L, 0.31 * L), pink, 'Torso', 0.05);
+      put(ell(add(add(back, fwd, -0.06 * L), up, -0.05 * L), 0.3 * L, 0.26 * L, 0.29 * L), pink, back === P.Hips ? 'Hips' : 'Torso', 0.05);
+      // cabeça, focinho com narinas, olhos e orelhas caídas
+      const hc = add(add(hd, fwd, 0.04 * L), up, -0.06 * L);
+      put(ell(hc, 0.22 * L, 0.22 * L, 0.2 * L), pink, 'Head', 0.04);
+      const sn = add(add(hc, fwd, 0.19 * L), up, -0.04 * L);
+      put(seg(add(sn, fwd, -0.06 * L), add(sn, fwd, 0.06 * L), 0.09 * L, 0.1 * L, 10), snout, 'Head', 0.03);
+      for (const s of [-1, 1]) {
+        put(ball(add(add(add(sn, fwd, 0.065 * L), side, s * 0.04 * L), up, 0.005 * L), 0.022 * L), dark, 'Head', 0);
+        put(ball(add(add(add(hc, fwd, 0.15 * L), side, s * 0.11 * L), up, 0.07 * L), 0.028 * L), dark, 'Head', 0);
+        const ear = new THREE.ConeGeometry(0.075 * L, 0.17 * L, 4).scale(1, 1, 0.45).translate(0, 0.085 * L, 0);
+        const dir = new THREE.Vector3().addScaledVector(fwd, 0.75).addScaledVector(side, s * 0.45).addScaledVector(up, 0.2).normalize();
+        ear.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
+        const eb = add(add(add(hc, side, s * 0.12 * L), up, 0.15 * L), fwd, -0.02 * L);
+        put(ear.translate(eb.x, eb.y, eb.z), snout, 'Head', 0.04);
+      }
+      // rabinho enrolado
+      const tail = new THREE.TorusGeometry(0.05 * L, 0.014 * L, 4, 8, PI * 1.6).rotateY(PI / 2).applyQuaternion(toFwd);
+      const tb = add(add(back, fwd, -0.3 * L), up, 0.04 * L);
+      put(tail.translate(tb.x, tb.y, tb.z), snout, back === P.Hips ? 'Hips' : 'Torso', 0.03);
+      // manchas do porco malhado
+      if (v === 2) for (const [f, s, u, r] of [[0.15, 1, 0.12, 0.13], [-0.25, -1, 0.15, 0.11], [0.35, -1, 0.05, 0.08]]) {
+        const c = add(add(add(mid0, fwd, f * L), side, s * 0.2 * L), up, u * L);
+        put(ell(c, r * L, r * 1.3 * L, r * 0.9 * L, 1), spot, 'Torso', 0.05);
+      }
+      // perninhas curtas com casco escuro
+      for (const [a, b] of [['FrontUpLegL', 'FrontFootL'], ['FrontUpLegR', 'FrontFootR'], ['BackUpLegL', 'BackFootL'], ['BackUpLegR', 'BackFootR']]) {
+        if (!P[a] || !P[b]) continue;
+        const f = P[b], bone = a.replace('Up', 'Low');
+        put(seg(add(P[a], up, -0.05 * L), add(f, up, 0.06 * L), 0.085 * L, 0.07 * L, 7), pink, bone, 0.05);
+        put(seg(f, add(f, up, 0.06 * L), 0.075 * L, 0.07 * L, 7), hoof, bone, 0.03);
+      }
     }
     const geo = merge(parts);
     geo.computeBoundingSphere();
@@ -1154,11 +1383,47 @@
     if (!A._charMat) A._charMat = toon({ vertexColors: true });
     return A._charMat;
   };
+  // porco usa sombreamento contínuo (pele lisa); os outros animais seguem o pintado
+  A.animalMat = function (kind) {
+    if (kind !== 'pig') return A.charMat();
+    if (!A._pigMat) A._pigMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0, emissive: new THREE.Color('#4a2018'), emissiveIntensity: 0.32 });
+    return A._pigMat;
+  };
   // mastro com estandarte (marca das bases no editor)
   const poleCache = {};
   A.flagPole = function (o) {
     if (!poleCache[o]) { const b = new Bag(); K.box(b, 'stone', 0.34, 0.12, 0.34, 0, 0, 0); K.banner(b, o, 0, 0.12, 0, 1.3, true); poleCache[o] = b.build(); }
     return poleCache[o].clone(true);
+  };
+  // sela do cavalo realista, em metros (frente = +z, origem no assento): manta na cor do reino com barra dourada,
+  // sela de couro com arção e patilha, loros e estribos; sem dono, manta de lã crua
+  const saddleCache = {};
+  A.saddle = function (owner) {
+    const k = owner == null ? '-' : owner;
+    if (!saddleCache[k]) {
+      const g = new THREE.Group(), std = (c, r, side) => new THREE.MeshStandardMaterial({ color: c, roughness: r, side: side || THREE.FrontSide });
+      const cloth = std(owner == null ? '#6b5a44' : KM.COLORS[owner] || '#888888', 0.85, THREE.DoubleSide), trim = std(owner == null ? '#4a3c2c' : '#d8b24a', 0.5, THREE.DoubleSide);
+      const leather = std('#5a3820', 0.55), dark = std('#2e2018', 0.6), iron = new THREE.MeshStandardMaterial({ color: '#8a8e94', roughness: 0.35, metalness: 0.8 });
+      const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+      // manta: arco sobre o dorso (eixo ao longo do cavalo), com barra na borda de baixo
+      const R = 0.3, arc = 3.3, len = 0.72;
+      add(new THREE.CylinderGeometry(R, R, len, 24, 1, true, PI - arc / 2, arc).rotateX(PI / 2), cloth, 0, -R + 0.01, -0.02);
+      for (const sg of [-1, 1]) {
+        const a = PI + sg * arc / 2, x = Math.sin(a) * (R + 0.003), y = -Math.cos(a) * (R + 0.003);
+        add(new THREE.BoxGeometry(0.012, 0.05, len), trim, x, -R + 0.01 + y + 0.02, -0.02).rotation.z = -sg * 0.05;
+      }
+      // sela: assento, arção (frente) e patilha (trás)
+      add(new THREE.SphereGeometry(1, 20, 12).scale(0.17, 0.05, 0.26), leather, 0, 0.02, 0);
+      add(new THREE.BoxGeometry(0.24, 0.1, 0.05), leather, 0, 0.06, 0.2).rotation.x = -0.25;
+      add(new THREE.BoxGeometry(0.28, 0.12, 0.05), leather, 0, 0.07, -0.21).rotation.x = 0.3;
+      // loros e estribos
+      for (const sg of [-1, 1]) {
+        add(new THREE.BoxGeometry(0.012, 0.42, 0.035), dark, sg * 0.24, -0.22, 0.02).rotation.z = sg * 0.12;
+        add(new THREE.TorusGeometry(0.04, 0.008, 6, 12), iron, sg * 0.27, -0.45, 0.02).rotation.y = PI / 2;
+      }
+      saddleCache[k] = g;
+    }
+    return saddleCache[k].clone(true);
   };
   // itens carregados nas costas/mãos (troncos, pedra, sacos, caixotes)
   const carryCache = {};
