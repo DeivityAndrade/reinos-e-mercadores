@@ -1,0 +1,166 @@
+{
+  "generator": "Blender 5.2.2 LTS",
+  "coordinate_system": "GLB: Y up; pivot at ground; dimensions in game units",
+  "assets": [
+    {
+      "name": "stone_A",
+      "file": "stone_A.glb",
+      "resource": "stone",
+      "vertices": 29,
+      "triangles": 54,
+      "bounds_blender": [
+        [
+          -0.1327517181634903,
+          -0.12347247451543808,
+          0.0
+        ],
+        [
+          0.16878798604011536,
+          0.14174580574035645,
+          0.16642403602600098
+        ]
+      ],
+      "bytes": 7168
+    },
+    {
+      "name": "stone_B",
+      "file": "stone_B.glb",
+      "resource": "stone",
+      "vertices": 29,
+      "triangles": 54,
+      "bounds_blender": [
+        [
+          -0.10127484053373337,
+          -0.10973905771970749,
+          0.0
+        ],
+        [
+          0.14283792674541473,
+          0.1168404147028923,
+          0.25338470935821533
+        ]
+      ],
+      "bytes": 7168
+    },
+    {
+      "name": "stone_C",
+      "file": "stone_C.glb",
+      "resource": "stone",
+      "vertices": 29,
+      "triangles": 54,
+      "bounds_blender": [
+        [
+          -0.18333540856838226,
+          -0.1155824288725853,
+          0.0
+        ],
+        [
+          0.1889968365430832,
+          0.11399013549089432,
+          0.12479999661445618
+        ]
+      ],
+      "bytes": 7168
+    },
+    {
+      "name": "stone_D",
+      "file": "stone_D.glb",
+      "resource": "stone",
+      "vertices": 29,
+      "triangles": 54,
+      "bounds_blender": [
+        [
+          -0.11698422580957413,
+          -0.09856627881526947,
+          0.0
+        ],
+        [
+          0.1184609904885292,
+          0.11670181900262833,
+          0.30160000920295715
+        ]
+      ],
+      "bytes": 7168
+    },
+    {
+      "name": "stone_E",
+      "file": "stone_E.glb",
+      "resource": "stone",
+      "vertices": 29,
+      "triangles": 54,
+      "bounds_blender": [
+        [
+          -0.13940365612506866,
+          -0.1262752115726471,
+          0.0
+        ],
+        [
+          0.1742769181728363,
+          0.15936577320098877,
+          0.19760000705718994
+        ]
+      ],
+      "bytes": 7168
+    },
+    {
+      "name": "coal",
+      "file": "coal.glb",
+      "resource": "coal",
+      "vertices": 143,
+      "triangles": 206,
+      "bounds_blender": [
+        [
+          -0.14348918199539185,
+          -0.1477452963590622,
+          0.0
+        ],
+        [
+          0.15866738557815552,
+          0.14865745604038239,
+          0.20655125379562378
+        ]
+      ],
+      "bytes": 20392
+    },
+    {
+      "name": "ironore",
+      "file": "ironore.glb",
+      "resource": "ironore",
+      "vertices": 143,
+      "triangles": 206,
+      "bounds_blender": [
+        [
+          -0.1523086577653885,
+          -0.11996664851903915,
+          0.0
+        ],
+        [
+          0.19092732667922974,
+          0.11423011124134064,
+          0.2373708039522171
+        ]
+      ],
+      "bytes": 20400
+    },
+    {
+      "name": "goldore",
+      "file": "goldore.glb",
+      "resource": "goldore",
+      "vertices": 173,
+      "triangles": 246,
+      "bounds_blender": [
+        [
+          -0.1300870031118393,
+          -0.13779985904693604,
+          0.0
+        ],
+        [
+          0.17823168635368347,
+          0.1397126019001007,
+          0.23220720887184143
+        ]
+      ],
+      "bytes": 23880
+    }
+  ]
+}
