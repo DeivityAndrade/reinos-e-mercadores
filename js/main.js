@@ -51,10 +51,32 @@
 
   // soma de verificação para detectar dessincronização no multijogador
   KM.checksum = function (S) {
-    let h = (S.nid * 31 + S.tick + S.rs) | 0;
-    for (const id in S.units) { const u = S.units[id]; h = (h * 33 + ((u.x * 100) | 0) + ((u.y * 100) | 0) * 7 + (u.hp | 0) + (u.heading || 0) * 31 + ((u.hunger * 100) | 0)) | 0; }
-    for (const id in S.houses) { const b = S.houses[id]; h = (h * 17 + b.id + (b.hp | 0)) | 0; }
-    for (const site of S.sites || []) { h = (h * 17 + site.owner) | 0; for (const held of site.held) h = (h * 33 + ((held * 100) | 0)) | 0; }
+    let h = 0x811c9dc5;
+    const add = (v) => {
+      if (Array.isArray(v)) { add('array'); add(v.length); for (const x of v) add(x); return; }
+      if (v && typeof v === 'object') { add('object'); for (const k of Object.keys(v).sort()) { add(k); add(v[k]); } return; }
+      const s = typeof v + ':' + String(v);
+      for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+      h = Math.imul(h ^ 255, 16777619);
+    };
+    add([S.nid, S.tick, S.rs, S.time, S.speed]);
+    for (const id of Object.keys(S.units).sort((a, b) => +a - +b)) {
+      const u = S.units[id];
+      add([id, u.owner, u.type, u.x, u.y, u.hp, u.heading, u.hunger, u.inside, u.g, u.target, u.order]);
+    }
+    for (const id of Object.keys(S.houses).sort((a, b) => +a - +b)) {
+      const b = S.houses[id];
+      add([id, b.type, b.owner, b.state, b.x, b.y, b.rot, b.hp, b.used, b.total, b.worker, b.work, b.cnt, b.rr,
+        b.queue, b.trainT, b.trainMax, b.recruits, b.shots, b.trade, b.tradeT, b.traded, b.completed, b.upT, b.busyT,
+        b.paused, b.noDeliv, b.repair, b.prio, b.depleted]);
+      for (const key of ['mat', 'inv', 'out', 'inc', 'rsv', 'orders', 'block']) add(b[key] || null);
+    }
+    for (const p of S.players) add([p.team, p.human, p.eco, p.out, p.autoTrain, p.dist, p.built, p.ai]);
+    for (const site of S.sites || []) add([site.id, site.owner, site.contested, site.held]);
+    for (const key of ['tree', 'stone', 'road', 'rown', 'rmat', 'field', 'fown', 'fstage']) {
+      const a = S.map[key] || []; add(key); add(a.length);
+      for (let i = 0; i < a.length; i++) add(a[i]);
+    }
     return h;
   };
 
@@ -120,6 +142,8 @@
   };
 
   KM.startGame = function (opts) {
+    opts = opts || {};
+    if (opts.map != null) KM.assertMapData(opts.map);
     KM.me = opts.me || 0;
     const S = KM.newState(opts);
     KM.afterLoad(S);

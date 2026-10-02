@@ -690,9 +690,13 @@
         if (!b) return;
         if (b.dataset.new) {
           const seedv = $('#seed').value.trim();
-          const map = $('#smap').value ? KM.editor.loadMapData($('#smap').value) : null;
+          const mapName = $('#smap').value;
+          const map = mapName ? KM.editor.loadMapData(mapName) : null;
+          if (mapName && !map) return;
           const mt = $('#mtype').value, TYPES = ['continente', 'rio', 'lagos', 'cordilheiras', 'floresta', 'planalto'];
-          KM.startGame({ diff: $('#diff').value, aiMode: $('#aimode').value, opponents: +$('#opps').value, ally: $('#ally').checked, allUnlocked: $('#allun').checked, map, biome: $('#biome').value, mapType: mt === 'surpresa' ? TYPES[Math.floor(Math.random() * TYPES.length)] : mt, seed: seedv ? (parseInt(seedv, 10) || seedv.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0) : 0 });
+          try {
+            KM.startGame({ diff: $('#diff').value, aiMode: $('#aimode').value, opponents: +$('#opps').value, ally: $('#ally').checked, allUnlocked: $('#allun').checked, map, biome: $('#biome').value, mapType: mt === 'surpresa' ? TYPES[Math.floor(Math.random() * TYPES.length)] : mt, seed: seedv ? (parseInt(seedv, 10) || seedv.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0) : 0 });
+          } catch (e) { this.toast('Não foi possível iniciar a escaramuça: ' + e.message, 'danger'); }
         }
         if (b.dataset.cont) KM.load(+b.dataset.cont);
         if (b.dataset.help) this.showHelp(true);

@@ -197,6 +197,53 @@ check('Ordens diretas não atacam aliados', () => {
   const g = KM.newGroup(S, 0, 'militia', [a]);
   KM.exec(S, { o: 0, c: 'attack', g: [g.id], k: 'u', id: friend.id }); assert.equal(a.target, null);
 });
+check('KM.exec ignora comandos malformados e valores nao finitos', () => {
+  const S = flat(), road = Array.from(S.map.road);
+  assert.doesNotThrow(() => KM.exec(S, { o: 0, c: 'roads', tiles: null }));
+  assert.doesNotThrow(() => KM.exec(S, { o: 0, c: 'move', g: [], x: Infinity, y: 0 }));
+  for (const c of ['constructor', '__proto__', 'toString', 'desconhecido']) {
+    assert.equal(KM.validCommand({ c, o: 0 }, true, S), false);
+    assert.doesNotThrow(() => KM.exec(S, { c, o: 0 }));
+  }
+  assert.deepEqual(Array.from(S.map.road), road);
+});
+check('Esquema aceita comandos da UI e rejeita donos, campos e coordenadas inválidos', () => {
+  const S = flat();
+  const resource = Object.keys(KM.DIST)[0];
+  const commands = [
+    { c: 'build', t: 'school', x: 5, y: 5, r: 3 }, { c: 'roads', tiles: [[2, 2]] },
+    { c: 'fields', kind: 3, tiles: [[2, 2]] }, { c: 'demolishAt', x: 2, y: 2 },
+    { c: 'demolish', id: 1 }, { c: 'hset', id: 1, k: 'paused', v: true },
+    { c: 'block', id: 1, r: 'gold' }, { c: 'order', id: 1, i: 0, v: KM.INF },
+    { c: 'train', id: 1, p: 'serf' }, { c: 'unq', id: 1, i: 9 },
+    { c: 'equip', id: 1, t: 'militia', n: 5 }, { c: 'trade', id: 1, sell: 'stone', buy: 'gold', n: KM.INF },
+    { c: 'rally', id: 1, x: 2, y: 2 }, { c: 'auto', v: true },
+    { c: 'dist', r: resource, t: KM.DIST[resource][0], v: 5 }, { c: 'move', g: [1], x: 2, y: 2, am: true },
+    { c: 'attack', g: [1], k: 'u', id: 2 }, ...['stop', 'split', 'link', 'feed'].map(c => ({ c, g: [1] })),
+    { c: 'turn', g: [1], d: -1 }, { c: 'cols', g: [1], d: 1 },
+    { c: 'speed', v: 5 }, { c: 'leave' }, { c: 'pause', v: false },
+  ];
+  for (const c of commands) {
+    assert.equal(KM.validCommand(c, false, S), true, c.c);
+    assert.equal(KM.validCommand(c, true, S), false, c.c + ': dono obrigatório');
+    assert.equal(KM.validCommand({ ...c, o: 0 }, true, S), true, c.c);
+    assert.equal(KM.validCommand({ ...c, o: 4 }, true, S), false, c.c);
+    assert.equal(KM.validCommand({ ...c, extra: true }, false, S), false, c.c);
+  }
+  for (const x of [-1, 40, 1.5, NaN, Infinity, '2']) assert.equal(KM.validCommand({ c: 'move', g: [1], x, y: 2 }, false, S), false);
+});
+check('Pintura da UI com mais de 256 tiles preserva todas as estradas e campos', () => {
+  const S = flat(); KM.S = S;
+  const tiles = Array.from({ length: 257 }, (_, i) => [i % 40, Math.floor(i / 40)]);
+  for (const c of [{ c: 'roads', tiles }, { c: 'fields', kind: 1, tiles }]) {
+    S.cmdq = []; KM.issue(c);
+    assert.deepEqual(Array.from(S.cmdq, q => q.tiles.length), [256, 1]);
+    for (const q of S.cmdq) { assert.equal(KM.validCommand(q, true, S), true); KM.exec(S, q); }
+    const layer = S.map[c.c === 'roads' ? 'road' : 'field'];
+    for (const [x, y] of tiles) assert.equal(layer[y * 40 + x], 1);
+    S.map.road.fill(0);
+  }
+});
 check('Controle territorial vence e reinicia ao ficar contestado ou vazio', () => {
   const S = flat();
   S.sites = [{ id: 'vau', n: 'Vau', x: 20, y: 20, r: 6, owner: -1, held: [0, 0] }];
@@ -315,6 +362,14 @@ check('Mapa, combate e objetivos reproduzem o mesmo estado e sobrevivem a salvar
   KM.simS = a; KM.rt = { comp: null, roadsDirty: true }; KM.computeRoadComps(a);
   for (let i = 0; i < 40; i++) KM.step(a, KM.DT);
   assert.equal(JSON.stringify(a), JSON.stringify(copy));
+});
+check('Checksum detecta estoques diferentes e permanece igual em uma copia do mesmo estado', () => {
+  const a = KM.newState({ seed: 17, diff: 'normal' }), b = JSON.parse(JSON.stringify(a));
+  const storeA = Object.values(a.houses).find((h) => h.owner === 0 && h.type === 'storehouse');
+  const storeB = b.houses[storeA.id];
+  assert.equal(KM.checksum(a), KM.checksum(b));
+  storeB.inv.gold += 100;
+  assert.notEqual(KM.checksum(a), KM.checksum(b));
 });
 check('Multijogador monta times para 2 a 4 humanos', () => {
   const teams = (cfg) => cfg.players.map((p) => p.team);
