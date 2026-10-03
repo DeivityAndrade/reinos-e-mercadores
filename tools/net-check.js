@@ -4,7 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const src = fs.readFileSync(path.resolve(__dirname, '..', 'js', 'net.js'), 'utf8');
+// net.js valida partida e comandos com KM.DIFF (config.js) e KM.validCommand (cmd.js), como no navegador
+const load = (f) => ({ f, src: fs.readFileSync(path.resolve(__dirname, '..', 'js', f), 'utf8') });
+const libs = [load('config.js'), load('cmd.js')], netSrc = load('net.js');
 
 class FakePC {
   constructor() { this.iceGatheringState = 'complete'; this.localDescription = { sdp: 'x' }; }
@@ -17,19 +19,21 @@ class FakePC {
 }
 // um "navegador": contexto isolado com seu próprio KM e sua própria instância de net
 function client(me) {
-  const KM = { me, ui: { toast() {} }, esc: (s) => s, COLORS: [], started: null, startGame(o) { KM.started = o; } };
+  const KM = {};
   const ctx = { window: { KM }, document: { querySelector: () => null }, performance, setInterval: () => 1, clearInterval() {}, setTimeout, RTCPeerConnection: FakePC, console, JSON, Math, Object, Number, String, Array };
   vm.createContext(ctx);
-  vm.runInContext(src, ctx, { filename: 'net.js' });
+  for (const l of libs) vm.runInContext(l.src, ctx, { filename: l.f });
+  Object.assign(KM, { me, ui: { toast() {} }, esc: (s) => s, COLORS: [], started: null, startGame(o) { KM.started = o; } });
+  vm.runInContext(netSrc.src, ctx, { filename: netSrc.f });
   const net = KM.net;
   net.got = [];
   const on = net.onMsg.bind(net);
-  net.onMsg = (m, slot) => { net.got.push(m); on(m, slot); };
+  net.onMsg = (m, slot) => { net.got.push(m); return on(m, slot); };
   return { KM, net, t: 0, log: [] };
 }
 const queue = [];
 const flush = () => { while (queue.length) queue.shift()(); };
-const channel = (target, fromSlot) => ({ readyState: 'open', close() {}, send(s) { queue.push(() => target.net.onMsg(JSON.parse(s), fromSlot)); } });
+const channel = (target, fromSlot) => ({ readyState: 'open', close() {}, send(s) { queue.push(() => target.net.receive(s, fromSlot)); } });
 function room(n) {
   const host = client(0); host.net.role = 'host';
   const guests = [];
@@ -39,7 +43,7 @@ function room(n) {
     g.net.peers[0] = { id: 'h', o: 0, dc: channel(host, s), ping: 0 };
     guests.push(g);
   }
-  const opts = { mp: true, humans: n, teams: 'versus' };
+  const opts = { mp: true, humans: n, teams: 'versus', diff: 'normal', opponents: 0, aiMode: 'economy', seed: 12345 };
   host.net.begin(opts, 0);
   guests.forEach((g, i) => g.net.begin(opts, i + 1));
   return { host, guests, all: [host, ...guests] };
@@ -48,8 +52,8 @@ function room(n) {
 function run(c, upTo) {
   while (c.t <= upTo && c.net.ready(c.t)) {
     c.log[c.t] = JSON.stringify(c.net.take(c.t));
-    c.net.queue({ c: 'move', t: c.t });
-    c.net.send(c.t);
+    assert.equal(c.net.queue({ c: 'move', g: [1], x: c.t % 10, y: 1, o: c.KM.me }), true);
+    assert.equal(c.net.send(c.t), true);
     c.t++;
   }
 }
@@ -120,6 +124,92 @@ function check(name, fn) { return Promise.resolve(fn()).then(() => { passed++; c
     assert.equal(g.net.active, false);
     assert.equal(JSON.stringify(execs), JSON.stringify([{ o: 0, c: 'leave' }]));
     assert.ok(host.net.active);
+  });
+
+  await check('Pacotes de turno malformados, fora da janela ou grandes demais sao rejeitados sem travar', () => {
+    const { host } = room(2);
+    assert.equal(host.net.onMsg({ t: 'turn', n: 3, c: [{ c: 'roads', tiles: null }] }, 1), false);
+    assert.equal(host.net.onMsg({ t: 'turn', n: Infinity, c: [] }, 1), false);
+    assert.equal(host.net.onMsg({ t: 'turn', n: 9999, c: [] }, 1), false);
+    assert.equal(host.net.onMsg({ t: 'turn', n: 3, c: Array.from({ length: 129 }, () => ({ c: 'stop', g: [1] })) }, 1), false);
+    assert.equal(Object.keys(host.net.inbox).length, 0);
+    assert.equal(host.net.active, true);
+    assert.equal(host.net.onMsg({ t: 'turn', n: 3, o: 0, c: [{ c: 'move', o: 0, g: [1], x: 2, y: 3 }] }, 1), true);
+    assert.equal(host.net.inbox[3][1][0].o, 1, 'a vaga conectada define o dono do comando');
+    assert.equal(host.net.store(3, 1, []), false, 'pacote duplicado nao sobrescreve o turno');
+    assert.equal(JSON.stringify(host.net.take(3)), JSON.stringify([{ c: 'move', o: 1, g: [1], x: 2, y: 3 }]));
+    host.net.inbox[4] = { 1: [{ c: 'roads', tiles: null }] };
+    assert.equal(host.net.take(4).length, 0, 'take tambem protege contra caixa adulterada');
+  });
+
+  await check('O hash remoto que chega primeiro e comparado quando o hash local chega', () => {
+    const { host } = room(2);
+    assert.equal(host.net.onMsg({ t: 'hash', n: 0, h: 123 }, 1), true);
+    assert.equal(host.net.desync, false);
+    assert.equal(host.net.sendHash(0, 124), true);
+    assert.equal(host.net.desync, true);
+  });
+
+  await check('DataChannel ignora JSON invalido e pacotes acima do limite', () => {
+    const g = client(1); g.net.role = 'guest';
+    g.net.peers[0] = { id: 'h', o: 0, dc: null, ping: 0 };
+    const dc = { readyState: 'open', close() {} };
+    g.net.bind(0, dc);
+    assert.doesNotThrow(() => dc.onmessage({ data: '{' }));
+    assert.doesNotThrow(() => dc.onmessage({ data: ' '.repeat(65537) }));
+    assert.equal(g.net.rejected, 2);
+    assert.equal(g.net.active, false);
+  });
+  await check('Início e controles respeitam o esquema, a conexão e a partida ativa', () => {
+    const g = client(1); g.net.role = 'guest';
+    g.net.peers[0] = { o: 0, dc: { readyState: 'open', send() {} } };
+    const opts = { mp: true, humans: 2, teams: 'versus', diff: 'normal', opponents: 0, aiMode: 'economy', seed: 7 };
+    assert.equal(g.net.onMsg({ t: 'start', opts: { ...opts, humans: 5 }, me: 1 }, 0), false);
+    assert.equal(g.KM.started, null);
+    assert.equal(g.net.onMsg({ t: 'start', opts, me: 1 }, 1), false);
+    assert.equal(g.net.onMsg({ t: 'start', opts, me: 1 }, 0), true);
+    const started = g.KM.started;
+    assert.equal(g.net.onMsg({ t: 'start', opts, me: 1 }, 0), false);
+    assert.equal(g.KM.started, started);
+    assert.equal(g.net.onMsg({ t: 'turn', n: 3, o: 1, c: [] }, 0), false);
+    assert.equal(g.net.onMsg({ t: 'turn', n: 3, o: 0, c: [] }, 1), false);
+    assert.equal(g.net.onMsg({ t: 'chat', name: 'a', m: 'x'.repeat(201) }, 0), false);
+    assert.equal(g.net.onMsg({ t: 'drop', n: 3, o: 1 }, 0), false);
+    assert.equal(g.net.onMsg({ t: 'drop', n: 3, o: 0 }, 0), true);
+    assert.equal(g.net.onMsg({ t: 'drop', n: 3, o: 0 }, 0), false);
+  });
+  await check('Fila limita comandos e tamanho, preservando pinturas grandes da UI', () => {
+    const { host, guests } = room(2);
+    const g = guests[0]; g.KM.S = { map: { W: 64, H: 64 } };
+    const tiles = Array.from({ length: 257 }, (_, i) => [i % 64, Math.floor(i / 64)]);
+    g.KM.issue({ c: 'fields', kind: 1, tiles });
+    assert.deepEqual(Array.from(g.net.pending, c => c.tiles.length), [256, 1]);
+    assert.equal(g.net.send(0), true); flush();
+    assert.equal(host.net.inbox[3][1].flatMap(c => c.tiles).length, 257);
+    for (let i = 0; i < 128; i++) assert.equal(g.net.queue({ c: 'stop', g: [1], o: 1 }), true);
+    assert.equal(g.net.queue({ c: 'stop', g: [1], o: 1 }), false);
+    assert.equal(g.net.send(1), true); flush();
+    const large = { c: 'move', g: Array(512).fill(0x7fffffff), x: 2, y: 2, o: 1 };
+    let accepted = 0;
+    while (g.net.queue(large)) accepted++;
+    assert.ok(accepted > 0 && accepted < 128);
+    assert.ok(JSON.stringify({ t: 'turn', n: 5, o: 1, c: g.net.pending }).length <= 65536);
+    assert.equal(g.net.send(2), true); flush();
+    assert.equal(host.net.inbox[5][1].length, accepted);
+  });
+  await check('Hashes iguais, duplicados e antigos são tratados sem falsos avisos ou acúmulo', () => {
+    const { host } = room(2);
+    assert.equal(host.net.sendHash(0, 123), true);
+    assert.equal(host.net.onMsg({ t: 'hash', n: 0, h: 123 }, 1), true);
+    assert.equal(host.net.desync, false);
+    assert.equal(host.net.onMsg({ t: 'hash', n: 0, h: 124 }, 1), false);
+    assert.equal(host.net.hashes[0][1], 123);
+    host.net.turn = 1100;
+    assert.equal(host.net.onMsg({ t: 'hash', n: 0, h: 123 }, 1), false);
+    assert.equal(host.net.onMsg({ t: 'hash', n: 1101, h: 123 }, 1), false);
+    assert.equal(host.net.sendHash(1100, 123), true);
+    assert.equal(host.net.hashes[0], undefined);
+    flush();
   });
   console.log(`${passed} grupos de regressão do multijogador passaram.`);
 })().catch((e) => { console.error(e); process.exit(1); });

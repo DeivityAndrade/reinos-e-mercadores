@@ -488,7 +488,83 @@
     return { diff: opts.diff || 'normal', seed: opts.seed, goals: [{ k: 'destroy' }], players, map: opts.map || null };
   };
 
+  // Formato dos mapas exportados pelo editor. Valide antes de tocar em MAP_W/MAP_H:
+  // esses dados chegam do localStorage e de arquivos escolhidos pelo usuário.
+  KM.MAP_DATA_V = 1;
+  KM.MAP_MIN_SIZE = 32;
+  KM.MAP_MAX_SIZE = 256;
+  KM.validateMapData = function (d) {
+    const fail = (error) => ({ ok: false, error });
+    const finite = (v) => typeof v === 'number' && Number.isFinite(v);
+    if (!d || typeof d !== 'object' || Array.isArray(d)) return fail('o arquivo precisa conter um objeto JSON de mapa.');
+    if (d.v !== KM.MAP_DATA_V) return fail(`versão de mapa não suportada (esperada v${KM.MAP_DATA_V}).`);
+    const W = d.W, H = d.H;
+    if (!Number.isInteger(W) || !Number.isInteger(H) || W < KM.MAP_MIN_SIZE || H < KM.MAP_MIN_SIZE || W > KM.MAP_MAX_SIZE || H > KM.MAP_MAX_SIZE) {
+      return fail(`as dimensões W/H devem ser inteiros entre ${KM.MAP_MIN_SIZE} e ${KM.MAP_MAX_SIZE}.`);
+    }
+    const N = W * H, VN = (W + 1) * (H + 1);
+    const arrays = [
+      ['terrain', N, (v) => Number.isInteger(v) && v >= 0 && v <= 3, 'inteiros de 0 a 3'],
+      ['hv', VN, (v) => finite(v) && v >= 0 && v <= KM.MAXH, `números entre 0 e ${KM.MAXH}`],
+      ['tree', N, (v) => Number.isInteger(v) && v >= 0 && v <= 4, 'inteiros de 0 a 4'],
+      ['stone', N, (v) => Number.isInteger(v) && v >= 0 && v <= 7, 'inteiros de 0 a 7'],
+      ['ore', N, (v) => Number.isInteger(v) && v >= 0 && v <= 3, 'inteiros de 0 a 3'],
+      ['oreAmt', N, (v) => Number.isInteger(v) && v >= 0 && v <= 35, 'inteiros de 0 a 35'],
+    ];
+    for (const [key, length, valid, expected] of arrays) {
+      if (!Array.isArray(d[key])) return fail(`o array "${key}" é obrigatório.`);
+      if (d[key].length !== length) return fail(`o array "${key}" deve ter exatamente ${length} valores.`);
+      for (let i = 0; i < length; i++) if (!valid(d[key][i])) return fail(`o array "${key}" tem valor inválido na posição ${i} (esperado: ${expected}).`);
+    }
+    if (!Array.isArray(d.starts) || d.starts.length < 2 || d.starts.length > 4) return fail('o mapa precisa ter entre 2 e 4 bases.');
+    const startKeys = new Set();
+    for (let i = 0; i < d.starts.length; i++) {
+      const s = d.starts[i];
+      if (!s || typeof s !== 'object' || !Number.isInteger(s.x) || !Number.isInteger(s.y) || s.x < 2 || s.y < 2 || s.x >= W || s.y >= H) {
+        return fail(`a base ${i + 1} deve ter coordenadas inteiras válidas, a pelo menos 2 casas da borda superior/esquerda.`);
+      }
+      const key = s.x + ',' + s.y;
+      if (startKeys.has(key)) return fail(`as bases não podem ocupar a mesma posição (${key}).`);
+      startKeys.add(key);
+      const tile = d.terrain[s.y * W + s.x];
+      if (tile !== KM.T.GRASS && tile !== KM.T.SAND) return fail(`a base ${i + 1} deve ficar em grama ou areia.`);
+    }
+    if (d.biome != null && (typeof d.biome !== 'string' || !Object.prototype.hasOwnProperty.call(KM.BIOMES, d.biome))) return fail('o bioma informado não é reconhecido.');
+
+    const houses = d.houses == null ? [] : d.houses;
+    if (!Array.isArray(houses)) return fail('o campo houses deve ser uma lista de casas.');
+    if (houses.length > Math.min(N, 4096)) return fail(`o mapa não pode conter mais de ${Math.min(N, 4096)} casas.`);
+    const occupied = new Set(), doors = new Set();
+    for (let i = 0; i < houses.length; i++) {
+      const h = houses[i];
+      if (!h || typeof h !== 'object' || typeof h.type !== 'string' || !Object.prototype.hasOwnProperty.call(KM.HOUSES, h.type)) return fail(`a casa ${i + 1} tem um tipo desconhecido.`);
+      if (!Number.isInteger(h.owner) || h.owner < 0 || h.owner >= d.starts.length) return fail(`a casa ${i + 1} tem um dono inválido.`);
+      if (!Number.isInteger(h.x) || !Number.isInteger(h.y)) return fail(`a casa ${i + 1} deve ter posição inteira.`);
+      const f = KM.footprint(h.type, h.x, h.y, 0);
+      if (f.x0 < 0 || f.y0 < 0 || f.x1 >= W || f.y1 >= H) return fail(`a casa ${i + 1} fica fora dos limites do mapa.`);
+      for (let y = h.y; y < h.y + f.h; y++) for (let x = h.x; x < h.x + f.w; x++) {
+        const k = y * W + x;
+        if (occupied.has(k) || doors.has(k)) return fail(`a casa ${i + 1} se sobrepõe a outra casa ou entrada.`);
+        if ((d.terrain[k] !== KM.T.GRASS && d.terrain[k] !== KM.T.SAND) || d.stone[k] !== 0) return fail(`a casa ${i + 1} está em terreno ou rocha inválidos.`);
+        occupied.add(k);
+      }
+      const door = f.ey * W + f.ex;
+      if (occupied.has(door) || doors.has(door) || (d.terrain[door] !== KM.T.GRASS && d.terrain[door] !== KM.T.SAND) || d.stone[door] !== 0) return fail(`a entrada da casa ${i + 1} está bloqueada ou fora do terreno válido.`);
+      doors.add(door);
+    }
+    return { ok: true, data: d };
+  };
+  KM.assertMapData = function (d) {
+    const result = KM.validateMapData(d);
+    if (!result.ok) throw new Error('Mapa inválido: ' + result.error);
+    return result.data;
+  };
+
   KM.newState = function (opts) {
+    opts = opts || {};
+    const hasRawMap = opts.map != null;
+    const rawMap = opts.map;
+    if (hasRawMap) KM.assertMapData(rawMap);
     const mis = opts.mission ? KM.findMission(opts.mission, opts.diff) : null;
     const cfg = mis || KM.skirmishConfig(opts);
     const seed = cfg.seed || opts.seed || Math.floor(Math.random() * 1e9);
@@ -496,7 +572,8 @@
       { human: true, team: 0, name: KM.NAMES[0], town: cfg.player },
       ...(cfg.ai && cfg.ai.mode !== 'none' ? [{ team: 1, name: KM.NAMES[1], ai: cfg.ai }] : []),
     ];
-    const mapData = opts.map || cfg.map;
+    const mapData = hasRawMap ? rawMap : cfg.map;
+    if (!hasRawMap && mapData) KM.assertMapData(mapData);
     let m, starts;
     if (mapData) { ({ m, starts } = KM.mapFromData(mapData, seed)); }
     else ({ m, starts } = KM.genMap(seed, { players: Math.max(2, pl.length), W: cfg.W, H: cfg.W, type: opts.mapType || cfg.mapType, biome: opts.biome || cfg.biome }));
@@ -592,16 +669,17 @@
 
   // mapa vindo do editor
   KM.mapFromData = function (d, seed) {
-    KM.setMapSize(d.W, d.H);
-    const m = KM.emptyMap(d.W, d.H);
-    m.biome = KM.BIOMES[d.biome] ? d.biome : 'pradaria';
-    for (const k of ['terrain', 'tree', 'stone', 'ore', 'oreAmt', 'hv']) if (d[k]) m[k] = d[k].slice();
+    const data = KM.assertMapData(d);
+    KM.setMapSize(data.W, data.H);
+    const m = KM.emptyMap(data.W, data.H);
+    m.biome = KM.BIOMES[data.biome] ? data.biome : 'pradaria';
+    for (const k of ['terrain', 'tree', 'stone', 'ore', 'oreAmt', 'hv']) m[k] = data[k].slice();
     const sN = KM.makeNoise(seed + 3);
-    for (let i = 0; i < d.W * d.H; i++) {
-      m.shade[i] = Math.floor(sN((i % d.W) / 5, Math.floor(i / d.W) / 5, 3) * 255);
+    for (let i = 0; i < data.W * data.H; i++) {
+      m.shade[i] = Math.floor(sN((i % data.W) / 5, Math.floor(i / data.W) / 5, 3) * 255);
       if (m.terrain[i] === KM.T.WATER) m.fish[i] = 4;
     }
-    return { m, starts: d.starts.map((s) => ({ x: s.x, y: s.y })) };
+    return { m, starts: data.starts.map((s) => ({ x: s.x, y: s.y })) };
   };
 
   KM.reveal = function (S, cx, cy, r, o) {

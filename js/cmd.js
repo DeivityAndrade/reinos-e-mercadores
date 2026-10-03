@@ -1,12 +1,83 @@
 'use strict';
 /* Comandos: toda ação do jogador passa por aqui (single-player e multiplayer lockstep) */
 (function (KM) {
+  const MAX_TILES = 256;
   KM.issue = function (c) {
     const S = KM.S;
     if (!S || S.editor) return;
     c.o = KM.me;
+    // Pinturas grandes da UI continuam válidas; cada comando respeita o limite da rede.
+    if ((c.c === 'roads' || c.c === 'fields') && Array.isArray(c.tiles) && c.tiles.length > MAX_TILES) {
+      for (let i = 0; i < c.tiles.length; i += MAX_TILES) KM.issue(Object.assign({}, c, { tiles: c.tiles.slice(i, i + MAX_TILES) }));
+      return;
+    }
     if (KM.net && KM.net.active) KM.net.queue(c);
     else S.cmdq.push(c);
+  };
+
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const has = (o, k) => o && own(o, k);
+  const record = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const int = (v, min, max) => Number.isSafeInteger(v) && v >= min && v <= max;
+  const tile = (v, axis, S) => {
+    if (!int(v, 0, 4095)) return false;
+    const n = S && S.map ? S.map[axis] : KM['MAP_' + axis];
+    return !Number.isSafeInteger(n) || v < n;
+  };
+  const groupList = (v) => Array.isArray(v) && v.length > 0 && v.length <= 512 && v.every((id) => int(id, 1, 0x7fffffff));
+  const fields = (c, required, optional, requireOwner) => {
+    if (!record(c)) return false;
+    const allowed = ['c', ...required, ...optional];
+    if (requireOwner || own(c, 'o')) allowed.push('o');
+    if (!own(c, 'c') || (requireOwner && !own(c, 'o')) || Object.keys(c).some((k) => !allowed.includes(k))) return false;
+    if (own(c, 'o') && !int(c.o, 0, 3)) return false;
+    return required.every((k) => own(c, k));
+  };
+  const xy = (c, S) => tile(c.x, 'W', S) && tile(c.y, 'H', S);
+
+  // Comandos também são a fronteira de confiança de KM.exec: UI e rede compartilham o mesmo esquema.
+  KM.validCommand = function (c, requireOwner, S) {
+    if (!record(c) || typeof c.c !== 'string') return false;
+    const req = {
+      build: ['t', 'x', 'y'], roads: ['tiles'], fields: ['kind', 'tiles'], demolishAt: ['x', 'y'],
+      demolish: ['id'], hset: ['id', 'k', 'v'], block: ['id', 'r'], order: ['id', 'i', 'v'],
+      train: ['id', 'p'], unq: ['id', 'i'], equip: ['id', 't'], trade: ['id', 'sell', 'buy', 'n'],
+      rally: ['id', 'x', 'y'], auto: ['v'], dist: ['r', 't', 'v'], move: ['g', 'x', 'y'],
+      attack: ['g', 'k', 'id'], stop: ['g'], turn: ['g', 'd'], cols: ['g', 'd'], split: ['g'],
+      link: ['g'], feed: ['g'], speed: ['v'], leave: [], pause: ['v'],
+    }[c.c];
+    if (!Array.isArray(req)) return false;
+    const optional = {
+      build: ['r'], move: ['am'], equip: ['n'],
+    }[c.c] || [];
+    if (!fields(c, req, optional, !!requireOwner)) return false;
+    const id = (v) => int(v, 1, 0x7fffffff);
+    switch (c.c) {
+      case 'build': return typeof c.t === 'string' && has(KM.HOUSES, c.t) && xy(c, S) && (!own(c, 'r') || int(c.r, 0, 3));
+      case 'roads':
+        return Array.isArray(c.tiles) && c.tiles.length > 0 && c.tiles.length <= MAX_TILES && c.tiles.every((p) => Array.isArray(p) && p.length === 2 && tile(p[0], 'W', S) && tile(p[1], 'H', S));
+      case 'fields':
+        return (c.kind === 1 || c.kind === 3) && Array.isArray(c.tiles) && c.tiles.length > 0 && c.tiles.length <= MAX_TILES && c.tiles.every((p) => Array.isArray(p) && p.length === 2 && tile(p[0], 'W', S) && tile(p[1], 'H', S));
+      case 'demolishAt': case 'rally': return (!own(c, 'id') || id(c.id)) && xy(c, S);
+      case 'demolish': return id(c.id);
+      case 'hset': return id(c.id) && ['paused', 'noDeliv', 'repair', 'prio'].includes(c.k) && typeof c.v === 'boolean';
+      case 'block': return id(c.id) && typeof c.r === 'string' && has(KM.RES, c.r);
+      case 'order': return id(c.id) && int(c.i, 0, 32) && int(c.v, 0, KM.INF);
+      case 'train': return id(c.id) && typeof c.p === 'string' && has(KM.PROF, c.p);
+      case 'unq': return id(c.id) && int(c.i, 0, 9);
+      case 'equip': return id(c.id) && typeof c.t === 'string' && has(KM.SOLDIERS, c.t) && (!own(c, 'n') || int(c.n, 1, 5));
+      case 'trade': return id(c.id) && typeof c.sell === 'string' && typeof c.buy === 'string' && has(KM.RES, c.sell) && has(KM.RES, c.buy) && c.sell !== c.buy && int(c.n, 0, KM.INF);
+      case 'auto': return typeof c.v === 'boolean';
+      case 'dist': return typeof c.r === 'string' && typeof c.t === 'string' && has(KM.DIST, c.r) && KM.DIST[c.r].includes(c.t) && int(c.v, 0, 5);
+      case 'move': return groupList(c.g) && xy(c, S) && (!own(c, 'am') || typeof c.am === 'boolean');
+      case 'attack': return groupList(c.g) && (c.k === 'u' || c.k === 'h') && id(c.id);
+      case 'stop': case 'split': case 'link': case 'feed': return groupList(c.g);
+      case 'turn': case 'cols': return groupList(c.g) && (c.d === -1 || c.d === 1);
+      case 'speed': return int(c.v, 1, 5);
+      case 'leave': return true;
+      case 'pause': return typeof c.v === 'boolean';
+      default: return false;
+    }
   };
 
   const myGroups = (S, o, ids) => (ids || []).map((id) => S.army[id]).filter((g) => g && g.owner === o);
@@ -20,6 +91,7 @@
   const zoneWarn = (S, o) => { if (o === KM.me && S.time - (S.zoneWarnT || -99) > 4) { S.zoneWarnT = S.time; KM.notify(S, KM.ZONE_MSG, 'warn'); } };
 
   KM.exec = function (S, c) {
+    if (!S || !S.map || !Array.isArray(S.players) || !KM.validCommand(c, true, S)) return;
     const o = c.o, m = S.map;
     if (!S.players[o] || S.players[o].out) return;
     switch (c.c) {
