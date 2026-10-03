@@ -98,6 +98,14 @@ const linker = (name, parent) => moduleFor(name === 'three' ? path.join(root, 'j
   KM.ui.openEconomy(); assert(opened); document.body.classList.add = addClass; KM.touchUI = false; S.paused = false;
   console.log('ECONOMY_UI_PASS: 28 resources, measured counts, owner isolation, live update, expiry, pause, old saves, accessible shortcut, touch opening and local-only navigation.');
 
+  const preview = fs.readFileSync(path.join(root, 'preview-interface/producao-consumo.svg'), 'utf8');
+  assert(!/[?\uFFFD]/.test(preview), 'resource preview contains corrupted characters');
+  for (const label of ['Produção e consumo', 'Prévia do painel', 'simulação local', 'Últimos 60 s', 'fabricação', 'alimentação', 'não conta', 'distribuição', ...KM.RES_ORDER.map(r => KM.RES[r].n)])
+    assert(preview.includes(label), 'resource preview missing label: ' + label);
+  assert.equal((preview.match(/<text x="49"/g) || []).length, KM.RES_ORDER.length);
+  assert(!/<script\b|<foreignObject\b|\bon\w+=|\bhref=/i.test(preview), 'preview must be a self-contained passive SVG');
+  console.log('RESOURCE_PREVIEW_PASS: UTF-8 Portuguese labels, 28 resource names and passive SVG.');
+
   const town = KM.newState({ seed: 4, opponents: 1, allUnlocked: true });
   town.map = KM.emptyMap(48, 48); KM.setMapSize(48, 48); town.houses = {}; town.units = {}; town.army = {}; town.sites = []; town.zones = null;
   KM.S = town;
