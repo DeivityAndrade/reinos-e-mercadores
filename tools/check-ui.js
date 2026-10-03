@@ -26,7 +26,7 @@ const linker = (name, parent) => moduleFor(name === 'three' ? path.join(root, 'j
   const element = () => ({ innerHTML: '', dataset: {}, style: {}, classList: { add() {}, remove() {}, contains() {}, toggle() {} },
     addEventListener() {}, getContext: () => context2d, toDataURL: () => 'data:image/png;base64,fixture' });
   const document = { querySelector: k => { if (!nodes.has(k)) nodes.set(k, element()); return nodes.get(k); }, querySelectorAll: () => [],
-    getElementById: id => styles.find(s => s.id === id), createElement: element, head: { appendChild: s => styles.push(s) } };
+    getElementById: id => styles.find(s => s.id === id), createElement: element, body: element(), head: { appendChild: s => styles.push(s) } };
   const ctx = vm.createContext({ console, performance, Math, THREE, document, Path2D: class { constructor(d) { assert(/^[Mm]/.test(d)); } },
     window: { THREE, addEventListener() {} }, localStorage: { getItem: () => null }, requestAnimationFrame() {}, setInterval() {}, setTimeout() {} });
   for (const f of ['icons', 'config', 'util', 'map', 'world', 'economy', 'units', 'military', 'ai', 'campaign', 'cmd', 'main', 'art', 'people', 'ui'])
@@ -70,6 +70,45 @@ const linker = (name, parent) => moduleFor(name === 'three' ? path.join(root, 'j
   const enemySchool = Object.values(S.houses).find(h => h.owner === 1 && h.type === 'school');
   assert(KM.ui.housePanel(S, enemySchool).includes('&lt;img'), 'player name must remain escaped');
   console.log('UI_PASS: all professions, locked/unlocked/fallback, train/cancel, icon coverage, escaping and no emojis.');
+
+  const town = KM.newState({ seed: 4, opponents: 1, allUnlocked: true });
+  town.map = KM.emptyMap(48, 48); KM.setMapSize(48, 48); town.houses = {}; town.units = {}; town.army = {}; town.sites = []; town.zones = null;
+  KM.S = town;
+  const a = KM.addHouse(town, 'goldmine', 0, 4, 4, true), b = KM.addHouse(town, 'goldmine', 0, 10, 4, true);
+  a.paused = true; b.depleted = true;
+  const plan = KM.addHouse(town, 'goldmine', 0, 16, 4, false), site = KM.addHouse(town, 'goldmine', 0, 22, 4, false);
+  site.state = 'site';
+  KM.addHouse(town, 'goldmine', 1, 30, 4, true);
+  assert.equal(JSON.stringify(KM.ui.houseCounts().goldmine), '{"built":2,"site":1,"plan":1}');
+  KM.ui.setTab('build');
+  const tab = () => nodes.get('#tabcontent').innerHTML;
+  assert(tab().includes('Construir Mina de ouro. 2 prontas · 1 em construção · 1 planejada'));
+  assert(tab().includes('+2 obras')); assert(tab().includes('Construir Mina de ferro. 0 prontas'));
+  KM.ui.setTool({ build: 'goldmine' }); KM.ui.renderPanel();
+  assert(nodes.get('#selpanel').innerHTML.includes('data-act2="locate:goldmine"'));
+  assert.equal(KM.ui.buildFocusType(), 'goldmine');
+  const centers = [], renderMini = KM.ui.renderMini;
+  KM.ui.renderMini = () => {}; KM.R.centerOn = (x, y) => centers.push([x, y]);
+  const locate = () => KM.ui.onPanelClick({ target: { closest: () => ({ dataset: { act2: 'locate:goldmine' } }) } });
+  for (const h of [a, b, plan, site, a]) { locate(); assert.equal(KM.ui.selHouse, h.id); }
+  assert.equal(KM.ui.tool, null, 'locating must leave placement mode');
+  assert.deepEqual(centers[0], [KM.hcx(a), KM.hcy(a)]);
+  const beforeLocate = KM.checksum(town); KM.ui.locateHouse('ironmine'); KM.ui.locateHouse('invalid');
+  assert.equal(KM.checksum(town), beforeLocate, 'navigation is local UI only');
+  KM.finishHouse(town, site, true); KM.ui.renderTab(false);
+  assert(tab().includes('3 prontas · 0 em construção · 1 planejada'));
+  const historical = town.players[0].built.goldmine;
+  KM.removeHouse(town, b, false); KM.removeHouse(town, plan, false); KM.ui.renderTab(false);
+  assert(tab().includes('2 prontas · 0 em construção · 0 planejadas')); assert(!tab().includes('+2 obras'));
+  assert.equal(town.players[0].built.goldmine, historical, 'progression history is independent of current counts');
+  KM.ui.setTool({ build: 'ironmine' }); KM.ui.renderPanel();
+  assert(/data-act2="locate:ironmine" disabled/.test(nodes.get('#selpanel').innerHTML));
+  KM.ui.setTool('road'); assert.equal(KM.ui.buildFocusType(), null);
+  KM.ui.setTool(null); KM.ui.selectHouse(Object.values(town.houses).find(h => h.owner === 1).id);
+  assert.equal(KM.ui.buildFocusType(), null, 'enemy selection must not highlight or reveal own counts');
+  town.editor = true; KM.ui.tool = { build: 'goldmine' }; assert.equal(KM.ui.buildFocusType(), null);
+  KM.ui.tool = null; KM.ui.clearSel(); KM.ui.renderMini = renderMini; KM.S = S; KM.setMapSize(S.map.W, S.map.H);
+  console.log('BUILDINGS_PASS: current own counts, zero, paused/depleted, plans/sites, completion/removal, cycle/wrap, empty locator, editor/enemy scope and unchanged checksum.');
 
   // The real GLTFLoader parses local geometry/animations; images and WebGL are stubbed.
   const loader = new loaderModule.namespace.GLTFLoader();
@@ -116,6 +155,19 @@ const linker = (name, parent) => moduleFor(name === 'three' ? path.join(root, 'j
     }
   };
   vm.runInContext(fs.readFileSync(path.join(root, 'js/render3d.js'), 'utf8').replace('let THREE = null;', 'let THREE = window.THREE;'), ctx);
+  const group = new THREE.Group(), source = new THREE.MeshToonMaterial({ color: '#ff0000' });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), source), mesh2 = new THREE.Mesh(mesh.geometry, [source, source]);
+  group.add(mesh, mesh2);
+  const original = source.color.getHex(); KM.R.muteHouse(group, true);
+  assert.notEqual(mesh.material, source); assert.equal(mesh2.material[0], mesh.material); assert.equal(source.color.getHex(), original);
+  const shader = { fragmentShader: '#include <opaque_fragment>' }; mesh.material.onBeforeCompile(shader, null);
+  assert(shader.fragmentShader.includes('gl_FragColor.rgb = mix'), 'muting must affect textured output');
+  const muted = mesh.material; let disposed = 0; muted.addEventListener('dispose', () => disposed++);
+  KM.R.muteHouse(group, true); assert.equal(mesh.material, muted, 'stable focus must reuse materials');
+  KM.R.muteHouse(group, false); assert.equal(mesh.material, source); assert.equal(mesh2.material[0], source); assert.equal(disposed, 1);
+  KM.R.muteHouse(group, true); const removed = mesh.material; let cleaned = false; removed.addEventListener('dispose', () => { cleaned = true; });
+  KM.R.dispose(group); assert(cleaned, 'removal/map reload must dispose temporary materials');
+  console.log('BUILDING_MATERIALS_PASS: shared originals preserved, arrays supported, shader output muted, stable reuse, restore and disposal.');
   // Cavalry is unrelated to school portraits and needs a separate horse asset.
   const order = KM.SOLDIER_ORDER; KM.SOLDIER_ORDER = order.filter(t => !KM.SOLDIERS[t].cav);
   KM.R.makeHouseIcons(); KM.SOLDIER_ORDER = order;

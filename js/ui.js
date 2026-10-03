@@ -69,6 +69,36 @@
       document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === t));
       this.renderTab(true);
     },
+    houseCounts() {
+      const counts = {};
+      for (const h of Object.values(KM.S.houses)) {
+        if (h.owner !== ME()) continue;
+        const c = counts[h.type] || (counts[h.type] = { built: 0, site: 0, plan: 0 });
+        c[h.state]++;
+      }
+      return counts;
+    },
+    houseCountText(c = { built: 0, site: 0, plan: 0 }) {
+      return `${c.built} pronta${c.built === 1 ? '' : 's'} · ${c.site} em construção · ${c.plan} planejada${c.plan === 1 ? '' : 's'}`;
+    },
+    buildFocusType() {
+      const S = KM.S;
+      if (!S || S.editor) return null;
+      if (this.tool) return this.tool.build || null;
+      const h = S.houses[this.selHouse];
+      return h && h.owner === ME() ? h.type : null;
+    },
+    locateHouse(type) {
+      if (!Object.hasOwn(KM.HOUSES, type) || !KM.S || KM.S.editor) return;
+      const houses = Object.values(KM.S.houses).filter(h => h.owner === ME() && h.type === type)
+        .sort((a, b) => (a.state !== 'built') - (b.state !== 'built') || a.id - b.id);
+      if (!houses.length) return;
+      const h = houses[(houses.findIndex(h => h.id === this.selHouse) + 1) % houses.length];
+      this.setTool(null); this.selectHouse(h.id);
+      KM.R.centerOn(KM.hcx(h), KM.hcy(h));
+      this.renderPanel(); this.renderMini();
+      if (KM.touchUI) document.body.classList.remove('sb-open');
+    },
     renderTab(force) {
       const S = KM.S;
       if (!S) return;
@@ -76,7 +106,8 @@
       const P = S.players[ME()];
       let html = '';
       if (this.tab === 'build') {
-        const sig = JSON.stringify(P.built || {}) + (P.all ? 'A' : '');
+        const counts = this.houseCounts();
+        const sig = JSON.stringify(P.built || {}) + (P.all ? 'A' : '') + JSON.stringify(counts);
         if (!force && this.lastTab === 'build' && sig === this.buildSig) { this.markTool(); return; }
         this.buildSig = sig;
         // próximo passo da progressão
@@ -99,12 +130,17 @@
             if (d.g !== grp) continue;
             const open = KM.houseUnlocked(S, ME(), k);
             const isNew = open && KM.TECH[k] && !(P.built || {})[k] && !P.all;
-            if (open) html += `<button class="bbtn ${isNew ? 'new' : ''}" data-build="${k}" data-tip="${esc(this.houseTip(k))}"><span class="ic">${hic(k)}</span><span class="nm">${d.n}</span><span class="cost">${costStr(d.cost)}</span>${isNew ? '<i class="badge-new">novo</i>' : ''}</button>`;
+            if (open) {
+              const c = counts[k] || { built: 0, site: 0, plan: 0 }, works = c.site + c.plan;
+              html += `<button class="bbtn ${isNew ? 'new' : ''}" data-build="${k}" aria-label="${esc(`Construir ${d.n}. ${this.houseCountText(c)}`)}" data-tip="${esc(this.houseTip(k, c))}"><span class="ic">${hic(k)}</span><span class="bcount ${c.built ? '' : 'zero'}" aria-hidden="true">${c.built}</span><span class="nm">${d.n}</span>${works ? `<span class="bworks" aria-hidden="true">+${works} ${works === 1 ? 'obra' : 'obras'}</span>` : ''}<span class="cost">${costStr(d.cost)}</span>${isNew ? '<i class="badge-new">novo</i>' : ''}</button>`;
+            }
             else html += `<button class="bbtn locked" data-locked="${k}" data-tip="${esc(`<b><i class=ui-icon data-icon=lock aria-hidden=true></i> ${d.n}</b><br>Para liberar, construa: ${KM.reqNames(KM.TECH[k])}<br><small>${d.desc || ''}</small>`)}"><span class="ic">${hic(k)}</span><span class="nm">${d.n}</span><span class="cost"><i class=ui-icon data-icon=lock aria-hidden=true></i> bloqueado</span></button>`;
           }
           html += '</div>';
         }
+        const focusedBuild = document.activeElement && document.activeElement.dataset.build;
         $('#tabcontent').innerHTML = html;
+        if (focusedBuild && Object.hasOwn(KM.HOUSES, focusedBuild)) document.querySelector(`#tabcontent [data-build="${focusedBuild}"]`)?.focus({ preventScroll: true });
         this.lastTab = 'build';
         this.markTool();
         return;
@@ -200,12 +236,13 @@
         b.classList.toggle('active', !!on);
       });
     },
-    houseTip(k) {
+    houseTip(k, count) {
       const d = KM.HOUSES[k];
       let s = `<b>${KM.icon(d.i)} ${d.n}</b><br>${d.desc || ''}<br><small>Custo: ${costStr(d.cost)}</small>`;
       if (d.worker) s += `<br><small>Trabalhador: ${KM.icon(KM.PROF[d.worker].i)} ${KM.PROF[d.worker].n}</small>`;
       if (d.recipes) s += '<br><small>' + d.recipes.map((r) => `${Object.keys(r.in).map((x) => ri(x) + (r.in[x] > 1 ? '×' + r.in[x] : '')).join('+') || '<i class=ui-icon data-icon=terrain aria-hidden=true></i>'} → ${Object.keys(r.out).map((x) => ri(x) + (r.out[x] > 1 ? '×' + r.out[x] : '')).join('+')}`).join('<br>') + '</small>';
       if (d.gather) s += `<br><small>Produz: ${ri(d.out)} ${KM.RES[d.out].n}</small>`;
+      s += `<br><small>Seu reino: ${this.houseCountText(count || this.houseCounts()[k])}</small>`;
       return s;
     },
     onTabClick(e) {
@@ -283,7 +320,7 @@
 
     renderPanel() {
       const S = KM.S;
-      if (S.editor) { const el = $('#selpanel'); const html = KM.editor.hint(); if (html !== this.lastPanel) { el.innerHTML = html; this.lastPanel = html; el.classList.add('empty'); } return; }
+      if (S.editor) { const el = $('#selpanel'); const html = KM.editor.hint(); if (html !== this.lastPanel) { el.innerHTML = html; this.lastPanel = html; el.classList.add('empty'); el.classList.remove('building-hint'); } return; }
       this.refreshSelSet();
       let html = '';
       if (this.selHouse && S.houses[this.selHouse]) html = this.housePanel(S, S.houses[this.selHouse]);
@@ -291,12 +328,14 @@
       else if (this.selUnits.length && this.selectedUnits().length) html = this.unitPanel(S, this.selectedUnits()[0]);
       else if (this.tool && this.tool.build) {
         const d = KM.HOUSES[this.tool.build], rg = d.radius || (d.mine && KM.MINE_RADIUS) || d.shoot;
-        html = `<div class="hint">${KM.icon(d.i)} <b>${d.n}</b> · porta para o <b>${KM.DOOR_DIR[this.buildRot || 0]}</b> <button class="mbtn" data-act2="rotb">⟳ Girar</button> <kbd>R</kbd>${rg ? ` · <i class=ui-icon data-icon=ruler aria-hidden=true></i> alcance <b>${rg}</b>` : ''} · <kbd>Shift</kbd> constrói várias</div>`;
+        const c = this.houseCounts()[this.tool.build], total = c && c.built + c.site + c.plan;
+        html = `<div class="hint">${KM.icon(d.i)} <b>${d.n}</b> · porta para o <b>${KM.DOOR_DIR[this.buildRot || 0]}</b> <button class="mbtn" data-act2="rotb">⟳ Girar</button> <kbd>R</kbd>${rg ? ` · <i class=ui-icon data-icon=ruler aria-hidden=true></i> alcance <b>${rg}</b>` : ''} · <kbd>Shift</kbd> constrói várias<div class="building-summary"><span>Seu reino: <b>${this.houseCountText(c)}</b></span><button class="mbtn" data-act2="locate:${this.tool.build}" ${total ? '' : 'disabled'}>Localizar</button></div><small>Dourado: prontas · tracejado azul: obras. Contagem de prédios, mesmo pausados ou esgotados.</small></div>`;
       } else html = `<div class="hint"><i class=ui-icon data-icon=mouse aria-hidden=true></i> <b>Clique</b> para selecionar · <b>arraste</b> para selecionar tropas · <b>botão direito</b> para ordenar · <kbd>WASD</kbd> câmera · <kbd>Espaço</kbd> base${S.mp ? ' · <kbd>Enter</kbd> chat' : ''}</div>`;
       if (html !== this.lastPanel) {
         const el = $('#selpanel');
         el.innerHTML = html; this.lastPanel = html;
         el.classList.toggle('empty', html.startsWith('<div class="hint">'));
+        el.classList.toggle('building-hint', !!(this.tool && this.tool.build && html.startsWith('<div class="hint">')));
       }
     },
 
@@ -306,6 +345,7 @@
       const rel = mine ? states[h.state] : KM.hostile(S, ME(), h.owner) ? `<span class="enemy">Inimigo · ${esc(S.players[h.owner].name)}</span>` : `<span class="good">Aliado · ${esc(S.players[h.owner].name)}</span>`;
       let s = `<div class="ph"><span class="big">${hic(h.type)}</span><div><b>${d.n}</b><br><small>${rel}</small></div></div>`;
       s += `<div class="hp"><i style="width:${(h.hp / h.maxHp) * 100}%" class="${mine ? '' : 'e'}"></i><span>${Math.ceil(h.hp)}/${h.maxHp}</span></div>`;
+      if (mine) s += `<div class="building-summary"><span>${this.houseCountText(this.houseCounts()[h.type])}</span><button class="mbtn" data-act2="locate:${h.type}">Localizar próxima</button></div>`;
       const rg = KM.houseRange(h);
       if (rg) s += `<div class="row" data-tip="O círculo no chão mostra até onde ${d.shoot ? 'a torre atira' : d.mine ? 'a mina extrai minério' : 'o trabalhador vai buscar'}"><i class=ui-icon data-icon=ruler aria-hidden=true></i> ${rg.n}: <b>${rg.r}</b> casas</div>`;
       if (!mine) return s;
@@ -447,6 +487,7 @@
       const S = KM.S, h = S.houses[this.selHouse];
       const [k, a, bb] = b.dataset.act2.split(':');
       if (k === 'rotb') { this.rotateBuild(1); return; }
+      if (k === 'locate') { this.locateHouse(a); return; }
       const gids = this.myGroups().map((g) => g.id);
       if (k === 'demolish' && h) { KM.issue({ c: 'demolish', id: h.id }); KM.sfx && KM.sfx('demolish'); this.clearSel(); }
       if (k === 'hset' && h) KM.issue({ c: 'hset', id: h.id, k: a, v: bb === '1' });
@@ -604,6 +645,14 @@
       g.clearRect(0, 0, cv.width, cv.height);
       g.drawImage(this.mmTmp, 0, 0, cv.width, cv.height);
       const poly = KM.R.poly, sx = cv.width / m.W, sy = cv.height / m.H;
+      const focus = this.buildFocusType();
+      if (focus) for (const h of Object.values(S.houses)) {
+        if (h.owner !== ME() || h.type !== focus) continue;
+        g.strokeStyle = h.state === 'built' ? '#ffe066' : '#8dd8ff'; g.lineWidth = 2.5;
+        g.setLineDash(h.state === 'built' ? [] : [3, 2]);
+        g.strokeRect(h.x * sx - 2, h.y * sy - 2, h.w * sx + 4, h.h * sy + 4);
+      }
+      g.setLineDash([]);
       for (const site of S.sites || []) {
         g.strokeStyle = site.contested ? '#ff6050' : site.owner >= 0 ? S.players[site.owner].color : '#ffe066';
         g.lineWidth = 2; g.strokeRect(site.x * sx - 5, site.y * sy - 5, 10, 10);

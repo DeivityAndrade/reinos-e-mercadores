@@ -158,6 +158,9 @@ O jogo começa só com o básico: **Armazém, Escola, Lenhador e Pedreira**, e o
 `Lenhador → Serraria → Taverna / Fazenda / Oficina de armas → Moinho → Padaria · Criação de porcos → Açougue / Curtume · Minas → Fundições → Ferrarias · Serraria → Quartel → Torre / Estábulo`
 
 - A aba **Construir** mostra os **Próximos passos** (o que construir para liberar o quê), casas bloqueadas com cadeado e o selo **NOVO** no que acabou de liberar.
+- Cada botão mostra quantas construções prontas daquele tipo existem no seu reino, inclusive pausadas ou esgotadas. O indicador **+N obras** soma as planejadas e em construção; a dica separa os estados. Demolições e cancelamentos atualizam a contagem.
+- Ao escolher uma construção, seus prédios desse tipo ficam marcados no mapa e no minimapa: dourado para prontos e azul tracejado para obras. Os demais prédios perdem parte da cor; terreno, minério e prévia de posicionamento mantêm suas cores.
+- **Localizar**, no painel de construção, leva a câmera até um prédio existente e sai do modo de posicionamento. **Localizar próxima**, no painel do prédio selecionado, percorre os outros do mesmo tipo, incluindo obras.
 - A **Escola** só treina profissões cujas casas já estão liberadas; o **Recruta** exige um Quartel.
 - O **Quartel** libera soldados conforme as oficinas e ferrarias construídas (espadachins exigem as ferrarias; cavalaria exige o Estábulo).
 - A **Árvore de progresso** (aba Objetivos) mostra tudo, dividido em eras.

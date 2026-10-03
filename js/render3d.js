@@ -548,7 +548,10 @@
         this.world.add(c);
       }
     },
-    dispose(obj) { obj.traverse((o) => { if (o.geometry && o.userData.own) o.geometry.dispose(); }); },
+    dispose(obj) { obj.traverse((o) => {
+      if (o.geometry && o.userData.own) o.geometry.dispose();
+      if (o.userData.mutedHouseMaterials) for (const m of o.userData.mutedHouseMaterials.values()) m.dispose();
+    }); },
 
     // altura do terreno (unidades 3D) num ponto em coordenadas de ladrilho
     groundY(fx, fy) {
@@ -1513,8 +1516,34 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     },
 
     // ---------- sincronização ----------
+    muteHouse(group, muted) {
+      if (!!group.userData.mutedHouseMaterials === muted) return;
+      const materials = group.userData.mutedHouseMaterials || new Map();
+      group.traverse(o => {
+        if (!o.isMesh) return;
+        if (!muted) { o.material = o.userData.buildOriginalMaterial; delete o.userData.buildOriginalMaterial; return; }
+        o.userData.buildOriginalMaterial = o.material;
+        const mute = source => {
+          if (!materials.has(source)) {
+            const m = source.clone();
+            m.onBeforeCompile = (shader, renderer) => {
+              source.onBeforeCompile.call(m, shader, renderer);
+              shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `#include <opaque_fragment>
+                gl_FragColor.rgb = mix(vec3(dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114))), gl_FragColor.rgb, 0.35) * 0.9;`);
+            };
+            m.customProgramCacheKey = () => 'building-muted:' + source.customProgramCacheKey();
+            materials.set(source, m);
+          }
+          return materials.get(source);
+        };
+        o.material = Array.isArray(o.material) ? o.material.map(mute) : mute(o.material);
+      });
+      if (muted) group.userData.mutedHouseMaterials = materials;
+      else { for (const m of materials.values()) m.dispose(); delete group.userData.mutedHouseMaterials; }
+    },
     syncHouses(S, dt, ui) {
       const seen = {};
+      const focus = ui.buildFocusType && ui.buildFocusType();
       for (const id in S.houses) {
         const h = S.houses[id];
         seen[id] = 1;
@@ -1522,7 +1551,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         const visible = this.seen(S, h.ex, h.ey) || h.owner === KM.me;
         const key = this.houseKey(S, h);
         if (!vis || vis.userData.key !== key) {
-          if (vis) { this.world.remove(vis); }
+          if (vis) { this.world.remove(vis); this.dispose(vis); }
           const g = this.buildHouse(S, h);
           this.world.add(g);
           this.houseVis[id] = g;
@@ -1530,6 +1559,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         const g = this.houseVis[id];
         g.visible = visible;
         if (!visible) continue;
+        this.muteHouse(g, !!focus && !(h.owner === KM.me && h.type === focus));
         if (g.userData.fan) g.userData.fan.rotation.z += dt * (h.work ? 2.2 : 0.25);
         if (g.userData.mixers) for (const mx of g.userData.mixers) mx.update(dt);
         const sm = g.userData.smoke;
@@ -1541,7 +1571,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           if (Math.random() < dt * 4 * dmg) this.puff(g.position.x + (Math.random() - 0.5) * h.w * 0.4, g.position.y + top, g.position.z, 1.1 + dmg, '#3a322c', 2.5 + Math.random(), false, 0.8);
         }
       }
-      for (const id in this.houseVis) if (!seen[id]) { this.world.remove(this.houseVis[id]); delete this.houseVis[id]; }
+      for (const id in this.houseVis) if (!seen[id]) { this.world.remove(this.houseVis[id]); this.dispose(this.houseVis[id]); delete this.houseVis[id]; }
     },
     syncUnits(S, dt, ui) {
       const seen = {};
@@ -1761,9 +1791,15 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         G.add(r);
       }
       const tiles = [];
+      const focus = ui.buildFocusType && ui.buildFocusType();
+      if (focus) for (const h of Object.values(S.houses)) {
+        if (h.owner !== KM.me || h.type !== focus) continue;
+        const c = h.state === 'built' ? [1, 0.88, 0.4] : [0.55, 0.85, 1];
+        for (let y = h.y; y < h.y + h.h; y++) for (let x = h.x; x < h.x + h.w; x++) tiles.push({ x, y, c, pad: 0.12 });
+      }
       if (ui.selHouse && S.houses[ui.selHouse]) {
         const h = S.houses[ui.selHouse];
-        for (let y = h.y; y < h.y + h.h; y++) for (let x = h.x; x < h.x + h.w; x++) tiles.push({ x, y, c: [1, 0.88, 0.4] });
+        if (h.type !== focus || h.owner !== KM.me) for (let y = h.y; y < h.y + h.h; y++) for (let x = h.x; x < h.x + h.w; x++) tiles.push({ x, y, c: [1, 0.88, 0.4] });
         // área de trabalho / alcance de tiro da casa selecionada
         const rg = KM.houseRange(h);
         if (rg) this.rangeRing(G, rg.r, rg.x + 0.5, rg.y + 0.5, this.groundY(rg.x + 0.5, rg.y + 0.5), h.type === 'tower' ? '#ff9a6a' : '#ffe066');
@@ -1829,6 +1865,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         g.fillStyle = col; g.fillRect(x, y, w * KM.clamp(f, 0, 1), 4);
       };
       const sel = ui.selSet;
+      const focus = ui.buildFocusType && ui.buildFocusType();
       for (const id in this.unitVis) {
         const vis = this.unitVis[id], u = S.units[id];
         if (!u || !vis.root.visible) continue;
@@ -1881,6 +1918,16 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         const top = (hv.userData.top || 1.2) + 0.2;
         const q = this.toScreen(hv.position.x, hv.position.y + top, hv.position.z);
         if (q.behind || q.x < -80 || q.y < -80 || q.x > this.vw + 80 || q.y > this.vh + 80) continue;
+        if (mine && h.type === focus) {
+          const state = h.state === 'built' ? h.paused ? 'Pausada' : h.depleted ? 'Esgotada' : 'Pronta' : h.state === 'site' ? 'Em construção' : 'Planejada';
+          const text = `${d.n} · ${state}`;
+          g.font = '700 13px "Alegreya Sans", sans-serif';
+          const w = g.measureText(text).width + 18;
+          g.fillStyle = 'rgba(22,18,12,0.94)'; g.strokeStyle = h.state === 'built' ? '#ffe066' : '#8dd8ff'; g.lineWidth = 1.5;
+          g.setLineDash(h.state === 'built' ? [] : [4, 3]);
+          g.beginPath(); g.roundRect(q.x - w / 2, q.y - 66, w, 23, 5); g.fill(); g.stroke(); g.setLineDash([]);
+          g.fillStyle = h.state === 'built' ? '#ffe066' : '#8dd8ff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, q.x, q.y - 54.5);
+        }
         if (h.state === 'site') bar(q.x - 24, q.y, 48, h.total ? h.used / h.total : 0, '#f5b83a');
         if (mine && h.prio && h.state !== 'built') KM.drawIcon(g, 'star', q.x + 26, q.y - 11, 16);
         else if (h.hp < h.maxHp || selected) bar(q.x - 24, q.y, 48, h.hp / h.maxHp, mine ? '#5fd35a' : KM.hostile(S, KM.me, h.owner) ? '#ef4b4b' : '#3fa6ff');
