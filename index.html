@@ -30,33 +30,26 @@
   <div id="rotatehint"><i class=ui-icon data-icon=screen aria-hidden=true></i>↻<br>Gire o celular para jogar na horizontal</div>
 
   <div id="menu" data-screen="main">
-    <div class="menu-layout">
     <div class="card hero">
       <header class="menu-brand">
-        <div class="menu-kicker"><span class="crest"><i class=ui-icon data-icon=crest aria-hidden=true></i></span> Estratégia em tempo real</div>
+        <div class="crest" aria-hidden="true"><i class=ui-icon data-icon=crest></i></div>
         <h1 tabindex="-1">Reinos <span><em>&amp;</em> Mercadores</span></h1>
-        <p class="sub">Das primeiras estradas às grandes conquistas.<br>O destino do reino está em suas mãos.</p>
       </header>
       <div id="loadbar" data-t="Carregando o reino…" role="status" aria-label="Carregando os modelos do reino"></div>
 
       <nav class="screen" data-s="main" aria-label="Modos de jogo">
         <div id="continue" aria-label="Partidas salvas"></div>
-        <p class="menu-section">Escolha sua jornada</p>
-        <button class="mbtn primary mode-feature" data-screen="conquest">
-          <i class=ui-icon data-icon=crown aria-hidden=true></i>
-          <span><b>Conquista</b><small>Expanda suas fronteiras. Construa seu legado.</small></span>
-          <i class="ui-icon mode-arrow" data-icon=next aria-hidden=true></i>
-        </button>
-        <div class="mgrid mode-grid">
-          <button class="mbtn mode-card" data-screen="campaign"><i class=ui-icon data-icon=scroll aria-hidden=true></i><span><b>Campanha</b><small>Reunifique as terras de Aldor</small></span></button>
-          <button class="mbtn mode-card" data-screen="skirmish"><i class=ui-icon data-icon=sword aria-hidden=true></i><span><b>Escaramuça</b><small>Seu mapa, suas regras</small></span></button>
+        <button class="mbtn primary" data-screen="conquest"><i class=ui-icon data-icon=crown aria-hidden=true></i> Conquista</button>
+        <div class="mgrid">
+          <button class="mbtn" data-screen="campaign"><i class=ui-icon data-icon=scroll aria-hidden=true></i> Campanha</button>
+          <button class="mbtn" data-screen="skirmish"><i class=ui-icon data-icon=sword aria-hidden=true></i> Escaramuça</button>
         </div>
-        <div class="mgrid mode-grid">
-          <button class="mbtn mode-card" data-screen="mp"><i class=ui-icon data-icon=globe aria-hidden=true></i><span><b>Multijogador</b><small>Até 4 jogadores online</small></span></button>
-          <button class="mbtn mode-card" data-screen="editor"><i class=ui-icon data-icon=map aria-hidden=true></i><span><b>Editor de mapas</b><small>Desenhe um novo mundo</small></span></button>
+        <div class="mgrid">
+          <button class="mbtn" data-screen="mp"><i class=ui-icon data-icon=globe aria-hidden=true></i> Multijogador</button>
+          <button class="mbtn" data-screen="editor"><i class=ui-icon data-icon=map aria-hidden=true></i> Editor de mapas</button>
         </div>
-        <div class="menu-guide">
-          <button class="mbtn ghost" data-mission="t1" title="Guia completo: da primeira estrada ao primeiro soldado, sem ataques"><i class=ui-icon data-icon=book aria-hidden=true></i><span><b>Primeira vez no reino?</b><small>Comece pelo tutorial</small></span><i class="ui-icon mode-arrow" data-icon=next aria-hidden=true></i></button>
+        <div class="mgrid menu-guide">
+          <button class="mbtn ghost" data-mission="t1" title="Guia completo: da primeira estrada ao primeiro soldado, sem ataques"><i class=ui-icon data-icon=book aria-hidden=true></i> Tutorial</button>
           <button class="mbtn ghost" data-help="1"><i class=ui-icon data-icon=help aria-hidden=true></i> Como jogar</button>
         </div>
       </nav>
@@ -140,13 +133,7 @@
         <button class="mbtn primary" data-new="1"><i class=ui-icon data-icon=sword aria-hidden=true></i> Começar</button>
         <button class="mbtn ghost" data-screen="main">← Voltar</button>
       </div>
-      <div class="foot"><span id="menu-version"></span><span>Construa. Abasteça. Conquiste.</span></div>
-    </div>
-    <aside class="menu-world" aria-hidden="true">
-      <span class="world-kicker"><i class=ui-icon data-icon=castle aria-hidden=true></i> Um mundo para conquistar</span>
-      <h2>Grandes reinos começam<br>com uma estrada.</h2>
-      <p>Madeira e pedra erguem uma vila.<br>Sua estratégia faz dela um reino.</p>
-    </aside>
+      <div class="foot"><span id="menu-version"></span></div>
     </div>
   </div>
 
