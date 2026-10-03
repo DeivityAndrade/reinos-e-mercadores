@@ -765,7 +765,7 @@
       }).join('');
     },
     refreshMenu() {
-      const slots = [0, 1, 2, 3].map((s) => ({ s, m: KM.saveMeta(s) })).filter((x) => x.m && x.m.v3).sort((a, b) => b.m.date - a.m.date);
+      const slots = [0, 1, 2, 3].map((s) => ({ s, m: KM.saveMeta(s) })).filter((x) => x.m && x.m.v3).sort((a, b) => b.m.date - a.m.date).slice(0, 2);
       $('#continue').innerHTML = slots.length ? '<p class="menu-section">Partidas salvas</p>' + slots.map(({ s, m }, i) => `<button class="mbtn resume-game ${i === 0 ? 'latest' : ''}" data-cont="${s}"><i class=ui-icon data-icon=folder aria-hidden=true></i><span><b>${i === 0 ? 'Continuar partida' : s === 0 ? 'Autosave' : 'Espaço ' + s}</b><small>${esc(m.name || 'Partida salva')} · ${KM.fmtTime(m.time)} · ${s === 0 ? 'Autosave' : 'Espaço ' + s}</small></span></button>`).join('') : '';
       this.menuScreen('main');
     },
