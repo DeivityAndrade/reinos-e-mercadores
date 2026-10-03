@@ -10,7 +10,12 @@ const storage = new Map();
 const toasts = [];
 const nodes = new Map();
 const node = (key) => {
-  if (!nodes.has(key)) nodes.set(key, { value: '', listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; } });
+  if (!nodes.has(key)) nodes.set(key, {
+    value: '', textContent: '', innerHTML: '', dataset: {}, scrollTop: 0, listeners: {},
+    classList: { add() {}, remove() {}, toggle() {} },
+    contains() { return false; },
+    addEventListener(type, fn) { this.listeners[type] = fn; },
+  });
   return nodes.get(key);
 };
 let lastInput = null;

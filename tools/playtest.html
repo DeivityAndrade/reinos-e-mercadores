@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
 <meta charset="utf-8">
-<title>Reinos & Mercadores · inspeção de fases</title>
+<title>O Último Feudo · inspeção de fases</title>
 <style>
   body { margin: 0; background: #231b15; color: #f3e3bf; font: 15px system-ui; }
   header { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 16px; }
@@ -40,7 +40,7 @@
   document.querySelector('#play').addEventListener('click', () => {
     KM.save = save;
     load();
-    document.title = 'Reinos & Mercadores · ' + KM.findMission(select.value, 'normal').n;
+    document.title = 'O Último Feudo · ' + KM.findMission(select.value, 'normal').n;
     document.querySelector('header').hidden = true;
     document.querySelector('header').style.display = 'none';
     frame.style.height = '100vh';

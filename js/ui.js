@@ -685,6 +685,7 @@
     // ---------- menus ----------
     initMenu() {
       try { KM.musicOn = localStorage.getItem('rm_music') !== '0'; } catch (e) { /* ok */ }
+      $('#menu-version').textContent = 'v' + KM.VERSION;
       $('#menu').addEventListener('click', (e) => {
         const b = e.target.closest('button');
         if (!b) return;
@@ -725,11 +726,18 @@
       this.refreshMenu();
     },
     menuScreen(s) {
+      $('#menu').dataset.screen = s;
       document.querySelectorAll('#menu .screen').forEach((el) => el.classList.toggle('hidden', el.dataset.s !== s));
       if (s === 'campaign') this.renderCampaign();
       if (s === 'conquest') this.renderConquest();
       if (s === 'skirmish' || s === 'editor') KM.editor.fillMapLists();
       if (s === 'skirmish') this.renderBiomes();
+      $('#menu .hero').scrollTop = 0;
+      if ($('#menu').contains(document.activeElement)) {
+        const heading = $('#menu .screen:not(.hidden) h3') || $('#menu h1');
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
     },
     renderBiomes() {
       const el = $('#biome'), current = el.value, open = KM.conquestProgress().open;
@@ -758,7 +766,7 @@
     },
     refreshMenu() {
       const slots = [0, 1, 2, 3].map((s) => ({ s, m: KM.saveMeta(s) })).filter((x) => x.m && x.m.v3).sort((a, b) => b.m.date - a.m.date);
-      $('#continue').innerHTML = slots.length ? slots.map(({ s, m }) => `<button class="mbtn" data-cont="${s}"><i class=ui-icon data-icon=folder aria-hidden=true></i> ${s === 0 ? 'Autosave' : 'Espaço ' + s} · ${esc(m.name || '')} · ${KM.fmtTime(m.time)}</button>`).join('') : '';
+      $('#continue').innerHTML = slots.length ? '<p class="menu-section">Partidas salvas</p>' + slots.map(({ s, m }, i) => `<button class="mbtn resume-game ${i === 0 ? 'latest' : ''}" data-cont="${s}"><i class=ui-icon data-icon=folder aria-hidden=true></i><span><b>${i === 0 ? 'Continuar partida' : s === 0 ? 'Autosave' : 'Espaço ' + s}</b><small>${esc(m.name || 'Partida salva')} · ${KM.fmtTime(m.time)} · ${s === 0 ? 'Autosave' : 'Espaço ' + s}</small></span></button>`).join('') : '';
       this.menuScreen('main');
     },
     showHelp(on) { $('#help').classList.toggle('hidden', !on); },

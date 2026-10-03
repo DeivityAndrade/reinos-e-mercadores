@@ -1,5 +1,5 @@
 'use strict';
-/* Arte própria do Reinos & Mercadores — tudo gerado por código, sem modelos prontos.
+/* Arte própria de O Último Feudo — tudo gerado por código, sem modelos prontos.
    Direção de arte: "vila medieval ilustrada": enxaimel com reboco caiado, telhados de palha,
    telha e ardósia, pedra de cantaria, madeira escura; sombreamento pintado em faixas (toon)
    e contorno a tinta aplicado no pós-processamento (render3d.js).
