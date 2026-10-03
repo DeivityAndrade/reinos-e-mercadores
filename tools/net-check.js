@@ -33,7 +33,7 @@ function client(me) {
 }
 const queue = [];
 const flush = () => { while (queue.length) queue.shift()(); };
-const channel = (target, fromSlot) => ({ readyState: 'open', close() {}, send(s) { queue.push(() => target.net.onMsg(JSON.parse(s), fromSlot)); } });
+const channel = (target, fromSlot) => ({ readyState: 'open', close() {}, send(s) { queue.push(() => target.net.receive(s, fromSlot)); } });
 function room(n) {
   const host = client(0); host.net.role = 'host';
   const guests = [];
@@ -53,7 +53,7 @@ function run(c, upTo) {
   while (c.t <= upTo && c.net.ready(c.t)) {
     c.log[c.t] = JSON.stringify(c.net.take(c.t));
     assert.equal(c.net.queue({ c: 'move', g: [1], x: c.t % 10, y: 1, o: c.KM.me }), true);
-    c.net.send(c.t);
+    assert.equal(c.net.send(c.t), true);
     c.t++;
   }
 }
@@ -159,6 +159,57 @@ function check(name, fn) { return Promise.resolve(fn()).then(() => { passed++; c
     assert.doesNotThrow(() => dc.onmessage({ data: ' '.repeat(65537) }));
     assert.equal(g.net.rejected, 2);
     assert.equal(g.net.active, false);
+  });
+  await check('Início e controles respeitam o esquema, a conexão e a partida ativa', () => {
+    const g = client(1); g.net.role = 'guest';
+    g.net.peers[0] = { o: 0, dc: { readyState: 'open', send() {} } };
+    const opts = { mp: true, humans: 2, teams: 'versus', diff: 'normal', opponents: 0, aiMode: 'economy', seed: 7 };
+    assert.equal(g.net.onMsg({ t: 'start', opts: { ...opts, humans: 5 }, me: 1 }, 0), false);
+    assert.equal(g.KM.started, null);
+    assert.equal(g.net.onMsg({ t: 'start', opts, me: 1 }, 1), false);
+    assert.equal(g.net.onMsg({ t: 'start', opts, me: 1 }, 0), true);
+    const started = g.KM.started;
+    assert.equal(g.net.onMsg({ t: 'start', opts, me: 1 }, 0), false);
+    assert.equal(g.KM.started, started);
+    assert.equal(g.net.onMsg({ t: 'turn', n: 3, o: 1, c: [] }, 0), false);
+    assert.equal(g.net.onMsg({ t: 'turn', n: 3, o: 0, c: [] }, 1), false);
+    assert.equal(g.net.onMsg({ t: 'chat', name: 'a', m: 'x'.repeat(201) }, 0), false);
+    assert.equal(g.net.onMsg({ t: 'drop', n: 3, o: 1 }, 0), false);
+    assert.equal(g.net.onMsg({ t: 'drop', n: 3, o: 0 }, 0), true);
+    assert.equal(g.net.onMsg({ t: 'drop', n: 3, o: 0 }, 0), false);
+  });
+  await check('Fila limita comandos e tamanho, preservando pinturas grandes da UI', () => {
+    const { host, guests } = room(2);
+    const g = guests[0]; g.KM.S = { map: { W: 64, H: 64 } };
+    const tiles = Array.from({ length: 257 }, (_, i) => [i % 64, Math.floor(i / 64)]);
+    g.KM.issue({ c: 'fields', kind: 1, tiles });
+    assert.deepEqual(Array.from(g.net.pending, c => c.tiles.length), [256, 1]);
+    assert.equal(g.net.send(0), true); flush();
+    assert.equal(host.net.inbox[3][1].flatMap(c => c.tiles).length, 257);
+    for (let i = 0; i < 128; i++) assert.equal(g.net.queue({ c: 'stop', g: [1], o: 1 }), true);
+    assert.equal(g.net.queue({ c: 'stop', g: [1], o: 1 }), false);
+    assert.equal(g.net.send(1), true); flush();
+    const large = { c: 'move', g: Array(512).fill(0x7fffffff), x: 2, y: 2, o: 1 };
+    let accepted = 0;
+    while (g.net.queue(large)) accepted++;
+    assert.ok(accepted > 0 && accepted < 128);
+    assert.ok(JSON.stringify({ t: 'turn', n: 5, o: 1, c: g.net.pending }).length <= 65536);
+    assert.equal(g.net.send(2), true); flush();
+    assert.equal(host.net.inbox[5][1].length, accepted);
+  });
+  await check('Hashes iguais, duplicados e antigos são tratados sem falsos avisos ou acúmulo', () => {
+    const { host } = room(2);
+    assert.equal(host.net.sendHash(0, 123), true);
+    assert.equal(host.net.onMsg({ t: 'hash', n: 0, h: 123 }, 1), true);
+    assert.equal(host.net.desync, false);
+    assert.equal(host.net.onMsg({ t: 'hash', n: 0, h: 124 }, 1), false);
+    assert.equal(host.net.hashes[0][1], 123);
+    host.net.turn = 1100;
+    assert.equal(host.net.onMsg({ t: 'hash', n: 0, h: 123 }, 1), false);
+    assert.equal(host.net.onMsg({ t: 'hash', n: 1101, h: 123 }, 1), false);
+    assert.equal(host.net.sendHash(1100, 123), true);
+    assert.equal(host.net.hashes[0], undefined);
+    flush();
   });
   console.log(`${passed} grupos de regressão do multijogador passaram.`);
 })().catch((e) => { console.error(e); process.exit(1); });

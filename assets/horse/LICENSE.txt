@@ -1,0 +1,6 @@
+Cavalo: "Horse Rigged All Gaits", de fdoss001 — BlendSwap (https://blendswap.com/blend/28627)
+Licença: CC0 1.0 (domínio público) — https://creativecommons.org/publicdomain/zero/1.0/
+
+Convertido para o jogo no Blender: malha decimada (~6 mil triângulos), crina e cauda de partículas
+transformadas em fitas de malha presas aos ossos, pelagens gravadas em textura (horse_coat0..7.jpg),
+só ossos de deformação e as animações Idle, Graze, Trot, Canter, Gallop e HeadShake.

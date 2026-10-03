@@ -1,11 +1,12 @@
 'use strict';
 // Captura uma sessão Chrome separada via a porta local informada pelo chamador.
-// Uso: node tools/capture-ui.js PORTA
+// Uso: node tools/capture-ui.js PORTA_CDP [PORTA_JOGO]
 const fs = require('node:fs/promises'), path = require('node:path'), assert = require('node:assert/strict');
 const output = path.resolve(__dirname, '../preview-interface');
+const gameOrigin = `http://localhost:${Number(process.argv[3] || 8080)}`;
 (async () => {
   const tabs = await (await fetch(`http://127.0.0.1:${Number(process.argv[2])}/json/list`)).json();
-  const target = tabs.find(t => t.type === 'page' && t.url.startsWith('http://localhost:8080'));
+  const target = tabs.find(t => t.type === 'page' && t.url.startsWith(gameOrigin + '/'));
   assert(target, 'Sessão de captura do jogo não encontrada');
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });

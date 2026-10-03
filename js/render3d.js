@@ -8,6 +8,11 @@
   const BED = -0.42;    // fundo dos lagos
   const COLORS = ['blue', 'red', 'green', 'yellow'];
   const AS = 'assets/kaykit/medieval/';
+  const HORSE_S = 0.32;  // cavalo em metros -> ladrilhos (menor que o real, na escala das casas)
+  const MOUNT_S = 0.66;  // cavaleiro montado um pouco menor, para combinar com o cavalo
+  const RIDE_BONES = ['thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r'];
+  const RIDE = { pitch: 0.7, spread: 0.38, calf: -0.55, hip: 0.05 };
+  const SEAT = [0, 0.1, 0.02]; // assento acima do osso DEF-spine.004 (metros)
   let THREE = null;
 
   KM.shade = function (a, f) {
@@ -211,7 +216,7 @@
       for (const [key, name] of Object.entries(this.resourceModels)) list.push([key, `assets/own/resources/${name}.glb?v=blender-resources-1`]);
 
       for (const n of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded']) list.push([n, `assets/kaykit/chars/${n}.glb`]);
-      list.push(['horse', 'assets/quaternius/horse.glb'], ['pig', 'assets/quaternius/pig.glb']);
+      list.push(['horse', 'assets/horse/horse.glb'], ['pig', 'assets/quaternius/pig.glb']);
       let done = 0;
       const upd = () => { this.progress = done / list.length; const el = document.getElementById('loadbar'); if (el) { el.style.setProperty('--p', Math.round(this.progress * 100) + '%'); el.dataset.t = this.progress < 1 ? `Carregando o reino… ${Math.round(this.progress * 100)}%` : ''; el.classList.toggle('done', this.progress >= 1); } };
       upd();
@@ -225,6 +230,9 @@
         }
       };
       await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+      // pelagens do cavalo (mesmo mapeamento UV, trocadas por animal)
+      const tl = new THREE.TextureLoader();
+      this.horseCoats = await Promise.all([0, 1, 2, 3, 4, 5, 6, 7].map((i) => tl.loadAsync(`assets/horse/horse_coat${i}.jpg`).then((t) => { t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }).catch(() => null)));
       await KM.PEOPLE.load(this.loader);
       this.prepare();
       this.ready = true;
@@ -237,7 +245,7 @@
         g.scene.traverse((o) => {
           if (o.isMesh) {
             o.castShadow = true; o.receiveShadow = true;
-            if (o.material) { o.material.side = THREE.FrontSide; if (o.material.map) o.material.map.anisotropy = 4; }
+            if (o.material) { if (k !== 'horse') o.material.side = THREE.FrontSide; if (o.material.map) o.material.map.anisotropy = 4; }
           }
         });
         g.scene.updateMatrixWorld(true);
@@ -264,7 +272,7 @@
       this.prepareResources();
       // esqueleto de referência (posição de cada osso na pose de ligação) para os personagens próprios
       this.rig = {};
-      for (const k of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded', 'horse', 'pig']) {
+      for (const k of ['Barbarian', 'Knight', 'Rogue', 'Rogue_Hooded', 'pig']) {
         const g = this.gltf[k];
         if (!g) continue;
         let sk = null;
@@ -342,9 +350,13 @@
         }
         const g = new THREE.Group(); g.add(body);
         if (cfg.horse) {
-          const hz = this.model('horse'); this.ownAnimal(hz, 'horse', t === 'knight' ? KM.me || 0 : null);
-          const hp = this.proto.horse, q = KM.PEOPLE.ready, hs = (1.2 / Math.max(hp.size.x, hp.size.z)) / (q ? 1 : 0.26);
-          hz.scale.setScalar(hs); body.position.y = hp.size.y * hs * (q ? 0.56 : 0.66); if (q) body.scale.multiplyScalar(0.95); g.add(hz);
+          const hz = this.model('horse'), q = KM.PEOPLE.ready;
+          this.setupHorse(hz, t === 'knight' ? 2 : 4, t === 'knight' ? KM.me || 0 : null);
+          if (!q) hz.scale.multiplyScalar(1 / 0.26);
+          g.add(hz); g.updateMatrixWorld(true);
+          const seat = hz.userData.seat.getWorldPosition(new THREE.Vector3());
+          body.position.set(seat.x, seat.y - (q ? 0.24 : 0.9), seat.z); g.add(body);
+          if (q) this.rideLegs(body);
         }
         g.rotation.y = 0.5;
         sc.add(g); g.updateMatrixWorld(true);
@@ -1067,15 +1079,24 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         if (pen) {
           const kind = h.type === 'swine' ? 'pig' : 'horse';
           const n = kind === 'pig' ? 3 : 1;
+          // porcos: lugares fixos espalhados pelo chiqueiro, longe da cerca e uns dos outros
+          const box = info.penBox, spots = [[-0.28, -0.2], [0.3, -0.12], [-0.06, 0.26]];
           for (let i = 0; i < n; i++) {
             const o = this.model(kind), p = this.proto[kind];
             if (!p) break;
-            this.ownAnimal(o, kind, null);
-            o.scale.setScalar(kind === 'pig' ? 0.3 / Math.max(0.01, p.size.x) : 0.85 / Math.max(0.01, p.size.z));
-            o.position.set(pen[0] + (i - (n - 1) / 2) * 0.28, 0, pen[1] + (i % 2) * 0.12);
-            o.rotation.y = KM.hash(h.id, i, 3) * 6.28;
+            if (kind === 'pig') this.ownAnimal(o, kind, i); else this.setupHorse(o, [4, 1, 6, 7][Math.floor(KM.hash(h.id, 1, 9) * 4)], null, true);
+            if (kind === 'pig') {
+              o.scale.setScalar(0.4 / Math.max(0.01, p.size.x, p.size.z));
+              let x = pen[0] + spots[i][0] + (KM.hash(h.id, i, 5) - 0.5) * 0.08, z = pen[1] + spots[i][1] + (KM.hash(h.id, i, 7) - 0.5) * 0.08;
+              if (box) { x = Math.min(box[2] - 0.24, Math.max(box[0] + 0.24, x)); z = Math.min(box[3] - 0.24, Math.max(box[1] + 0.24, z)); }
+              o.position.set(x, 0, z);
+            } else {
+              // cavalo paralelo à parede do estábulo, com a cabeça no cocho
+              o.position.set(pen[0] - 0.14, 0, pen[1] + 0.05);
+            }
+            o.rotation.y = kind === 'pig' ? KM.hash(h.id, i, 3) * 6.28 : -Math.PI / 2;
             const mixer = new THREE.AnimationMixer(o.userData.inner);
-            const clip = p.anims.find((a) => /Idle|Eating/.test(a.name)) || p.anims[0];
+            const clip = p.anims.find((a) => a.name === (kind === 'horse' ? 'Graze' : 'Idle')) || p.anims.find((a) => /Idle/.test(a.name)) || p.anims[0];
             if (clip) { const a = mixer.clipAction(clip); a.time = Math.random() * 3; a.play(); }
             (G.userData.mixers = G.userData.mixers || []).push(mixer);
             G.add(o);
@@ -1087,6 +1108,74 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       return G;
     },
     // ---------- unidades ----------
+    // pelagem: cavaleiros por reino (montarias escuras e nobres), os demais variam por unidade
+    horseCoat(u) {
+      if (u.type === 'knight') return [2, 0, 5, 4][(u.owner || 0) % 4];
+      return [4, 1, 6, 0, 7, 3][Math.floor(KM.hash(u.id, 3, 11) * 6)];
+    },
+    // cavalo realista (assets/horse, em metros): escala, pelagem, sela com manta do reino e ponto de assento
+    setupHorse(o, coat, owner, bare) {
+      o.scale.setScalar(HORSE_S);
+      const tex = this.horseCoats && this.horseCoats[coat % 8];
+      this.horseMats = this.horseMats || {};
+      let spine = null;
+      o.traverse((m) => {
+        if (m.isMesh) {
+          m.castShadow = true; m.frustumCulled = false;
+          if (tex && m.material && m.material.map) m.material = this.horseMats[coat] || (this.horseMats[coat] = Object.assign(m.material.clone(), { map: tex, emissiveMap: tex, emissive: new THREE.Color(0.3, 0.27, 0.24) })); // preenchimento: o lado da sombra não vira silhueta
+        }
+        if (m.isBone && m.name === 'DEF-spine004') spine = m;
+      });
+      // assento e sela (em metros, no espaço do modelo), presos ao osso do lombo para acompanhar o andamento
+      o.updateMatrixWorld(true);
+      const seat = new THREE.Object3D(), at = spine ? o.worldToLocal(spine.getWorldPosition(new THREE.Vector3())) : new THREE.Vector3(0, 1.6, 0);
+      seat.position.set(at.x, at.y + SEAT[1], at.z + SEAT[2]);
+      o.add(seat);
+      if (!bare) { const sad = KM.ART.saddle(owner); sad.position.copy(seat.position); o.add(sad); if (spine) spine.attach(sad); }
+      if (spine) spine.attach(seat);
+      o.userData.seat = seat;
+    },
+    // pernas do cavaleiro na pose de montaria (sobre qualquer animação do corpo)
+    rideLegs(body) {
+      if (!this.ridePose) this.makeRidePose();
+      body.traverse((o) => { if (o.isBone && this.ridePose[o.name]) o.quaternion.copy(this.ridePose[o.name]); });
+      body.updateMatrixWorld(true);
+    },
+    // cada quadro: pernas abertas e bacia sobre o assento (o assento balança com o lombo do cavalo)
+    seatRider(vis) {
+      if (!this.ridePose) this.makeRidePose();
+      if (vis.legs) for (const n in vis.legs) vis.legs[n].quaternion.copy(this.ridePose[n]);
+      vis.root.updateMatrixWorld(true);
+      const v = this._seatV || (this._seatV = [new THREE.Vector3(), new THREE.Vector3()]);
+      const a = vis.root.worldToLocal(vis.seat.getWorldPosition(v[0]));
+      if (vis.pelvis) {
+        const b = vis.root.worldToLocal(vis.pelvis.getWorldPosition(v[1]));
+        a.sub(b); a.y += RIDE.hip;
+        vis.body.position.add(a);
+      } else vis.body.position.copy(a);
+    },
+    // pose de montaria a partir de "sentado": coxas descem ~40° e abrem ~22°, canelas voltam para a vertical
+    makeRidePose() {
+      const p = KM.PEOPLE.build('knight', 0, 1), mx = new THREE.AnimationMixer(p.inner);
+      mx.clipAction(KM.PEOPLE.clips['Sitting_Idle_Loop']).play(); mx.update(0.3);
+      p.obj.updateMatrixWorld(true);
+      const B = {}; p.obj.traverse((o) => { if (o.isBone) B[o.name] = o; });
+      const rotW = (b, axis, ang) => {
+        if (!b) return;
+        const pw = b.parent.getWorldQuaternion(new THREE.Quaternion());
+        const q = new THREE.Quaternion().setFromAxisAngle(axis, ang);
+        b.quaternion.premultiply(pw.clone().invert().multiply(q).multiply(pw));
+        b.updateMatrixWorld(true);
+      };
+      const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
+      for (const [sfx, sg] of [['l', 1], ['r', -1]]) {
+        rotW(B['thigh_' + sfx], X, RIDE.pitch);
+        rotW(B['thigh_' + sfx], Z, sg * RIDE.spread);
+        rotW(B['calf_' + sfx], X, RIDE.calf);
+      }
+      this.ridePose = {};
+      for (const n of RIDE_BONES) if (B[n]) this.ridePose[n] = B[n].quaternion.clone();
+    },
     // troca as malhas de um animal clonado (cavalo/porco) pela versão própria, mantendo esqueleto e animações
     ownAnimal(obj, kind, owner) {
       const inner = obj.userData.inner || obj;
@@ -1094,7 +1183,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       inner.traverse((o) => { if (o.isSkinnedMesh) parts.push(o); });
       if (!parts.length || !this.rig[kind]) return;
       const p0 = parts[0];
-      const m = new THREE.SkinnedMesh(KM.ART.animal(kind, this.rig[kind], owner), KM.ART.charMat());
+      const m = new THREE.SkinnedMesh(KM.ART.animal(kind, this.rig[kind], owner), KM.ART.animalMat(kind));
       m.castShadow = true; m.name = 'body';
       p0.parent.add(m);
       m.bind(p0.skeleton, p0.bindMatrix);
@@ -1108,17 +1197,17 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       const vis = { root, body, cfg, q: true, mixer: new THREE.AnimationMixer(p.inner), actions: {}, cur: null, yaw: 0 };
       for (const k in KM.PEOPLE.clips) vis.actions[k] = vis.mixer.clipAction(KM.PEOPLE.clips[k]);
       if (cfg.horse) {
-        const horse = this.model('horse');
-        this.ownAnimal(horse, 'horse', u.type === 'knight' ? u.owner : null);
-        const hp = this.proto.horse, hs = 1.2 / Math.max(hp.size.x, hp.size.z);
-        horse.scale.setScalar(hs);
+        const horse = this.model('horse'), hp = this.proto.horse;
+        this.setupHorse(horse, this.horseCoat(u), u.type === 'knight' ? u.owner : null);
         root.add(horse);
         vis.horse = horse;
         vis.hmixer = new THREE.AnimationMixer(horse.userData.inner);
         vis.hactions = {};
         for (const a of hp.anims) vis.hactions[a.name.replace(/^.*\|/, '')] = vis.hmixer.clipAction(a);
-        body.scale.multiplyScalar(0.95);
-        body.position.y = hp.size.y * hs * 0.56; // quadril um pouco acima do dorso do cavalo
+        // cavaleiro preso ao lombo (segue o balanço do cavalo) com as pernas abertas sobre a sela
+        vis.seat = horse.userData.seat;
+        body.scale.multiplyScalar(MOUNT_S);
+        body.traverse((o) => { if (o.isBone) { if (o.name === 'pelvis') vis.pelvis = o; if (RIDE_BONES.includes(o.name)) (vis.legs = vis.legs || {})[o.name] = o; } });
       }
       root.add(body);
       if (KM.SOLDIERS[u.type]) {
@@ -1172,11 +1261,9 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       }
       if (cfg.horse) {
         const horse = this.model('horse');
-        this.ownAnimal(horse, 'horse', u.type === 'knight' ? u.owner : null);
-        const hp = this.proto.horse;
-        const hs = 1.2 / Math.max(hp.size.x, hp.size.z);
+        this.setupHorse(horse, this.horseCoat(u), u.type === 'knight' ? u.owner : null);
+        const hp = this.proto.horse, hs = HORSE_S;
         body.scale.multiplyScalar(0.9);
-        horse.scale.setScalar(hs);
         root.add(horse);
         vis.horse = horse;
         vis.hmixer = new THREE.AnimationMixer(horse.userData.inner);
@@ -1223,7 +1310,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       const sd = KM.SOLDIERS[u.type], t = u.task;
       const moving = !!u.path;
       if (vis.horse) {
-        this.hplay(vis, moving ? (sd.spd > 2.8 ? 'Gallop' : 'Walk') : 'Idle');
+        this.hplay(vis, moving ? (sd.spd > 2.8 ? 'Canter' : 'Trot') : 'Idle');
         if (u.atkA > 0.2) this.play(vis, '1H_Melee_Attack_Slice_Diagonal', { restart: vis.cur !== '1H_Melee_Attack_Slice_Diagonal', ts: 1.6 });
         else if (!(u.atkA > 0)) this.play(vis, 'Sit_Chair_Idle');
         return;
@@ -1490,6 +1577,7 @@ float wn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           this.unitAnim(S, u, vis);
           vis.mixer.update(dt * (S.paused ? 0 : S.speed || 1));
           if (vis.hmixer) vis.hmixer.update(dt * (S.paused ? 0 : S.speed || 1));
+          if (vis.seat) this.seatRider(vis);
         }
       }
       for (const id in this.unitVis) {

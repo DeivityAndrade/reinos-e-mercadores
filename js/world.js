@@ -537,7 +537,7 @@
     const occupied = new Set(), doors = new Set();
     for (let i = 0; i < houses.length; i++) {
       const h = houses[i];
-      if (!h || typeof h !== 'object' || !Object.prototype.hasOwnProperty.call(KM.HOUSES, h.type)) return fail(`a casa ${i + 1} tem um tipo desconhecido.`);
+      if (!h || typeof h !== 'object' || typeof h.type !== 'string' || !Object.prototype.hasOwnProperty.call(KM.HOUSES, h.type)) return fail(`a casa ${i + 1} tem um tipo desconhecido.`);
       if (!Number.isInteger(h.owner) || h.owner < 0 || h.owner >= d.starts.length) return fail(`a casa ${i + 1} tem um dono inválido.`);
       if (!Number.isInteger(h.x) || !Number.isInteger(h.y)) return fail(`a casa ${i + 1} deve ter posição inteira.`);
       const f = KM.footprint(h.type, h.x, h.y, 0);

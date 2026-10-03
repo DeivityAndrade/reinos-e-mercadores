@@ -1,10 +1,16 @@
 'use strict';
 /* Comandos: toda ação do jogador passa por aqui (single-player e multiplayer lockstep) */
 (function (KM) {
+  const MAX_TILES = 256;
   KM.issue = function (c) {
     const S = KM.S;
     if (!S || S.editor) return;
     c.o = KM.me;
+    // Pinturas grandes da UI continuam válidas; cada comando respeita o limite da rede.
+    if ((c.c === 'roads' || c.c === 'fields') && Array.isArray(c.tiles) && c.tiles.length > MAX_TILES) {
+      for (let i = 0; i < c.tiles.length; i += MAX_TILES) KM.issue(Object.assign({}, c, { tiles: c.tiles.slice(i, i + MAX_TILES) }));
+      return;
+    }
     if (KM.net && KM.net.active) KM.net.queue(c);
     else S.cmdq.push(c);
   };
@@ -40,7 +46,7 @@
       attack: ['g', 'k', 'id'], stop: ['g'], turn: ['g', 'd'], cols: ['g', 'd'], split: ['g'],
       link: ['g'], feed: ['g'], speed: ['v'], leave: [], pause: ['v'],
     }[c.c];
-    if (!req) return false;
+    if (!Array.isArray(req)) return false;
     const optional = {
       build: ['r'], move: ['am'], equip: ['n'],
     }[c.c] || [];
@@ -49,9 +55,9 @@
     switch (c.c) {
       case 'build': return typeof c.t === 'string' && has(KM.HOUSES, c.t) && xy(c, S) && (!own(c, 'r') || int(c.r, 0, 3));
       case 'roads':
-        return Array.isArray(c.tiles) && c.tiles.length > 0 && c.tiles.length <= 256 && c.tiles.every((p) => Array.isArray(p) && p.length === 2 && tile(p[0], 'W', S) && tile(p[1], 'H', S));
+        return Array.isArray(c.tiles) && c.tiles.length > 0 && c.tiles.length <= MAX_TILES && c.tiles.every((p) => Array.isArray(p) && p.length === 2 && tile(p[0], 'W', S) && tile(p[1], 'H', S));
       case 'fields':
-        return (c.kind === 1 || c.kind === 3) && Array.isArray(c.tiles) && c.tiles.length > 0 && c.tiles.length <= 256 && c.tiles.every((p) => Array.isArray(p) && p.length === 2 && tile(p[0], 'W', S) && tile(p[1], 'H', S));
+        return (c.kind === 1 || c.kind === 3) && Array.isArray(c.tiles) && c.tiles.length > 0 && c.tiles.length <= MAX_TILES && c.tiles.every((p) => Array.isArray(p) && p.length === 2 && tile(p[0], 'W', S) && tile(p[1], 'H', S));
       case 'demolishAt': case 'rally': return (!own(c, 'id') || id(c.id)) && xy(c, S);
       case 'demolish': return id(c.id);
       case 'hset': return id(c.id) && ['paused', 'noDeliv', 'repair', 'prio'].includes(c.k) && typeof c.v === 'boolean';

@@ -405,7 +405,7 @@
       else if (m.t === 'chat') {
         if (!this.active || (host ? slot === 0 : slot !== 0)) return this.reject();
         if (host) this.sendRaw(m, slot);
-        KM.ui.toast('?? ' + KM.esc(m.name) + ': ' + KM.esc(m.m), 'info');
+        KM.ui.toast(`${KM.esc(m.name)}: ${KM.esc(m.m)}`, 'info');
       }
       else if (m.t === 'bye') this.peerLost(slot);
       return true;

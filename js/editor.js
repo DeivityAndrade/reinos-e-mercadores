@@ -272,9 +272,11 @@
     test() {
       const S = KM.S;
       if (S.edStarts.length < 2) { KM.ui.toast('O mapa precisa de pelo menos 2 bases de jogador.', 'warn'); return; }
-      const d = this.mapData(S);
-      this.lastTest = d;
-      KM.startGame({ map: d, diff: 'normal', aiMode: 'economy', opponents: d.starts.length - 1, seed: 12345 });
+      try {
+        const d = this.mapData(S);
+        this.lastTest = d;
+        KM.startGame({ map: d, diff: 'normal', aiMode: 'economy', opponents: d.starts.length - 1, seed: 12345 });
+      } catch (e) { KM.ui.toast('Não foi possível testar o mapa: ' + e.message, 'danger'); }
     },
   };
 
