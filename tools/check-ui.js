@@ -71,6 +71,41 @@ const linker = (name, parent) => moduleFor(name === 'three' ? path.join(root, 'j
   assert(KM.ui.housePanel(S, enemySchool).includes('&lt;img'), 'player name must remain escaped');
   console.log('UI_PASS: all professions, locked/unlocked/fallback, train/cancel, icon coverage, escaping and no emojis.');
 
+  S.time = 60; KM.recordResourceFlow(S, 0, 'produced', 'wood', 4);
+  KM.recordResourceFlow(S, 0, 'spent', 'wood', 1); KM.recordResourceFlow(S, 1, 'produced', 'wood', 99);
+  const economyBefore = JSON.stringify(S), commandsBefore = commands.length;
+  KM.ui.setTab('stock'); assert(nodes.get('#tabcontent').innerHTML.includes('data-act="economy"'));
+  KM.ui.act('economy');
+  const economy = () => nodes.get('#tabcontent').innerHTML;
+  assert.equal(KM.ui.tab, 'economy'); assert(economy().includes('unidades por minuto'));
+  assert.equal((economy().match(/scope="row"/g) || []).length, KM.RES_ORDER.length);
+  assert(economy().includes('<td class="good">4</td><td class="bad">1</td><td class="good">+3</td>'));
+  assert(!economy().includes('>99<')); assert.equal(JSON.stringify(S), economyBefore);
+  assert.equal(commands.length, commandsBefore, 'opening the panel must not issue multiplayer commands');
+  S.paused = true; KM.ui.renderTab(false); assert(economy().includes('Pausado'));
+  KM.recordResourceFlow(S, 0, 'spent', 'wood', 5); KM.ui.renderTab(false);
+  assert(economy().includes('<td class="bad">-2</td>'));
+  S.time = 121; KM.ui.renderTab(false); assert(!economy().includes('>+3<')); assert(!economy().includes('>-2<'));
+  KM.ui.renderTop(); assert(nodes.get('#topbar').innerHTML.includes('aria-label="Abrir produção e consumo de recursos"'));
+  KM.ui.act('stock'); assert.equal(KM.ui.tab, 'stock');
+  const savedFlow = S.resourceFlow; delete S.resourceFlow; KM.ui.openEconomy();
+  assert(economy().includes('janela inicial: 0/60 s, sem projeção')); S.resourceFlow = savedFlow;
+  KM.recordResourceFlow(S, 1, 'produced', 'stone', 11);
+  const oldMe = KM.me; KM.me = 1; KM.ui.renderTab(true);
+  assert(economy().includes('<td class="good">11</td>')); assert(!economy().includes('>4<')); KM.me = oldMe;
+  KM.touchUI = true; let opened = false;
+  const addClass = document.body.classList.add; document.body.classList.add = c => { if (c === 'sb-open') opened = true; };
+  KM.ui.openEconomy(); assert(opened); document.body.classList.add = addClass; KM.touchUI = false; S.paused = false;
+  console.log('ECONOMY_UI_PASS: 28 resources, measured counts, owner isolation, live update, expiry, pause, old saves, accessible shortcut, touch opening and local-only navigation.');
+
+  const preview = fs.readFileSync(path.join(root, 'preview-interface/producao-consumo.svg'), 'utf8');
+  assert(!/[?\uFFFD]/.test(preview), 'resource preview contains corrupted characters');
+  for (const label of ['Produção e consumo', 'Prévia do painel', 'simulação local', 'Últimos 60 s', 'fabricação', 'alimentação', 'não conta', 'distribuição', ...KM.RES_ORDER.map(r => KM.RES[r].n)])
+    assert(preview.includes(label), 'resource preview missing label: ' + label);
+  assert.equal((preview.match(/<text x="49"/g) || []).length, KM.RES_ORDER.length);
+  assert(!/<script\b|<foreignObject\b|\bon\w+=|\bhref=/i.test(preview), 'preview must be a self-contained passive SVG');
+  console.log('RESOURCE_PREVIEW_PASS: UTF-8 Portuguese labels, 28 resource names and passive SVG.');
+
   const town = KM.newState({ seed: 4, opponents: 1, allUnlocked: true });
   town.map = KM.emptyMap(48, 48); KM.setMapSize(48, 48); town.houses = {}; town.units = {}; town.army = {}; town.sites = []; town.zones = null;
   KM.S = town;

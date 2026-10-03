@@ -31,6 +31,7 @@
       $('#topbar').addEventListener('click', (e) => {
         const b = e.target.closest('[data-speed]'); if (b) this.setSpeed(+b.dataset.speed);
         if (e.target.closest('[data-goals]')) this.setTab('goals');
+        if (e.target.closest('[data-economy]')) this.openEconomy();
       });
       for (const el of ['#tabcontent', '#selpanel', '#topbar']) {
         $(el).addEventListener('mousemove', (e) => this.onTip(e));
@@ -66,8 +67,12 @@
     },
     setTab(t) {
       this.tab = t; this.lastTab = '';
-      document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === t));
+      document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === (t === 'economy' ? 'stock' : t)));
       this.renderTab(true);
+    },
+    openEconomy() {
+      this.setTab('economy');
+      if (KM.touchUI) document.body.classList.add('sb-open');
     },
     houseCounts() {
       const counts = {};
@@ -149,6 +154,7 @@
         const tot = {};
         for (const id in S.houses) { const h = S.houses[id]; if (h.owner === ME() && h.type === 'storehouse' && h.state === 'built') for (const r in h.inv) KM.add(tot, r, h.inv[r]); }
         html = `<h4>Estoque dos armazéns</h4><div class="stock">${KM.RES_ORDER.map((r) => `<div class="srow ${tot[r] ? '' : 'zero'}" data-tip="${KM.RES[r].n}"><span>${ri(r)}</span><span class="sn">${KM.RES[r].n}</span><b>${tot[r] || 0}</b></div>`).join('')}</div>`;
+        html = `<button class="mbtn wide" data-act="economy"><i class=ui-icon data-icon=chart aria-hidden=true></i> Produção e consumo</button>` + html;
         const dist = P.dist;
         html += `<h4 data-tip="Quanto de cada recurso cada tipo de casa pode pedir (0 a 5). Use para decidir, por exemplo, se o carvão vai para armas ou para ouro.">Distribuição ⓘ</h4>`;
         for (const r in dist) {
@@ -156,6 +162,17 @@
           for (const t in dist[r]) html += `<div class="ratio"><span>${KM.icon(KM.HOUSES[t].i)} ${KM.HOUSES[t].n}</span><button data-act="dist:${r}:${t}:-1">−</button><b>${dist[r][t]}</b><button data-act="dist:${r}:${t}:1">+</button></div>`;
           html += '</div>';
         }
+      } else if (this.tab === 'economy') {
+        const flow = KM.resourceRates(S, ME());
+        html = `<div class="economy-heading"><h4>Produção e consumo</h4><span class="economy-live ${S.paused ? 'paused' : ''}">${S.paused ? 'Pausado' : 'Ao vivo'}</span></div>
+          <p class="muted">Últimos 60 s de jogo · ${flow.seconds >= 60 ? 'unidades por minuto' : `janela inicial: ${Math.floor(flow.seconds)}/60 s, sem projeção`}.</p>
+          <table class="economy-table"><caption class="sr-only">Produção, gasto e saldo por recurso do seu reino nos últimos 60 segundos de jogo</caption>
+          <thead><tr><th scope="col">Recurso</th><th scope="col">Produzido</th><th scope="col">Gasto</th><th scope="col">Saldo</th></tr></thead><tbody>${KM.RES_ORDER.map(r => {
+            const p = flow.produced[r] || 0, c = flow.spent[r] || 0, net = p - c;
+            return `<tr class="${p || c ? '' : 'economy-idle'}"><th scope="row">${ri(r)} ${KM.RES[r].n}</th><td class="good">${p}</td><td class="bad">${c}</td><td class="${net > 0 ? 'good' : net < 0 ? 'bad' : ''}">${net > 0 ? '+' : ''}${net}</td></tr>`;
+          }).join('')}</tbody></table>
+          <p class="muted">Produzido: coleta, fabricação e compras no Mercado. Gasto: receitas, alimentação, obras, estradas, treino, equipamentos, torres e vendas no Mercado. Transportar entre casas não conta.</p>
+          <button class="mbtn wide" data-act="stock"><i class=ui-icon data-icon=crate aria-hidden=true></i> Ver estoque e distribuição</button>`;
       } else if (this.tab === 'people') {
         const c = {}, idle = {}, sold = {};
         let hunger = 0, nc = 0, starving = 0, sh = 0, ns = 0;
@@ -227,7 +244,11 @@
           <button class="mbtn wide danger" data-act="quit"><i class=ui-icon data-icon=home aria-hidden=true></i> Voltar ao menu principal</button>`;
       }
       if (this.sliding && !force) return;
-      if (html !== this.lastTabHtml || force) { $('#tabcontent').innerHTML = html; this.lastTabHtml = html; }
+      if (html !== this.lastTabHtml || force) {
+        const focusAct = this.tab === 'economy' ? document.activeElement?.dataset?.act : null;
+        $('#tabcontent').innerHTML = html; this.lastTabHtml = html;
+        if (focusAct === 'stock') $('#tabcontent [data-act="stock"]')?.focus({ preventScroll: true });
+      }
       this.lastTab = this.tab;
     },
     markTool() {
@@ -269,6 +290,8 @@
     act(a, el) {
       const S = KM.S;
       const [k, v, w, z] = a.split(':');
+      if (k === 'economy') { this.openEconomy(); return; }
+      if (k === 'stock') { this.setTab('stock'); return; }
       if (k === 'auto') { KM.issue({ c: 'auto', v: el.checked }); return; }
       if (k === 'dist') { KM.issue({ c: 'dist', r: v, t: w, v: S.players[ME()].dist[v][w] + +z }); setTimeout(() => this.renderTab(true), 120); return; }
       if (k === 'pause') this.setSpeed(0);
@@ -590,7 +613,7 @@
       const crowns = opt.length ? ` · <i class=ui-icon data-icon=crown aria-hidden=true></i> ${opt.filter((g) => KM.goalStatus(S, g).done).length}/${opt.length}` : '';
       const net = S.mp && KM.net ? `<span class="${KM.net.lag > 0.5 ? 'threat' : 'muted'}" data-tip="Conexão multijogador"><i class=ui-icon data-icon=signal aria-hidden=true></i> ${KM.net.ping}ms</span>` : '';
       const html = `<div class="tb-group"><span><i class=ui-icon data-icon=clock aria-hidden=true></i> ${KM.fmtTime(S.time)}</span> ${threat} ${net} <button class="goalsbtn" data-goals="1" data-tip="Objetivos e desafios"><i class=ui-icon data-icon=target aria-hidden=true></i> ${done}/${req.length}${crowns}</button></div>
-        <div class="tb-group res"><span data-tip="Madeira (variação por minuto)"><i class=ui-icon data-icon=wood aria-hidden=true></i> ${tot.wood || 0}${tr('wood')}</span><span data-tip="Pedra (variação por minuto)"><i class=ui-icon data-icon=stone aria-hidden=true></i> ${tot.stone || 0}${tr('stone')}</span><span data-tip="Ouro (variação por minuto)"><i class=ui-icon data-icon=coin aria-hidden=true></i> ${tot.gold || 0}${tr('gold')}</span><span data-tip="Comida: pão, salsicha, vinho, peixe (variação por minuto)"><i class=ui-icon data-icon=bread aria-hidden=true></i> ${food}${tr('food')}</span><span data-tip="Cidadãos"><i class=ui-icon data-icon=people aria-hidden=true></i> ${cit}</span><span data-tip="Soldados"><i class=ui-icon data-icon=sword aria-hidden=true></i> ${sol}</span></div>
+        <div class="tb-group res"><button class="goalsbtn" data-economy="1" aria-label="Abrir produção e consumo de recursos" data-tip="Produção e consumo de recursos em tempo real"><i class=ui-icon data-icon=chart aria-hidden=true></i></button><span data-tip="Madeira (variação por minuto)"><i class=ui-icon data-icon=wood aria-hidden=true></i> ${tot.wood || 0}${tr('wood')}</span><span data-tip="Pedra (variação por minuto)"><i class=ui-icon data-icon=stone aria-hidden=true></i> ${tot.stone || 0}${tr('stone')}</span><span data-tip="Ouro (variação por minuto)"><i class=ui-icon data-icon=coin aria-hidden=true></i> ${tot.gold || 0}${tr('gold')}</span><span data-tip="Comida: pão, salsicha, vinho, peixe (variação por minuto)"><i class=ui-icon data-icon=bread aria-hidden=true></i> ${food}${tr('food')}</span><span data-tip="Cidadãos"><i class=ui-icon data-icon=people aria-hidden=true></i> ${cit}</span><span data-tip="Soldados"><i class=ui-icon data-icon=sword aria-hidden=true></i> ${sol}</span></div>
         <div class="tb-group speed">${(S.mp ? [1, 2, 3] : [0, 1, 2, 3, 5]).map((v) => `<button data-speed="${v}" aria-label="${v === 0 ? (S.paused ? 'Continuar' : 'Pausar') : 'Velocidade ' + v + ' vezes'}" class="${(v === 0 ? S.paused : !S.paused && S.speed === v) ? 'active' : ''}">${v === 0 ? '<i class=ui-icon data-icon=pause aria-hidden=true></i>' : v + '×'}</button>`).join('')}</div>`;
       if (html !== this.lastTop) { $('#topbar').innerHTML = html; this.lastTop = html; }
     },

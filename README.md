@@ -99,6 +99,7 @@ KM.sim.bots({ seed: 7, minutes: 40, fair: true })   // "jogador justo" (como um 
 - **Prioridade de obra:** ☆ no painel da obra. Construtores e carregadores atendem essa obra primeiro, e uma ⭐ aparece sobre ela.
 - **Alertas no minimapa:** ataques e avisos piscam no minimapa.
 - **Tendência dos recursos:** a barra do topo mostra quanto cada recurso sobe ou desce por minuto (▲/▼).
+- **Produção e consumo em tempo real:** clique no botão de gráfico junto aos recursos no topo ou em **Estoque → Produção e consumo**. O painel mostra produzido, gasto e saldo dos 28 recursos nos últimos 60 segundos de jogo e atualiza quatro vezes por segundo. Conta coleta, fabricação, Mercado, alimentação, materiais usados em obras/estradas, treino, equipamento e munição; transportar entre casas não conta. A janela inicial mostra somente o que já aconteceu, sem projeção. Pausa e velocidade seguem o tempo do jogo, e o histórico recente acompanha o salvamento; saves anteriores começam a medição ao carregar.
 - **Produção de cada casa:** o painel mostra quanto a casa produziu e o aproveitamento (% do tempo trabalhando), com aviso quando ela passa muito tempo parada.
 - **Recuperação:** soldados bem alimentados recuperam vida devagar depois de 8 s sem lutar.
 - **IA tática:**

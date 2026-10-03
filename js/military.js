@@ -349,7 +349,10 @@
     if (!sd || !KM.soldierUnlocked(S, h.owner, type)) return false;
     if (h.recruits < 1) return false;
     for (const r in sd.cost) if ((h.inv[r] || 0) < sd.cost[r]) return false;
-    for (const r in sd.cost) h.inv[r] -= sd.cost[r];
+    for (const r in sd.cost) {
+      h.inv[r] -= sd.cost[r];
+      KM.recordResourceFlow(S, h.owner, 'spent', r, sd.cost[r]);
+    }
     h.recruits--;
     const u = KM.addUnit(S, type, h.owner, h.ex, h.ey);
     if (!KM.human(S, h.owner)) u.ai = 'def';
