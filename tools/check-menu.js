@@ -3,6 +3,8 @@
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..'), nodes = new Map();
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const guideAt = html.indexOf('class="mgrid menu-guide"'), savesAt = html.indexOf('id="continue"');
+assert(guideAt >= 0 && savesAt > guideAt, 'partidas salvas ficam abaixo das opções de ajuda');
 const element = () => ({ innerHTML: '', textContent: '', dataset: {}, scrollTop: 120, listeners: {},
   classList: { toggle(name, on) { this[name] = on; }, contains(name) { return !!this[name]; } },
   addEventListener(type, fn) { this.listeners[type] = fn; }, focus() { document.activeElement = this; } });
@@ -55,14 +57,15 @@ assert.equal(get('#help').classList.contains('hidden'), false);
 saves.set(0, { v3: true, date: 10, time: 60, name: 'Autosave' });
 saves.set(1, { v3: false, date: 40, time: 80, name: 'Antigo' });
 saves.set(2, { v3: true, date: 30, time: 90, name: '<img src=x onerror="alert(1)">&' });
-saves.set(3, { v3: true, date: 20, time: 70, name: 'Campanha' });
-KM.ui.refreshMenu();
-const resume = get('#continue').innerHTML;
-assert(resume.includes('Continuar partida'));
-assert.deepEqual([...resume.matchAll(/data-cont="(\d)"/g)].map(m => m[1]), ['2', '3', '0']);
-assert.equal((resume.match(/resume-game latest/g) || []).length, 1);
+  saves.set(3, { v3: true, date: 20, time: 70, name: 'Campanha' });
+  KM.ui.refreshMenu();
+  const resume = get('#continue').innerHTML;
+  assert(resume.includes('Continuar partida'));
+  assert.deepEqual([...resume.matchAll(/data-cont="(\d)"/g)].map(m => m[1]), ['2', '3']);
+  assert.equal((resume.match(/resume-game latest/g) || []).length, 1);
+  assert(!resume.includes('data-cont="0"')); assert(!resume.includes('data-cont="1"'));
 assert(!resume.includes('<img')); assert(resume.includes('&lt;img')); assert(resume.includes('&quot;')); assert(resume.includes('&amp;'));
 click({ cont: '0' }); click({ cont: '2' }); assert(calls.includes('load:0')); assert(calls.includes('load:2'));
 saves.clear(); KM.ui.refreshMenu(); assert.equal(get('#continue').innerHTML, '');
-console.log('MENU_PASS: primeira visita, 6 telas, foco/rolagem, saída da sala, tutorial/ajuda/editor, saves ordenados, autosave e nomes escapados.');
+  console.log('MENU_PASS: primeira visita, 6 telas, foco/rolagem, saída da sala, tutorial/ajuda/editor, duas saves mais recentes, autosave e nomes escapados.');
 console.log('LIMIT: layout, toque e renderização WebGL precisam de conferência em navegador.');
