@@ -350,6 +350,86 @@ check('Vitória descobre biomas na progressão e não repete descobertas antigas
     S.players[1].out = true; KM.checkGoals(S); assert.equal(S.unlockedBiomes.length, 0);
   } finally { KM.S = keepS; KM.ui = keepUI; if (old == null) storage.delete('rm_conquest'); else storage.set('rm_conquest', old); }
 });
+check('Fluxo registra receitas, lotes reais, pausas, treino, trocas e equipamento sem contar transporte', () => {
+  const S = flat(); S.players[0].all = true; S.time = 20;
+  const saw = KM.addHouse(S, 'sawmill', 0, 3, 3, true);
+  const w = KM.addUnit(S, 'carpenter', 0, saw.ex, saw.ey); saw.worker = w.id; w.inside = saw.id;
+  saw.inv.trunk = 1; saw.paused = true; KM.updateHouse(S, saw, 1);
+  assert.equal(S.resourceFlow.events.length, 0);
+  saw.paused = false; KM.updateHouse(S, saw, 1);
+  assert.equal(KM.resourceRates(S, 0).spent.trunk, 1);
+  assert.equal(KM.resourceRates(S, 0).produced.wood, undefined, 'unfinished work is not production');
+  KM.updateHouse(S, saw, 9); KM.updateHouse(S, saw, 1);
+  assert.equal(KM.resourceRates(S, 0).produced.wood, 2, 'count batch quantities, not cycles');
+  const school = KM.addHouse(S, 'school', 0, 9, 3, true); school.inv.gold = 1; school.queue = ['serf'];
+  KM.updateHouse(S, school, 1); KM.updateHouse(S, school, 1);
+  assert.equal(KM.resourceRates(S, 0).spent.gold, 1);
+  const market = KM.addHouse(S, 'market', 0, 15, 3, true), rate = KM.tradeRate('wood', 'stone');
+  market.trade = { sell: 'wood', buy: 'stone', n: 1 }; market.inv.wood = rate.sellN;
+  KM.updateHouse(S, market, 1); KM.updateHouse(S, market, 4); KM.updateHouse(S, market, 4);
+  assert.equal(KM.resourceRates(S, 0).spent.wood, rate.sellN);
+  assert.equal(KM.resourceRates(S, 0).produced.stone, rate.buyN);
+  const bar = KM.addHouse(S, 'barracks', 0, 21, 3, true); bar.recruits = 1;
+  bar.inv.axe = 1; assert.equal(KM.equip(S, bar, 'militia'), true);
+  assert.equal(KM.resourceRates(S, 0).spent.axe, 1);
+  assert.equal(KM.equip(S, bar, 'militia'), false); assert.equal(KM.resourceRates(S, 0).spent.axe, 1);
+  const store = KM.addHouse(S, 'storehouse', 0, 3, 12, true); store.inv.wood = 1;
+  const serf = KM.addUnit(S, 'serf', 0, store.ex, store.ey);
+  serf.task = { type: 'carry', from: store.id, to: market.id, r: 'wood', st: 0, ic: false };
+  const before = JSON.stringify(S.resourceFlow);
+  KM.updateUnit(S, serf, 0.1); serf.wt = 0; serf.x = serf.tx = market.ex; serf.y = serf.ty = market.ey;
+  KM.updateUnit(S, serf, 0.1);
+  assert.equal(market.inv.wood, 1); assert.equal(JSON.stringify(S.resourceFlow), before);
+});
+check('Fluxo mede coleta, alimentação, materiais de obras, estrada e munição quando usados', () => {
+  const S = flat(); S.time = 30;
+  for (const [type, kind, resource] of [['woodcutter', 'chop', 'trunk'], ['quarry', 'mine', 'stone'], ['farm', 'harvest', 'corn'], ['vineyard', 'harvest', 'wine'], ['fisher', 'fish', 'fish']]) {
+    const h = KM.addHouse(S, type, 0, 3, 3, true), u = KM.addUnit(S, KM.HOUSES[type].worker, 0, h.ex, h.ey);
+    u.home = h.id; u.inside = 0; const i = h.ey * S.map.W + h.ex;
+    S.map.tree[i] = 4; S.map.stone[i] = 1; S.map.fstage[i] = 4; S.map.fish[i] = 1;
+    u.task = { type: 'gather', kind, tile: i, st: 1, onDone: 'gatherDone' }; u.wt = 0.05;
+    KM.updateUnit(S, u, 0.1); assert.equal(KM.resourceRates(S, 0).produced[resource], 1);
+    KM.updateUnit(S, u, 0.1); assert.equal(h.out[resource], 1);
+    assert.equal(KM.resourceRates(S, 0).produced[resource], 1, 'returning to the house must not count again');
+  }
+  const inn = KM.addHouse(S, 'inn', 0, 9, 3, true); inn.inv.bread = 1;
+  const citizen = KM.addUnit(S, 'serf', 0, inn.ex, inn.ey); citizen.hunger = 10; citizen.inside = inn.id;
+  citizen.task = { type: 'eat', inn: inn.id, st: 1 }; KM.updateUnit(S, citizen, 0.1);
+  assert.equal(KM.resourceRates(S, 0).spent.bread, 1);
+  const carrier = KM.addUnit(S, 'serf', 0, 15, 12), soldier = KM.addUnit(S, 'militia', 0, 15, 12);
+  soldier.fedInc = carrier.id; soldier.hunger = 10; carrier.carry = 'fish';
+  carrier.task = { type: 'carry', toU: soldier.id, r: 'fish', st: 1 }; KM.updateUnit(S, carrier, 0.1);
+  assert.equal(KM.resourceRates(S, 0).spent.fish, 1);
+  carrier.wt = 0; carrier.carry = 'stone'; const i = carrier.ty * S.map.W + carrier.tx;
+  S.map.road[i] = 1; S.map.rmat[i] = 1;
+  carrier.task = { type: 'carry', toT: i, r: 'stone', st: 1 }; KM.updateUnit(S, carrier, 0.1);
+  assert.equal(KM.resourceRates(S, 0).spent.stone, 1);
+  const site = KM.addHouse(S, 'sawmill', 0, 21, 12, false); site.state = 'site';
+  const laborer = KM.addUnit(S, 'laborer', 0, site.ex, site.ey);
+  KM.deliver(S, site, 'wood'); assert.equal(KM.resourceRates(S, 0).spent.wood, undefined);
+  laborer.task = { type: 'build', h: site.id }; KM.updateUnit(S, laborer, 0.1);
+  assert.equal(KM.resourceRates(S, 0).spent.wood, 1);
+  const tower = KM.addHouse(S, 'tower', 0, 27, 20, true), guard = KM.addUnit(S, 'recruit', 0, tower.ex, tower.ey);
+  tower.worker = guard.id; guard.inside = tower.id; tower.inv.stone = 1;
+  KM.addUnit(S, 'militia', 1, tower.ex + 2, tower.ey);
+  KM.updateHouse(S, tower, 0.1); assert.equal(tower.shots, 2);
+  KM.updateHouse(S, tower, 3); assert.equal(KM.resourceRates(S, 0).spent.stone, 2, 'three shots use one stone');
+});
+check('Janela do fluxo expira aos 60 s, isola jogadores, preserva saves e não altera o estado ao consultar', () => {
+  const S = flat(); S.time = 1; KM.recordResourceFlow(S, 0, 'produced', 'wood', 2);
+  S.time = 20; KM.recordResourceFlow(S, 0, 'spent', 'wood', 1); KM.recordResourceFlow(S, 1, 'produced', 'wood', 9);
+  S.speed = 5; S.paused = true;
+  const before = JSON.stringify(S), rates = KM.resourceRates(S, 0);
+  assert.equal(rates.produced.wood, 2); assert.equal(rates.spent.wood, 1); assert.equal(rates.seconds, 20);
+  assert.equal(KM.resourceRates(S, 1).produced.wood, 9); assert.equal(JSON.stringify(S), before);
+  const copy = JSON.parse(before); assert.equal(JSON.stringify(KM.resourceRates(copy, 0)), JSON.stringify(rates));
+  S.time = 61; assert.equal(KM.resourceRates(S, 0).produced.wood, undefined);
+  S.time = 80; assert.equal(KM.resourceRates(S, 0).spent.wood, undefined);
+  KM.recordResourceFlow(S, 0, 'produced', 'bread', 2); assert.equal(S.resourceFlow.events.length, 1);
+  delete copy.resourceFlow; assert.equal(KM.resourceRates(copy, 0).seconds, 0);
+  KM.recordResourceFlow(copy, 0, 'spent', 'gold', 1); assert.equal(copy.resourceFlow.since, copy.time);
+  const fresh = KM.newState({ seed: 5 }); assert.equal(fresh.resourceFlow.events.length, 0, 'starting supplies are not production');
+});
 check('Mapa, combate e objetivos reproduzem o mesmo estado e sobrevivem a salvar/carregar', () => {
   function run() { const S = KM.newState({ mission: 'c2', diff: 'normal' }); for (let i = 0; i < 400; i++) KM.step(S, KM.DT); return S; }
   const a = run(), b = run(); assert.equal(JSON.stringify(a), JSON.stringify(b));

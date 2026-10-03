@@ -1,6 +1,20 @@
 'use strict';
 /* Economia: logística de carregadores, construtores, produção, escola, torres */
 (function (KM) {
+  // Eventos reais; transportar mercadorias não é produzir nem consumir.
+  KM.recordResourceFlow = function (S, owner, kind, resource, amount) {
+    const flow = S.resourceFlow || (S.resourceFlow = { since: S.time, events: [] });
+    flow.events = flow.events.filter(e => e.t > S.time - 60);
+    flow.events.push({ t: S.time, owner, kind, resource, amount });
+  };
+  KM.resourceRates = function (S, owner) {
+    const produced = {}, spent = {}, flow = S.resourceFlow;
+    for (const e of flow ? flow.events : []) {
+      if (e.owner === owner && e.t > S.time - 60 && e.t <= S.time)
+        KM.add(e.kind === 'produced' ? produced : spent, e.resource, e.amount);
+    }
+    return { produced, spent, seconds: flow ? Math.min(60, Math.max(0, S.time - flow.since)) : 0 };
+  };
   const man = (ax, ay, bx, by) => Math.abs(ax - bx) + Math.abs(ay - by);
 
   function idleUnits(S, owner, type) {
@@ -231,6 +245,7 @@
       h.tradeT -= dt;
       if (h.tradeT <= 0) {
         KM.add(h.out, t.buy, buyN);
+        KM.recordResourceFlow(S, h.owner, 'produced', t.buy, buyN);
         if (t.n < KM.INF) t.n--;
         h.traded = (h.traded || 0) + 1;
         if (h.owner === KM.me && KM.sfxAt) KM.sfxAt('coins', h.ex, h.ey);
@@ -239,6 +254,7 @@
     }
     if ((h.inv[t.sell] || 0) < sellN || (h.out[t.buy] || 0) + buyN > KM.OUT_CAP + 3) return;
     h.inv[t.sell] -= sellN;
+    KM.recordResourceFlow(S, h.owner, 'spent', t.sell, sellN);
     h.tradeT = 4;
   }
 
@@ -258,7 +274,10 @@
       h.work.t -= dt * (w.hunger <= 0 ? 0.5 : 1);
       if (h.work.t <= 0) {
         const rc = d.recipes[h.work.r];
-        for (const k in rc.out) KM.add(h.out, k, rc.out[k]);
+        for (const k in rc.out) {
+          KM.add(h.out, k, rc.out[k]);
+          KM.recordResourceFlow(S, h.owner, 'produced', k, rc.out[k]);
+        }
         h.completed = (h.completed || 0) + 1;
         h.work = null;
       }
@@ -283,7 +302,10 @@
       }
     }
     const rc = d.recipes[best];
-    for (const k in rc.in) h.inv[k] -= rc.in[k];
+    for (const k in rc.in) {
+      h.inv[k] -= rc.in[k];
+      KM.recordResourceFlow(S, h.owner, 'spent', k, rc.in[k]);
+    }
     h.cnt[best] = (h.cnt[best] || 0) + 1;
     if (h.orders && h.orders[best] < KM.INF) h.orders[best]--;
     h.rr = (best + 1) % n;
@@ -295,6 +317,7 @@
     if (!h.trainT) {
       if ((h.inv.gold || 0) < 1) return;
       h.inv.gold--;
+      KM.recordResourceFlow(S, h.owner, 'spent', 'gold', 1);
       h.trainT = h.trainMax = KM.PROF[h.queue[0]].t;
     }
     h.trainT -= dt;
@@ -321,7 +344,12 @@
     }
     if (!best) { h.cd = 0.5; return; }
     if (eco) {
-      if (h.shots <= 0) { if ((h.inv.stone || 0) > 0) { h.inv.stone--; h.shots = 3; } else { h.cd = 1; return; } }
+      if (h.shots <= 0) {
+        if ((h.inv.stone || 0) > 0) {
+          h.inv.stone--; h.shots = 3;
+          KM.recordResourceFlow(S, h.owner, 'spent', 'stone', 1);
+        } else { h.cd = 1; return; }
+      }
       h.shots--;
     }
     KM.shoot(S, cx, cy - 1, { k: 'u', id: best.id }, best.x, best.y, 22, h.owner, 'stone');

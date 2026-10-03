@@ -213,6 +213,7 @@
       else if (t.kind === 'harvest' && m.fstage[i] === 4) { m.fstage[i] = m.field[i] === 4 ? 1 : 0; m.ftimer[i] = 0; u.carry = res; }
       else if (t.kind === 'sow' && m.fstage[i] === 0) { m.fstage[i] = 1; m.ftimer[i] = 0; }
       else if (t.kind === 'fish' && m.fish[i] > 0) { m.fish[i]--; u.carry = res; }
+      if (u.carry) KM.recordResourceFlow(S, u.owner, 'produced', u.carry, 1);
       t.st = 2;
     },
     roadDone(S, u, t) {
@@ -261,7 +262,10 @@
         if (m.road[i] !== 1 || m.rmat[i] !== 1) { KM.undoInc(S, t); t.toT = null; t.to = 0; return; }
         const g = KM.goTo(S, u, dt, i % m.W, (i / m.W) | 0, { roadPref: 3 });
         if (g < 0) { KM.undoInc(S, t); t.toT = null; t.to = 0; return; }
-        if (g === 1) { m.rmat[i] = 2; t.ic = false; u.carry = null; u.task = null; u.wt = 0.3; }
+        if (g === 1) {
+          m.rmat[i] = 2; t.ic = false; u.carry = null; u.task = null; u.wt = 0.3;
+          KM.recordResourceFlow(S, u.owner, 'spent', t.r, 1);
+        }
         return;
       }
       if (t.toU) {
@@ -272,6 +276,7 @@
         if (g === 1) {
           v.hunger = Math.min(100, v.hunger + (KM.FOOD[t.r] || 40) * 1.5);
           v.fedInc = 0; v.wantFood = v.hunger < 80;
+          KM.recordResourceFlow(S, u.owner, 'spent', t.r, 1);
           t.ic = false; u.carry = null; u.task = null; u.wt = 0.4;
         }
         return;
@@ -331,6 +336,7 @@
       for (const r in h.mat) {
         if (h.mat[r].have > 0) {
           h.mat[r].have--; h.used++;
+          KM.recordResourceFlow(S, h.owner, 'spent', r, 1);
           h.hp = Math.max(30, Math.round(h.maxHp * h.used / h.total));
           u.wt = 3.6; t.onDone = 'buildStep';
           return;
@@ -378,6 +384,7 @@
       for (const f in KM.FOOD) if ((inn.inv[f] || 0) > 0) { bf = f; break; }
       if (!bf) { u.inside = 0; u.task = null; if (u.hunger < 30) u.noFood = 25; return; }
       inn.inv[bf]--;
+      KM.recordResourceFlow(S, u.owner, 'spent', bf, 1);
       u.hunger = Math.min(100, u.hunger + KM.FOOD[bf]);
       u.wt = 4;
     },

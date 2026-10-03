@@ -121,6 +121,7 @@
 
   KM.afterLoad = function (S) {
     KM.S = S; KM.simS = S;
+    S.resourceFlow = S.resourceFlow || { since: S.time, events: [] };
     KM.setMapSize(S.map.W, S.map.H);
     KM.rt = { comp: null, roadsDirty: true };
     KM.computeRoadComps(S);

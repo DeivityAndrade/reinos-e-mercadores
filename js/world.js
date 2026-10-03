@@ -582,6 +582,7 @@
       v: KM.SAVE_V, seed, rs: seed | 0, time: 0, tick: 0, speed: 1, paused: false, map: m, houses: {}, units: {}, army: {}, nid: 1, starts,
       diff, proj: [], fx: [], resv: {}, over: null, mission: mis ? mis.id : null, mp: !!opts.mp,
       goals: JSON.parse(JSON.stringify(cfg.goals || [])), hotkeys: {}, cmdq: [],
+      resourceFlow: { since: 0, events: [] },
       players: pl.map((p, i) => ({
         name: p.name || KM.NAMES[i], color: KM.COLORS[i], team: p.team != null ? p.team : i, human: !!p.human,
         eco: !!p.human || !!(p.ai && p.ai.mode === 'economy'), dist: KM.defaultDist(), autoTrain: true, out: false,
