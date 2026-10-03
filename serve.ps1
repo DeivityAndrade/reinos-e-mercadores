@@ -12,7 +12,7 @@ $rootPrefix = if ($root.EndsWith([IO.Path]::DirectorySeparatorChar) -or $root.En
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Start()
-Write-Host "Reinos & Mercadores em http://localhost:$Port  (Ctrl+C para parar)"
+Write-Host "O Último Feudo em http://localhost:$Port  (Ctrl+C para parar)"
 $types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.png'='image/png'; '.json'='application/json'; '.md'='text/markdown; charset=utf-8'; '.gltf'='model/gltf+json'; '.glb'='model/gltf-binary'; '.bin'='application/octet-stream'; '.jpg'='image/jpeg'; '.svg'='image/svg+xml'; '.webmanifest'='application/manifest+json'; '.ogg'='audio/ogg'; '.mp3'='audio/mpeg'; '.txt'='text/plain; charset=utf-8' }
 $CHUNK = 1048576
 while ($listener.IsListening) {

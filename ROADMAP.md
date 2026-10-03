@@ -1,4 +1,4 @@
-# 🗺️ Roadmap — Reinos & Mercadores
+# 🗺️ Roadmap — O Último Feudo
 
 Estado atual do código: **v0.8.0**, conferido em **02/10/2026** (`KM.VERSION` em `js/config.js`). Implementados: Tutorial (26 passos), Conquista (10 fases), Campanha (14 missões), Escaramuça, Multijogador por sala (2 a 4 humanos; até 4 reinos contando as IAs), Editor de mapas, PWA com cache sob demanda e controles de celular/tablet.
 

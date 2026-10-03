@@ -1,5 +1,5 @@
 'use strict';
-/* Reinos & Mercadores — dados do jogo (data-driven).
+/* O Último Feudo — dados do jogo (data-driven).
    Tudo que define economia, casas, profissões e soldados fica aqui. */
 window.KM = window.KM || {};
 (function (KM) {

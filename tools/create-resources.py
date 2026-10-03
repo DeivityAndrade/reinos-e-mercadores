@@ -153,7 +153,7 @@ def make_coal(seed, dimensions):
     obj = bpy.data.objects.new("coal", mesh)
     bpy.context.collection.objects.link(obj)
     obj["resource"] = "coal"
-    obj["authoring"] = "Original / Blender / Reinos & Mercadores"
+    obj["authoring"] = "Original / Blender / O Último Feudo"
     obj["pivot"] = "ground center; Blender Z-up, exported glTF Y-up"
     obj["design"] = "Five fractured charcoal chunks; no grey host rock"
     return obj
@@ -211,7 +211,7 @@ def make_asset(name, seed, dimensions, ore=None):
             color.data[loop].color = (*rgb, 1)
     mesh.materials.append(material)
     obj["resource"] = ore or "stone"
-    obj["authoring"] = "Original / Blender / Reinos & Mercadores"
+    obj["authoring"] = "Original / Blender / O Último Feudo"
     obj["pivot"] = "ground center; Blender Z-up, exported glTF Y-up"
     return obj
 

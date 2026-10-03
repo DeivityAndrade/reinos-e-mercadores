@@ -1,4 +1,4 @@
-# ⚜️ Reinos & Mercadores
+# ⚜️ O Último Feudo
 
 Um jogo de estratégia econômica medieval em tempo real: construa seu reino, organize a produção e conquiste novas regiões.
 Mundo em **3D estilizado com câmera 2.5D** (Three.js), arte própria e animações com licença livre (CC0).
@@ -52,7 +52,7 @@ Deixe a janela preta aberta enquanto joga; feche-a para encerrar.
 - **Tutorial completo:** 26 passos em uma missão sem inimigos, com acompanhamento de produção, encomendas, recrutas e movimento de tropas. Pode ser reaberto no menu da partida; a Missão I da campanha mantém seu guia básico de 13 passos.
 - **Conquista:** alternativas de vitória, condições iniciais próprias e pontos estratégicos com guarnições. Casas essenciais aparecem marcadas e sua perda pode encerrar a missão.
 - **Biomas:** Pradaria desde o início, Bosque de outono na fase III, Pântano na IV e Tundra na VIII. Ao abrir essas fases, o bioma também fica disponível na Escaramuça. Pântanos têm mais água; na Tundra, os campos levam 25% mais tempo para crescer. O tipo de mapa continua sendo uma escolha independente do bioma.
-- **Identidade:** menus e ajuda apresentam Reinos & Mercadores com seu próprio nome e suas regras.
+- **Identidade:** menus e ajuda apresentam O Último Feudo com seu próprio nome e suas regras.
 
 ## 🆕 Recursos das versões anteriores
 - **Tutorial interativo básico:** 13 passos guiados, com destaque nos botões e uma seta no mapa. Os passos avançam sozinhos quando você faz a ação pedida.
